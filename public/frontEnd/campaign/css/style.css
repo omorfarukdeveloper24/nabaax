@@ -1,0 +1,1411 @@
+@import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap');
+body {
+    margin:0;
+    padding:0;
+    outline: 0;
+    font-family: "Hind Siliguri", sans-serif;
+}
+
+ul,li,h1,h2,h3,h4,h5,h6,p {
+    margin:0;
+    padding:0;
+    outline: 0;
+}
+li {
+    list-style: none;
+    display: inline-block;
+}
+.campaign-video img {
+    width: 100%;
+}
+
+a:hover,
+a:focus,
+a {
+    text-decoration: none;
+    color:#000;
+}
+form input::placeholder {
+    font-size: 15px;
+    color: #888;
+}
+button:focus,
+button {
+    border: none !important;
+    box-shadow: none !important;
+}
+input:focus {
+    box-shadow: none !important;
+}
+
+/*=== Banner section start===*/
+.banner_title {
+    margin-top: 40px;
+}
+.banner_title h2 {
+    color: #FF0000;
+    margin: 40px 0;
+    text-align: center;
+    font-size: 40px;
+    font-weight: 900;
+}
+
+.banner-img {
+    text-align: center;
+}
+.banner-img img {
+    border-radius: 10px;
+    overflow: hidden;
+    width: 100%;
+}
+/*=== Banner section end===*/
+
+/*Campaing banner secton start*/
+section.campaign-banner-section {
+    background-image: linear-gradient(180deg, #580600 0%, #F8914D 100%);
+    height: 330px;
+    text-align: center;
+    color: #fff;
+}
+.website-logo {
+    padding: 30px 10px;
+}
+.campaign-title h2 {
+    font-size: 48px;
+    font-weight: 500;
+}
+.video-button a {
+    font-family: "Inter", Sans-serif;
+    font-size: 30px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    fill: #FFFFFF;
+    color: #FFFFFF;
+    background-color: transparent;
+    background-image: linear-gradient(135deg, #580600 0%, #F8914D 100%);
+    border-radius: 4px 4px 4px 4px;
+    padding: 15px 35px 15px 35px;
+}
+.video-button a:hover {
+    color: #FFFFFF;
+    background-color: transparent;
+    background-image: linear-gradient(135deg, #F8914D 0%, #580600 100%);
+}
+section.product_video {
+    width: 100%;
+    margin-top: -90px;
+}
+.campaign-video iframe {
+    border-radius: 25px;
+    border: 5px solid #fff;
+}
+.video-button {
+    text-align: center;
+    margin-top: 160px;
+}
+sectoin.price-des {
+    text-align: center;
+}
+.container.show-price {
+    margin-top: 40px;
+    color: #580600;
+}
+
+.video-title {
+    background: #fe170c;
+    padding: 10px;
+    text-align: center;
+    margin-bottom: 26px;
+    margin-top: 35px;
+}
+section.secound-campaign-video {
+    margin-top: 45px;
+}
+
+
+.campaign-image img {
+    float: right;
+    width: 70%;
+    border-style: solid;
+    border-width: 5px 5px 5px 5px;
+    border-color: #4E001F;
+    border-radius: 20px 20px 20px 20px;
+}
+.campaign-des {
+    color: #580600;
+    margin-top: 80px;
+}
+section.campaign-details {
+    background-color: #FFD3B5;
+
+}
+.extra-background{
+    background-image: url('../cruv.svg');
+    height: 70px;
+}
+.cam-des {
+    padding: 90px 40px;
+}
+
+.video-buttons a {
+    font-family: "Inter", Sans-serif;
+    font-size: 30px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    fill: #FFFFFF;
+    color: #FFFFFF;
+    background-color: transparent;
+    background-image: linear-gradient(135deg, #580600 0%, #F8914D 100%);
+    border-radius: 4px 4px 4px 4px;
+    padding: 15px 35px 15px 35px;
+}
+.video-buttons a:hover {
+    color: #FFFFFF;
+    background-color: transparent;
+    background-image: linear-gradient(135deg, #F8914D 0%, #580600 100%);
+}
+.video-buttons {
+    text-align: center;
+    margin-top: 50px;
+}
+.campaign-image {
+    padding-right: 40px;
+}
+.campaign-des li {
+    font-size: 21px;
+    line-height: 35px;
+}
+.campaign-pdes {
+    text-align: right;
+    color: #580600;
+}
+.campaign-pdes ul li {
+    display: block;
+    font-size: 22px;
+    font-weight: 600;
+    margin-top: 13px;
+}
+.campaign-pdes h3 {
+    font-size: 34px;
+    font-weight: 700;
+    margin-top: 50px;
+}
+.container.cam-des-pro {
+    padding: 62px;
+}
+.show-price h4 {
+    margin-bottom: 14px;
+}
+.show-price h2 {
+    font-size: 36px;
+    font-weight: 600;
+}
+.show-price del{
+    color: red;
+}
+
+
+
+
+
+
+/*Campaing banner secton end*/
+
+/*=== short des section start===*/
+.short-des-title {
+    font-size: 32px;
+    font-weight: 600;
+    text-align: center;
+    padding: 36px 0;
+}
+.ord_btn {
+    text-align: center;
+}
+
+.order_place {
+    background: #ff0000;
+    color: #fff;
+    text-align: center;
+    padding: 10px 25px;
+    display: inline-block;
+    font-weight: 700;
+    font-size: 20px;
+    cursor: pointer;
+    border-radius: 50px;
+    transition: 0.35s all;
+}
+.order_place:hover {
+    color: #fff;
+    box-shadow: 0px 4px 8px 2px #FF0000;
+}
+@keyframes smoothZoom {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.order_place {
+  display: inline-block;
+  animation: smoothZoom 2s ease-in-out infinite;
+}
+/*=== short des section end===*/
+
+/*=== desciption section start===*/
+.description-title h2 {
+    background: #2ecc71;
+    color: #fff;
+    padding: 10px 0;
+    text-align: center;
+}
+section.description-section {
+    padding: 55px 0;
+}
+.description-inner {
+    border: 2px solid #2ECC71;
+    border-radius: 10px;
+    overflow: hidden;
+}
+.main-description ul li {
+    display: block;
+    padding: 10px 18px;
+    font-size: 18px;
+    border-bottom: 1px solid #2ECC71;
+}
+.main-description ul li::before {
+  content: ' ✔';
+  color: #2ECC71;
+  margin-left: 5px;
+}
+/*=== desciption section end===*/
+
+/*=== whychoose section start===*/
+.whychoose-title h2 {
+    background: #FF0000;
+    color: #fff;
+    padding: 10px 0;
+    text-align: center;
+}
+.whychoose-inner {
+    border: 2px solid #FF0000;
+    border-radius: 10px;
+    overflow: hidden;
+}
+.main-whychoose ul li {
+    display: block;
+    padding: 10px 18px;
+    font-size: 18px;
+    border-bottom: 1px solid #FF0000;
+}
+.main-whychoose ul li::before {
+  content: ' 👉';
+  color: #FF0000;
+  margin-left: 5px;
+}
+/*=== desciption section end===*/
+
+.rev_title h2 {
+    background: #fd160c;
+    color: #fff;
+    text-align: center;
+    padding: 10px 0;
+    margin-bottom: 0;
+    border-radius: 10px 10px 0px 0px;
+}
+section.review-section {
+    margin-top: 45px;
+}
+.offer_title h2 {
+    border: 5px solid #2ECC71;
+    text-align: center;
+    padding: 15px;
+    color: #2ECC71;
+    border-radius: 10px;
+    margin-top: 50px;
+    margin-bottom: 25px;
+    font-weight: 700;
+}
+.product-price {
+    text-align: center;
+}
+
+.product-price p {
+    color: #2ECC71;
+    margin: 5px 0;
+    font-weight: 600;
+}
+p.old_price {
+    color: #FF0000;
+}
+
+.checkout-shipping label {
+    font-weight: 600;
+    margin-bottom: 10px;
+    font-size: 14px;
+}
+.qty-cart .quantity {
+    position: relative;
+    border: 1px solid #ddd;
+    height: 46px;
+    overflow: hidden;
+    margin: 20px 0;
+}
+.qty-cart {
+   width: 150px;
+}
+.quantity input {
+    position: relative;
+    text-align: center;
+    font-size: 16px;
+    height: 100%;
+    width: 100%;
+    pointer-events: none;
+    font-weight: 500;
+}
+.quantity .minus {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    z-index: 9;
+    height: 45px;
+    line-height: 45px;
+    width: 45px;
+    border-right: 1px solid #ddd;
+    text-align: center;
+    font-size: 40px;
+    cursor: pointer;
+}
+.quantity input {
+    position: relative;
+    text-align: center;
+    font-size: 16px;
+    height: 100%;
+    width: 100%;
+    pointer-events: none;
+    font-weight: 500;
+    border: 0;
+}
+.quantity .plus {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    z-index: 9;
+    height: 45px;
+    line-height: 45px;
+    width: 45px;
+    border-left: 1px solid #ddd;
+    text-align: center;
+    font-size: 26px;
+    cursor: pointer;
+}
+.form_inn {
+    background: #fff;
+    /* border-style: solid; */
+    /* border-width: 10px 10px 10px 10px; */
+    box-shadow: 0px 0px 10px 0px rgb(0 0 0 / 16%);
+    transition: background 0.3s, border 0.3s, border-radius 0.3s, box-shadow 0.3s;
+    padding: 30px 40px 30px 40px;
+    border-radius: 10px 10px 10px 10px;
+}
+div#order_form .card-header {
+    background: #F8914D;
+    color: #fff;
+    padding: 17px;
+}
+.form_sec {
+    padding:30px 0;
+}
+
+.neccecity-profile {
+    background: #FFD3B5;
+    /*border: 3px solid #832c15;*/
+    border-radius: 10px;
+    padding: 80px 30px;
+}
+.campaign-des h3 {
+    font-size: 30px;
+    font-weight: 700;
+    margin: b;
+    margin-bottom: 20px;
+}
+
+
+.faq-section {
+    max-width: 800px;
+    margin: 50px auto;
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.faq-section h1 {
+    text-align: center;
+    color: #b03060;
+    margin-bottom: 20px;
+}
+
+.faq-item {
+    margin-bottom: 15px;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 10px;
+}
+
+.faq-question {
+    width: 100%;
+    background: none;
+    border: none;
+    text-align: left;
+    font-size: 18px;
+    color: #333;
+    cursor: pointer;
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.faq-question .icon {
+    font-size: 20px;
+    color: #ff6600;
+    transition: transform 0.3s ease;
+}
+
+.faq-answer {
+    display: none;
+    padding: 10px 0;
+    color: #555;
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+.faq-question.active .icon {
+    transform: rotate(45deg); /* Rotate to look like a minus sign */
+    color: #b03060;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ====Color Size  Css ====*/
+.selector {
+    position: relative;
+    width: 100%;
+    background-color: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    column-gap: 10px;
+}
+
+.size-container {
+    margin-bottom: 12px;
+}
+
+.selector-item {
+    position: relative;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.selector-item_radio {
+    appearance: none;
+    display: none;
+}
+.color_inner .selector .selector-item label {
+    cursor: pointer;
+    border: 1px solid #2ECC71;
+    border-radius: 3px;
+}
+.selector-item label {
+    border: 1px solid #2ECC71;
+}
+
+.color_inner .selector-item label span img {
+    width: 220px;
+    height: 20px;
+    opacity: 0;
+}
+
+.color_inner .selector-item input[type="radio"]:checked+label span img {
+    opacity: 1;
+}
+
+.selector-item_label {
+    position: relative;
+    height: 100%;
+    width: 100%;
+    text-align: center;
+    border-radius: 0;
+    line-height: 30px;
+    font-weight: 600;
+    transition-duration: .5s;
+    transition-property: transform, color, box-shadow;
+    transform: none;
+    margin: 0;
+    padding: 0px 8px;
+    color: #000;
+}
+
+.selector-item_radio:checked+.selector-item_label,
+.selector-item_label:hover {
+    background-color: #2ECC71;
+    color: #fff;
+    border-color: #2ECC71;
+    cursor: pointer;
+}
+.color_size {
+    display: flex;
+    justify-content: center;
+    padding: 5px;
+}
+
+.color_size span {
+    padding: 5px;
+}
+
+.color_inner {
+    display: flex;
+    margin-top: 10px;
+}
+
+.color_inner p {
+    margin-right: 10px;
+    margin-top: 6px;
+    font-weight: 600;
+}
+
+.size_inner {
+    display: flex;
+}
+
+.size_inner p {
+    margin-right: 10px;
+    margin-top: 6px;
+    font-weight: 600;
+}
+.confirm_order:disabled {
+    background: #95ab9e;
+    cursor: no-drop;
+}
+/* ====Color Size Details Css ====*/
+
+.border-bottom-dotted {
+    border-bottom: 3px dashed #000; /* Dotted border-bottom */
+}
+
+/*====Our new campaign design start====*/
+
+.order-container {
+    width: 90%;
+    max-width: 1200px;
+    margin: 20px auto;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 20px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.alert {
+    background-color: #ffba00;
+    color: #333;
+    padding: 15px;
+    text-align: center;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    font-weight: bold;
+}
+
+.order-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+
+
+.order-button {
+    width: 100%;
+    padding: 15px;
+    background-color: #ff6f00;
+    color: #fff;
+    font-size: 16px;
+    font-weight: bold;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.order-button:hover {
+    background-color: #e65c00;
+}
+
+@media (max-width: 768px) {
+    .order-form {
+        flex-direction: column;
+    }
+
+    .product-summary {
+        border-right: none;
+        padding-right: 0;
+    }
+}
+
+/*====Our new campaign design end====*/
+.cash {
+    background-color: #ffffff;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    width: 300px;
+    text-align: center;
+    margin: 0 auto;
+    margin-top: 20px;
+}
+
+.cash-title {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.cash-tooltip {
+    position: relative;
+    display: inline-block;
+    background-color: #ffc0cb;
+    padding: 10px;
+    border-radius: 5px;
+    color: #ffffff;
+    font-size: 14px;
+    text-align: center;
+}
+
+.cash-tooltip::before {
+    content: "";
+    position: absolute;
+    top: -10px;
+    left: 20px;
+    width: 0;
+    height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-bottom: 10px solid #ffc0cb;
+}
+@import url('https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap');
+body {
+    margin:0;
+    padding:0;
+    outline: 0;
+    font-family: "Hind Siliguri", sans-serif;
+}
+
+ul,li,h1,h2,h3,h4,h5,h6,p {
+    margin:0;
+    padding:0;
+    outline: 0;
+}
+li {
+    list-style: none;
+    display: inline-block;
+}
+a:hover,
+a:focus,
+a {
+    text-decoration: none;
+    color:#000;
+}
+form input::placeholder {
+    font-size: 15px;
+    color: #888;
+}
+button:focus,
+button {
+    border: none !important;
+    box-shadow: none !important;
+}
+input:focus {
+    box-shadow: none !important;
+}
+
+/*=== Banner section start===*/
+.banner_title {
+    margin-top: 40px;
+}
+.banner_title h2 {
+    color: #FF0000;
+    margin: 40px 0;
+    text-align: center;
+    font-size: 40px;
+    font-weight: 900;
+}
+
+.banner-img {
+    text-align: center;
+}
+.banner-img img {
+    border-radius: 10px;
+    overflow: hidden;
+    width: 100%;
+}
+/*=== Banner section end===*/
+
+/*Campaing banner secton start*/
+section.campaign-banner-section {
+    background-image: linear-gradient(180deg, #ff0000 0%, #F8914D 100%);
+    height: 330px;
+    text-align: center;
+    color: #fff;
+}
+.website-logo {
+    padding: 30px 10px;
+}
+.campaign-title h2 {
+    font-size: 48px;
+    font-weight: 500;
+}
+.video-button a {
+    font-family: "Inter", Sans-serif;
+    font-size: 30px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    fill: #FFFFFF;
+    color: #FFFFFF;
+    background-color: transparent;
+    background-image: linear-gradient(135deg, #ff0000 0%, #F8914D 100%);
+    border-radius: 4px 4px 4px 4px;
+    padding: 15px 35px 15px 35px;
+}
+.video-button a:hover {
+    color: #FFFFFF;
+    background-color: transparent;
+    background-image: linear-gradient(135deg, #F8914D 0%, #ff0000 100%);
+}
+section.product_video {
+    width: 100%;
+    margin-top: -90px;
+}
+.campaign-video iframe {
+    border-radius: 25px;
+    border: 5px solid #fff;
+}
+.video-button {
+    text-align: center;
+    margin-top: 160px;
+}
+sectoin.price-des {
+    text-align: center;
+}
+.container.show-price {
+    margin-top: 40px;
+    color: #580600;
+}
+
+section.secound-campaign-video {
+    margin-top: 45px;
+}
+
+
+.campaign-image img {
+    float: right;
+    width: 70%;
+    border-style: solid;
+    border-width: 5px 5px 5px 5px;
+    border-color: #4E001F;
+    border-radius: 20px 20px 20px 20px;
+}
+.campaign-des {
+    color: #580600;
+    margin-top: 80px;
+}
+section.campaign-details {
+    background-color: #FFD3B5;
+
+}
+.extra-background{
+    background-image: url('../cruv.svg');
+    height: 70px;
+}
+.cam-des {
+    padding: 90px 40px;
+}
+
+.video-buttons a {
+    font-family: "Inter", Sans-serif;
+    font-size: 30px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    fill: #FFFFFF;
+    color: #FFFFFF;
+    background-color: transparent;
+    background-image: linear-gradient(135deg, #ff0000 0%, #F8914D 100%);
+    border-radius: 4px 4px 4px 4px;
+    padding: 15px 35px 15px 35px;
+}
+.video-buttons a:hover {
+    color: #FFFFFF;
+    background-color: transparent;
+    background-image: linear-gradient(135deg, #F8914D 0%, #ff0000 100%);
+}
+.video-buttons {
+    text-align: center;
+    margin-top: 50px;
+}
+.campaign-image {
+    padding-right: 40px;
+}
+.campaign-des li {
+    font-size: 21px;
+    line-height: 35px;
+}
+.campaign-pdes {
+    text-align: right;
+    color: #580600;
+}
+.campaign-pdes ul li {
+    display: block;
+    font-size: 22px;
+    font-weight: 600;
+    margin-top: 13px;
+}
+.campaign-pdes h3 {
+    font-size: 34px;
+    font-weight: 700;
+    margin-top: 50px;
+}
+.container.cam-des-pro {
+    padding: 62px;
+}
+.show-price h4 {
+    margin-bottom: 14px;
+}
+.show-price h2 {
+    font-size: 36px;
+    font-weight: 600;
+}
+.show-price del{
+    color: red;
+}
+
+
+
+
+
+
+/*Campaing banner secton end*/
+
+/*=== short des section start===*/
+.short-des-title {
+    font-size: 32px;
+    font-weight: 600;
+    text-align: center;
+    padding: 36px 0;
+}
+.ord_btn {
+    text-align: center;
+}
+
+.order_place {
+    background: #ff0000;
+    color: #fff;
+    text-align: center;
+    padding: 10px 25px;
+    display: inline-block;
+    font-weight: 700;
+    font-size: 20px;
+    cursor: pointer;
+    border-radius: 50px;
+    transition: 0.35s all;
+}
+.order_place:hover {
+    color: #fff;
+    box-shadow: 0px 4px 8px 2px #FF0000;
+}
+@keyframes smoothZoom {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.order_place {
+  display: inline-block;
+  animation: smoothZoom 2s ease-in-out infinite;
+}
+/*=== short des section end===*/
+
+/*=== desciption section start===*/
+.description-title h2 {
+    background: #2ecc71;
+    color: #fff;
+    padding: 10px 0;
+    text-align: center;
+}
+section.description-section {
+    padding: 55px 0;
+}
+.description-inner {
+    border: 2px solid #2ECC71;
+    border-radius: 10px;
+    overflow: hidden;
+}
+.main-description ul li {
+    display: block;
+    padding: 10px 18px;
+    font-size: 18px;
+    border-bottom: 1px solid #2ECC71;
+}
+.main-description ul li::before {
+  content: ' ✔';
+  color: #2ECC71;
+  margin-left: 5px;
+}
+/*=== desciption section end===*/
+
+/*=== whychoose section start===*/
+.whychoose-title h2 {
+    background: #FF0000;
+    color: #fff;
+    padding: 10px 0;
+    text-align: center;
+}
+.whychoose-inner {
+    border: 2px solid #FF0000;
+    border-radius: 10px;
+    overflow: hidden;
+}
+.main-whychoose ul li {
+    display: block;
+    padding: 10px 18px;
+    font-size: 18px;
+    border-bottom: 1px solid #FF0000;
+}
+.main-whychoose ul li::before {
+  content: ' 👉';
+  color: #FF0000;
+  margin-left: 5px;
+}
+.review_item {
+    height: 300px;
+    width:100%;
+}
+.review_item img{
+    height: 100%;
+    width:100%;
+}
+/*=== desciption section end===*/
+section.review-section {
+    margin-top: 45px;
+}
+.offer_title h2 {
+    border: 5px solid #2ECC71;
+    text-align: center;
+    padding: 15px;
+    color: #2ECC71;
+    border-radius: 10px;
+    margin-top: 50px;
+    margin-bottom: 25px;
+    font-weight: 700;
+}
+.product-price {
+    text-align: center;
+}
+
+.product-price p {
+    color: #2ECC71;
+    margin: 5px 0;
+    font-weight: 600;
+}
+p.old_price {
+    color: #FF0000;
+}
+
+.checkout-shipping label {
+    font-weight: 600;
+    margin-bottom: 10px;
+    font-size: 14px;
+}
+.qty-cart .quantity {
+    position: relative;
+    border: 1px solid #ddd;
+    height: 46px;
+    overflow: hidden;
+    margin: 20px 0;
+}
+.qty-cart {
+   width: 150px;
+}
+.quantity input {
+    position: relative;
+    text-align: center;
+    font-size: 16px;
+    height: 100%;
+    width: 100%;
+    pointer-events: none;
+    font-weight: 500;
+}
+.quantity .minus {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    z-index: 9;
+    height: 45px;
+    line-height: 45px;
+    width: 45px;
+    border-right: 1px solid #ddd;
+    text-align: center;
+    font-size: 40px;
+    cursor: pointer;
+}
+.quantity input {
+    position: relative;
+    text-align: center;
+    font-size: 16px;
+    height: 100%;
+    width: 100%;
+    pointer-events: none;
+    font-weight: 500;
+    border: 0;
+}
+.quantity .plus {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    z-index: 9;
+    height: 45px;
+    line-height: 45px;
+    width: 45px;
+    border-left: 1px solid #ddd;
+    text-align: center;
+    font-size: 26px;
+    cursor: pointer;
+}
+.form_inn {
+    background: #fff;
+    /* border-style: solid; */
+    /* border-width: 10px 10px 10px 10px; */
+    box-shadow: 0px 0px 10px 0px rgb(0 0 0 / 16%);
+    transition: background 0.3s, border 0.3s, border-radius 0.3s, box-shadow 0.3s;
+    padding: 30px 40px 30px 40px;
+    border-radius: 10px 10px 10px 10px;
+}
+div#order_form .card-header {
+    background: #F8914D;
+    color: #fff;
+    padding: 17px;
+}
+.form_sec {
+    padding:30px 0;
+}
+.campaign-pimage img {
+    height: 400px;
+    width: auto;
+    border: 8px solid #651106;
+    border-radius: 20px;
+}
+.neccecity-profile {
+    background: #FFD3B5;
+    /*border: 3px solid #832c15;*/
+    border-radius: 10px;
+    padding: 80px 30px;
+}
+.campaign-des h3 {
+    font-size: 30px;
+    font-weight: 700;
+    margin: b;
+    margin-bottom: 20px;
+}
+
+
+.faq-section {
+    max-width: 800px;
+    margin: 50px auto;
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.faq-section h1 {
+    text-align: center;
+    color: #b03060;
+    margin-bottom: 20px;
+}
+
+.faq-item {
+    margin-bottom: 15px;
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 10px;
+}
+
+.faq-question {
+    width: 100%;
+    background: none;
+    border: none;
+    text-align: left;
+    font-size: 18px;
+    color: #333;
+    cursor: pointer;
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.faq-question .icon {
+    font-size: 28px;
+    color: #ff6600;
+    transition: transform 0.3s ease;
+}
+
+.faq-answer {
+    display: none;
+    padding: 10px 0;
+    color: #555;
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+.faq-question.active .icon {
+    transform: rotate(0deg); /* Rotate to look like a minus sign */
+    color: #b03060;
+}
+td.text-left img {
+    width: 30px;
+}
+
+/* ====Color Size  Css ====*/
+.selector {
+    position: relative;
+    width: 100%;
+    background-color: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    column-gap: 10px;
+}
+
+.size-container {
+    margin-bottom: 12px;
+}
+
+.selector-item {
+    position: relative;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.selector-item_radio {
+    appearance: none;
+    display: none;
+}
+.color_inner .selector .selector-item label {
+    cursor: pointer;
+    border: 1px solid #2ECC71;
+    border-radius: 3px;
+}
+.selector-item label {
+    border: 1px solid #2ECC71;
+}
+
+.color_inner .selector-item label span img {
+    width: 220px;
+    height: 20px;
+    opacity: 0;
+}
+
+.color_inner .selector-item input[type="radio"]:checked+label span img {
+    opacity: 1;
+}
+
+.selector-item_label {
+    position: relative;
+    height: 100%;
+    width: 100%;
+    text-align: center;
+    border-radius: 0;
+    line-height: 30px;
+    font-weight: 600;
+    transition-duration: .5s;
+    transition-property: transform, color, box-shadow;
+    transform: none;
+    margin: 0;
+    padding: 0px 8px;
+    color: #000;
+}
+
+.selector-item_radio:checked+.selector-item_label,
+.selector-item_label:hover {
+    background-color: #2ECC71;
+    color: #fff;
+    border-color: #2ECC71;
+    cursor: pointer;
+}
+.color_size {
+    display: flex;
+    justify-content: center;
+    padding: 5px;
+}
+
+.color_size span {
+    padding: 5px;
+}
+
+.color_inner {
+    display: flex;
+    margin-top: 10px;
+}
+
+.color_inner p {
+    margin-right: 10px;
+    margin-top: 6px;
+    font-weight: 600;
+}
+
+.size_inner {
+    display: flex;
+}
+
+.size_inner p {
+    margin-right: 10px;
+    margin-top: 6px;
+    font-weight: 600;
+}
+.confirm_order:disabled {
+    background: #95ab9e;
+    cursor: no-drop;
+}
+/* ====Color Size Details Css ====*/
+
+.border-bottom-dotted {
+    border-bottom: 3px dashed #000; /* Dotted border-bottom */
+}
+
+/*====Our new campaign design start====*/
+
+.order-container {
+    width: 90%;
+    max-width: 1200px;
+    margin: 20px auto;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    padding: 20px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.alert {
+    background-color: #ffba00;
+    color: #333;
+    padding: 15px;
+    text-align: center;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    font-weight: bold;
+}
+
+.order-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+
+
+.order-button {
+    width: 100%;
+    padding: 15px;
+    background-color: #ff6f00;
+    color: #fff;
+    font-size: 16px;
+    font-weight: bold;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.order-button:hover {
+    background-color: #e65c00;
+}
+
+@media (max-width: 768px) {
+    .order-form {
+        flex-direction: column;
+    }
+
+    .product-summary {
+        border-right: none;
+        padding-right: 0;
+    }
+}
+
+/*====Our new campaign design end====*/
+.cash {
+    background-color: #ffffff;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    width: 300px;
+    text-align: center;
+    margin: 0 auto;
+    margin-top: 20px;
+}
+
+.cash-title {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.cash-tooltip {
+    position: relative;
+    display: inline-block;
+    background-color: #ffc0cb;
+    padding: 10px;
+    border-radius: 5px;
+    color: #ffffff;
+    font-size: 14px;
+    text-align: center;
+}
+
+.cash-tooltip::before {
+    content: "";
+    position: absolute;
+    top: -10px;
+    left: 20px;
+    width: 0;
+    height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-bottom: 10px solid #ffc0cb;
+}

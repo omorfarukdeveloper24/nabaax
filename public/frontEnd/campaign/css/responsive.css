@@ -1,0 +1,74 @@
+@media only screen and (min-width:320px) and (max-width:761px){
+ .banner_title h2 {
+        font-size: 30px;
+    }
+    .camp_vid iframe {
+        height: 210px;
+    }
+
+    .short-des-title {
+        font-size: 20px;
+        font-weight: 600;
+    }
+    .form_inn {
+        padding: 20px;
+    }
+.campaign_title {
+    font-size: 38px;
+    margin-top: 25px;
+}
+.cart_details {
+    margin-bottom: 15px;
+}
+.row.order_by .col-sm-5 {
+    order: 1;
+}
+.qty-cart .quantity {
+    height: 35px;
+}
+.quantity .minus,.quantity .plus {
+    height: 35px;
+    line-height: 35px;
+    width: 20px;
+    font-size: 35px;
+}
+.quantity .plus {
+    font-size: 22px;
+}
+.qty-cart {
+    width: 70px;
+}
+/*new-campaign start*/
+.campaign-title h2 {
+    font-size: 28px;
+    font-weight: 500;
+}
+.extra-button{
+    display: none;
+}
+.video-button {
+    text-align: center;
+    margin-top: 16px;
+}
+section.secound-campaign-video {
+    margin-top: 0px;
+}
+.show-price h2 {
+    font-size: 26px;
+}
+.campaign-image img {
+    width: 100%;
+}
+.campaign-image {
+    padding-right: 0px;
+}
+.campaign-pimage img {
+    width: 246px;
+    margin-top: 30px;
+    height: 224px;
+}
+
+}
+
+
+
