@@ -1,3 +1,5 @@
+steps:
+
 # ===============================
 # STEP 0: Composer install
 # ===============================
@@ -16,7 +18,7 @@
     - 'COMPOSER_MEMORY_LIMIT=-1'
 
 # ===============================
-# STEP 1: NPM install (optional)
+# STEP 1: NPM install
 # ===============================
 - name: 'gcr.io/cloud-builders/npm'
   args: ['install']
@@ -24,7 +26,15 @@
     - 'NODE_OPTIONS=--max_old_space_size=4096'
 
 # ===============================
-# STEP 2: Upload to GCS
+# STEP 2: NPM build (FIXED)
+# ===============================
+- name: 'gcr.io/cloud-builders/npm'
+  args: ['run', 'build']
+  env:
+    - 'NODE_OPTIONS=--max_old_space_size=4096'
+
+# ===============================
+# STEP 3: Upload to GCS
 # ===============================
 - name: 'gcr.io/cloud-builders/gsutil'
   args:
@@ -42,8 +52,5 @@
     - '.'
     - 'gs://nabaax-static-media-bucket-1/app-files'
 
-# ===============================
-# OPTIONS
-# ===============================
 options:
   logging: CLOUD_LOGGING_ONLY
