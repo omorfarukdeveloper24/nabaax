@@ -1,5 +1,7 @@
+steps:
+
 # ===============================
-# STEP 0: Composer Install
+# STEP 0: Composer install
 # ===============================
 - name: 'php:8.2-cli'
   entrypoint: 'bash'
@@ -7,17 +9,16 @@
     - '-c'
     - |
       apt-get update
-      apt-get install -y git unzip libzip-dev libpng-dev libjpeg-dev libwebp-dev
-      docker-php-ext-configure gd --with-jpeg --with-webp
-      docker-php-ext-install gd zip
+      apt-get install -y git unzip libzip-dev
+      docker-php-ext-install zip
 
       curl -sS https://getcomposer.org/installer | php
-      php composer.phar install --no-dev --prefer-dist --no-interaction --optimize-autoloader
+      php composer.phar install --no-dev --prefer-dist --no-interaction
   env:
     - 'COMPOSER_MEMORY_LIMIT=-1'
 
 # ===============================
-# STEP 1: NPM Install
+# STEP 1: NPM install
 # ===============================
 - name: 'gcr.io/cloud-builders/npm'
   args: ['install']
@@ -25,7 +26,7 @@
     - 'NODE_OPTIONS=--max_old_space_size=4096'
 
 # ===============================
-# STEP 2: NPM Build
+# STEP 2: NPM build (FIXED)
 # ===============================
 - name: 'gcr.io/cloud-builders/npm'
   args: ['run', 'build']
@@ -40,6 +41,8 @@
     - '-m'
     - 'rsync'
     - '-r'
+    - '--exclude'
+    - '^vendor/.*'
     - '--exclude'
     - '^node_modules/.*'
     - '--exclude'
