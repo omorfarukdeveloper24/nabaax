@@ -16,7 +16,7 @@
     - 'COMPOSER_MEMORY_LIMIT=-1'
 
 # ===============================
-# STEP 1: NPM install
+# STEP 1: NPM install (optional)
 # ===============================
 - name: 'gcr.io/cloud-builders/npm'
   args: ['install']
@@ -39,7 +39,7 @@
     - 'storage/logs'
     - '--exclude'
     - '.env'
-    - '.' 
+    - '.'
     - 'gs://nabaax-static-media-bucket-1/app-files'
 
 options:
