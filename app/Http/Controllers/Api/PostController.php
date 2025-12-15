@@ -263,6 +263,8 @@ public function testApi() {
     {
         return "okk"; 
         return "NOt OKK";
+
+        
         $member = Auth::guard('member')->user();
     
         if (!$member) {
