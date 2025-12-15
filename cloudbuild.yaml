@@ -1,7 +1,5 @@
-steps:
-
 # ===============================
-# STEP 0: Composer install
+# STEP 0: Composer Install (Fixed with GD, ZIP, Autoloader)
 # ===============================
 - name: 'php:8.2-cli'
   entrypoint: 'bash'
@@ -9,16 +7,17 @@ steps:
     - '-c'
     - |
       apt-get update
-      apt-get install -y git unzip libzip-dev
-      docker-php-ext-install zip
+      apt-get install -y git unzip libzip-dev libpng-dev libjpeg-dev libwebp-dev
+      docker-php-ext-configure gd --with-jpeg --with-webp
+      docker-php-ext-install gd zip
 
       curl -sS https://getcomposer.org/installer | php
-      php composer.phar install --no-dev --prefer-dist --no-interaction
+      php composer.phar install --no-dev --prefer-dist --no-interaction --optimize-autoloader
   env:
     - 'COMPOSER_MEMORY_LIMIT=-1'
 
 # ===============================
-# STEP 1: NPM install
+# STEP 1: NPM Install
 # ===============================
 - name: 'gcr.io/cloud-builders/npm'
   args: ['install']
@@ -26,7 +25,7 @@ steps:
     - 'NODE_OPTIONS=--max_old_space_size=4096'
 
 # ===============================
-# STEP 2: NPM build (FIXED)
+# STEP 2: NPM Build
 # ===============================
 - name: 'gcr.io/cloud-builders/npm'
   args: ['run', 'build']
@@ -34,15 +33,13 @@ steps:
     - 'NODE_OPTIONS=--max_old_space_size=4096'
 
 # ===============================
-# STEP 3: Upload to GCS
+# STEP 3: Upload to GCS (Include vendor)
 # ===============================
 - name: 'gcr.io/cloud-builders/gsutil'
   args:
     - '-m'
     - 'rsync'
     - '-r'
-    - '--exclude'
-    - '^vendor/.*'
     - '--exclude'
     - '^node_modules/.*'
     - '--exclude'
