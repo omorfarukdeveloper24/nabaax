@@ -49,7 +49,7 @@ class PostController extends Controller
 
 
 public function testApi() {
-    return 'function test';
+    return 'This is our Google cloud function test';
 }
 
    public function prosearch(Request $request)
