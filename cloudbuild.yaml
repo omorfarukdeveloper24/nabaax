@@ -1,3 +1,5 @@
+steps:
+
 # ===============================
 # STEP 0: Composer install
 # ===============================
@@ -16,24 +18,20 @@
     - 'COMPOSER_MEMORY_LIMIT=-1'
 
 # ===============================
-# STEP 1: (Optional) NPM install
+# STEP 1: NPM install
 # ===============================
-# যেহেতু plain JS/CSS ব্যবহার করছেন, build step optional
-# যদি plain JS/CSS থাকে, npm install এবং build দরকার নেই
-# Uncomment করলে চলবে যদি future এ কোনো JS bundling লাগে
-# - name: 'gcr.io/cloud-builders/npm'
-#   args: ['install']
-#   env:
-#     - 'NODE_OPTIONS=--max_old_space_size=4096'
+- name: 'gcr.io/cloud-builders/npm'
+  args: ['install']
+  env:
+    - 'NODE_OPTIONS=--max_old_space_size=4096'
 
 # ===============================
-# STEP 2: (Optional) NPM build
+# STEP 2: NPM build (FIXED)
 # ===============================
-# Plain JS/CSS থাকলে build step লাগবে না
-# - name: 'gcr.io/cloud-builders/npm'
-#   args: ['run', 'build']
-#   env:
-#     - 'NODE_OPTIONS=--max_old_space_size=4096'
+- name: 'gcr.io/cloud-builders/npm'
+  args: ['run', 'build']
+  env:
+    - 'NODE_OPTIONS=--max_old_space_size=4096'
 
 # ===============================
 # STEP 3: Upload to GCS
