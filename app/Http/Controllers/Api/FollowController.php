@@ -11,7 +11,6 @@ use Illuminate\Support\Facades\Validator;
 
 class FollowController extends Controller
 {
-   
     
     // public function follow(Request $request)
     // {
