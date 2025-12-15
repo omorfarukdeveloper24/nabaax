@@ -36,19 +36,33 @@ steps:
 # ===============================
 # STEP 3: Upload to GCS
 # ===============================
+# - name: 'gcr.io/cloud-builders/gsutil'
+#   args:
+#     - '-m'
+#     - 'rsync'
+#     - '-r'
+#     - '-x'
+#     - '^vendor/.*'
+#     - '-x'
+#     - '^node_modules/.*'
+#     - '-x'
+#     - 'storage/logs'
+#     - '-x'
+#     - '.env'
+#     - '.'
+#     - 'gs://nabaax-static-media-bucket-1/app-files'
+
+# options:
+#   logging: CLOUD_LOGGING_ONLY
+
+
 - name: 'gcr.io/cloud-builders/gsutil'
   args:
     - '-m'
     - 'rsync'
     - '-r'
-    - '--exclude'
-    - '^vendor/.*'
-    - '--exclude'
-    - '^node_modules/.*'
-    - '--exclude'
-    - 'storage/logs'
-    - '--exclude'
-    - '.env'
+    - '-x'
+    - '^(vendor|node_modules|storage/logs|\.env)'
     - '.'
     - 'gs://nabaax-static-media-bucket-1/app-files'
 
