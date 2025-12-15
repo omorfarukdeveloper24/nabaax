@@ -2,31 +2,36 @@ steps:
 
 - name: 'gcr.io/cloud-builders/composer'
   args: ['install', '--no-dev', '--prefer-dist']
-
+  env:
+    - 'COMPOSER_MEMORY_LIMIT=-1'
 
 - name: 'gcr.io/cloud-builders/npm'
   args: ['install']
+  env:
+    - 'NODE_OPTIONS=--max_old_space_size=4096'
 
 - name: 'gcr.io/cloud-builders/npm'
   args: ['run', 'prod']
-  
-- name: 'gcr.io/cloud-builders/gsutil'
-  args: [
-    '-m',
-    'rsync',
-    '-r',
-    '--exclude',
-    '^vendor/.*', 
-    '--exclude',
-    '^node_modules/.*', 
-    '--exclude',
-    'storage/logs', 
-    '--exclude',
-    '.env', 
-    '.', 
-    'gs://nabaax-static-media-bucket-1/app-files' 
-  ]
   env:
- 
-  - 'COMPOSER_MEMORY_LIMIT=-1'
-  - 'NODE_OPTIONS=--max_old_space_size=4096'
+    - 'NODE_OPTIONS=--max_old_space_size=4096'
+
+- name: 'gcr.io/cloud-builders/gsutil'
+  args:
+    - '-m'
+    - 'rsync'
+    - '-r'
+    - '--exclude'
+    - '^vendor/.*'
+    - '--exclude'
+    - '^node_modules/.*'
+    - '--exclude'
+    - 'storage/logs'
+    - '--exclude'
+    - '.env'
+    - '.'
+    - 'gs://nabaax-static-media-bucket-1/app-files'
+
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
