@@ -18,7 +18,7 @@ steps:
     - 'COMPOSER_MEMORY_LIMIT=-1'
 
 # ===============================
-# STEP 1: NPM install
+# STEP 1: NPM install (optional)
 # ===============================
 # - name: 'gcr.io/cloud-builders/npm'
 #   args: ['install']
@@ -26,7 +26,7 @@ steps:
 #     - 'NODE_OPTIONS=--max_old_space_size=4096'
 
 # ===============================
-# STEP 2: NPM build (FIXED)
+# STEP 2: NPM build (optional)
 # ===============================
 # - name: 'gcr.io/cloud-builders/npm'
 #   args: ['run', 'build']
@@ -36,34 +36,14 @@ steps:
 # ===============================
 # STEP 3: Upload to GCS
 # ===============================
-# - name: 'gcr.io/cloud-builders/gsutil'
-#   args:
-#     - '-m'
-#     - 'rsync'
-#     - '-r'
-#     - '-x'
-#     - '^vendor/.*'
-#     - '-x'
-#     - '^node_modules/.*'
-#     - '-x'
-#     - 'storage/logs'
-#     - '-x'
-#     - '.env'
-#     - '.'
-#     - 'gs://nabaax-static-media-bucket-1/app-files'
-
-# options:
-#   logging: CLOUD_LOGGING_ONLY
-
-
 - name: 'gcr.io/cloud-builders/gsutil'
   args:
     - '-m'
     - 'rsync'
     - '-r'
     - '-x'
-    - '^(vendor|node_modules|storage/logs|\.env)'
-    - '.'
+    - '^(vendor|node_modules|storage/logs|\.env)$'  # Exclude only specific folders/files
+    - '$(pwd)'                                      # Explicitly current working directory
     - 'gs://nabaax-static-media-bucket-1/app-files'
 
 options:
