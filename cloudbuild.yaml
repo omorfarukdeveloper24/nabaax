@@ -1,7 +1,7 @@
 steps:
 
 # ===============================
-# STEP 0: Composer install (PHP)
+# STEP 0: Composer install
 # ===============================
 - name: 'php:8.2-cli'
   entrypoint: 'bash'
@@ -26,15 +26,15 @@ steps:
     - 'NODE_OPTIONS=--max_old_space_size=4096'
 
 # ===============================
-# STEP 2: NPM build (prod)
+# STEP 2: NPM build (FIXED)
 # ===============================
 - name: 'gcr.io/cloud-builders/npm'
-  args: ['run', 'prod']
+  args: ['run', 'build']
   env:
     - 'NODE_OPTIONS=--max_old_space_size=4096'
 
 # ===============================
-# STEP 3: Upload to GCS Bucket
+# STEP 3: Upload to GCS
 # ===============================
 - name: 'gcr.io/cloud-builders/gsutil'
   args:
@@ -52,8 +52,5 @@ steps:
     - '.'
     - 'gs://nabaax-static-media-bucket-1/app-files'
 
-# ===============================
-# BUILD OPTIONS (IMPORTANT)
-# ===============================
 options:
   logging: CLOUD_LOGGING_ONLY
