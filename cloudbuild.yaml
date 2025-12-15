@@ -1,5 +1,5 @@
 # ===============================
-# STEP 0: Composer Install (Fixed with GD, ZIP, Autoloader)
+# STEP 0: Composer Install
 # ===============================
 - name: 'php:8.2-cli'
   entrypoint: 'bash'
@@ -33,7 +33,7 @@
     - 'NODE_OPTIONS=--max_old_space_size=4096'
 
 # ===============================
-# STEP 3: Upload to GCS (Include vendor)
+# STEP 3: Upload to GCS
 # ===============================
 - name: 'gcr.io/cloud-builders/gsutil'
   args:
