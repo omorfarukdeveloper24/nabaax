@@ -20,18 +20,18 @@ steps:
 # ===============================
 # STEP 1: NPM install
 # ===============================
-- name: 'gcr.io/cloud-builders/npm'
-  args: ['install']
-  env:
-    - 'NODE_OPTIONS=--max_old_space_size=4096'
+# - name: 'gcr.io/cloud-builders/npm'
+#   args: ['install']
+#   env:
+#     - 'NODE_OPTIONS=--max_old_space_size=4096'
 
 # ===============================
 # STEP 2: NPM build (FIXED)
 # ===============================
-- name: 'gcr.io/cloud-builders/npm'
-  args: ['run', 'build']
-  env:
-    - 'NODE_OPTIONS=--max_old_space_size=4096'
+# - name: 'gcr.io/cloud-builders/npm'
+#   args: ['run', 'build']
+#   env:
+#     - 'NODE_OPTIONS=--max_old_space_size=4096'
 
 # ===============================
 # STEP 3: Upload to GCS
