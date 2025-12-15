@@ -261,7 +261,8 @@ public function testApi() {
    
     public function miniads(Request $request)
     {
-        return "okk";
+        return "okk"; 
+        
         $member = Auth::guard('member')->user();
     
         if (!$member) {
