@@ -1,7 +1,12 @@
 steps:
 
-- name: 'gcr.io/cloud-builders/composer'
-  args: ['install', '--no-dev', '--prefer-dist']
+- name: 'php:8.2-cli'
+  entrypoint: 'bash'
+  args:
+    - '-c'
+    - |
+      curl -sS https://getcomposer.org/installer | php
+      php composer.phar install --no-dev --prefer-dist
   env:
     - 'COMPOSER_MEMORY_LIMIT=-1'
 
@@ -31,7 +36,5 @@ steps:
     - '.'
     - 'gs://nabaax-static-media-bucket-1/app-files'
 
-
 options:
   logging: CLOUD_LOGGING_ONLY
-
