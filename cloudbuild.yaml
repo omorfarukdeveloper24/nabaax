@@ -42,5 +42,8 @@
     - '.'
     - 'gs://nabaax-static-media-bucket-1/app-files'
 
+# ===============================
+# OPTIONS
+# ===============================
 options:
   logging: CLOUD_LOGGING_ONLY
