@@ -261,7 +261,7 @@ public function testApi() {
    
     public function miniads(Request $request)
     {
-        return "okk"; 
+        return "We ar Successfully updated google cloud build auto deploy test."; 
 
 
         $member = Auth::guard('member')->user();
