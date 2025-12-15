@@ -1,25 +1,41 @@
 steps:
 
+# ===============================
+# STEP 0: Composer install (PHP)
+# ===============================
 - name: 'php:8.2-cli'
   entrypoint: 'bash'
   args:
     - '-c'
     - |
+      apt-get update
+      apt-get install -y git unzip libzip-dev
+      docker-php-ext-install zip
+
       curl -sS https://getcomposer.org/installer | php
-      php composer.phar install --no-dev --prefer-dist
+      php composer.phar install --no-dev --prefer-dist --no-interaction
   env:
     - 'COMPOSER_MEMORY_LIMIT=-1'
 
+# ===============================
+# STEP 1: NPM install
+# ===============================
 - name: 'gcr.io/cloud-builders/npm'
   args: ['install']
   env:
     - 'NODE_OPTIONS=--max_old_space_size=4096'
 
+# ===============================
+# STEP 2: NPM build (prod)
+# ===============================
 - name: 'gcr.io/cloud-builders/npm'
   args: ['run', 'prod']
   env:
     - 'NODE_OPTIONS=--max_old_space_size=4096'
 
+# ===============================
+# STEP 3: Upload to GCS Bucket
+# ===============================
 - name: 'gcr.io/cloud-builders/gsutil'
   args:
     - '-m'
@@ -36,5 +52,8 @@ steps:
     - '.'
     - 'gs://nabaax-static-media-bucket-1/app-files'
 
+# ===============================
+# BUILD OPTIONS (IMPORTANT)
+# ===============================
 options:
   logging: CLOUD_LOGGING_ONLY
