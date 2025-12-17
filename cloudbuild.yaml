@@ -1,4 +1,5 @@
 steps:
+
 # ===============================
 # STEP 0: Composer install
 # ===============================
@@ -8,45 +9,62 @@ steps:
     - '-c'
     - |
       apt-get update
-      apt-get install -y git unzip libzip-dev rsync
+      apt-get install -y git unzip libzip-dev
       docker-php-ext-install zip
+
       curl -sS https://getcomposer.org/installer | php
       php composer.phar install --no-dev --prefer-dist --no-interaction
   env:
     - 'COMPOSER_MEMORY_LIMIT=-1'
 
 # ===============================
-# STEP 1: (Optional) NPM install & build
+# STEP 1: NPM install
 # ===============================
-# Uncomment if your project uses npm
 # - name: 'gcr.io/cloud-builders/npm'
 #   args: ['install']
 #   env:
 #     - 'NODE_OPTIONS=--max_old_space_size=4096'
-#
+
+# ===============================
+# STEP 2: NPM build (FIXED)
+# ===============================
 # - name: 'gcr.io/cloud-builders/npm'
 #   args: ['run', 'build']
 #   env:
 #     - 'NODE_OPTIONS=--max_old_space_size=4096'
 
 # ===============================
-# STEP 2: Deploy to VM via Cloud Build (direct)
+# STEP 3: Upload to GCS
 # ===============================
-- name: 'gcr.io/cloud-builders/gcloud'
-  entrypoint: 'bash'
+# - name: 'gcr.io/cloud-builders/gsutil'
+#   args:
+#     - '-m'
+#     - 'rsync'
+#     - '-r'
+#     - '-x'
+#     - '^vendor/.*'
+#     - '-x'
+#     - '^node_modules/.*'
+#     - '-x'
+#     - 'storage/logs'
+#     - '-x'
+#     - '.env'
+#     - '.'
+#     - 'gs://nabaax-static-media-bucket-1/app-files'
+
+# options:
+#   logging: CLOUD_LOGGING_ONLY
+
+
+- name: 'gcr.io/cloud-builders/gsutil'
   args:
-    - '-c'
-    - |
-      echo "Deploying code to VM..."
-      gcloud compute ssh bornoeduinfo@instance-group-2-kvxj \
-        --zone=us-central1-c \
-        --strict-host-key-checking=no \
-        --command "
-          sudo rsync -avz --delete /workspace/ /var/www/html/nabaax/;
-          sudo chown -R www-data:www-data /var/www/html/nabaax;
-          echo 'Deployment finished!';
-        "
+    - '-m'
+    - 'rsync'
+    - '-r'
+    - '-x'
+    - '^(vendor|node_modules|storage/logs|\.env)'
+    - '.'
+    - 'gs://nabaax-static-media-bucket-1/app-files'
 
 options:
   logging: CLOUD_LOGGING_ONLY
-
