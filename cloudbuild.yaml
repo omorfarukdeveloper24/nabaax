@@ -1,68 +1,33 @@
 steps:
-# ===============================
-# STEP 0: Ensure Permissions on VM
-# ===============================
-- name: 'gcr.io/cloud-builders/gcloud'
-  args:
-    - compute
-    - ssh
-    - bornoeduinfo@instance-group-2-kvxj
-    - --zone=us-central1-c
-    - --command
-    - |
-        # Project owner bornoeduinfo
-        sudo chown -R bornoeduinfo:bornoeduinfo /var/www/html/nabaax
-        
-        # Storage & cache www-data
-        sudo chown -R www-data:www-data /var/www/html/nabaax/storage /var/www/html/nabaax/bootstrap/cache
-        sudo chmod -R 775 /var/www/html/nabaax/storage /var/www/html/nabaax/bootstrap/cache
 
 # ===============================
-# STEP 1: SSH and Pull Latest Code
+# STEP 0: Composer install
 # ===============================
-- name: 'gcr.io/cloud-builders/gcloud'
+- name: 'php:8.2-cli'
+  entrypoint: 'bash'
   args:
-    - compute
-    - ssh
-    - bornoeduinfo@instance-group-2-kvxj
-    - --zone=us-central1-c
-    - --command
+    - '-c'
     - |
-        cd /var/www/html/nabaax
-        git config --global --add safe.directory /var/www/html/nabaax
-        git pull origin main
+      apt-get update
+      apt-get install -y git unzip libzip-dev
+      docker-php-ext-install zip
 
-# ===============================
-# STEP 2: Install Composer Dependencies
-# ===============================
-- name: 'gcr.io/cloud-builders/gcloud'
-  args:
-    - compute
-    - ssh
-    - bornoeduinfo@instance-group-2-kvxj
-    - --zone=us-central1-c
-    - --command
-    - |
-        cd /var/www/html/nabaax
-        php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
-        php composer-setup.php --install-dir=/usr/local/bin --filename=composer
-        composer install --no-dev --prefer-dist --no-interaction
+      curl -sS https://getcomposer.org/installer | php
+      php composer.phar install --no-dev --prefer-dist --no-interaction
+  env:
+    - 'COMPOSER_MEMORY_LIMIT=-1'
 
-# ===============================
-# STEP 3: Laravel Migrate & Optimize
-# ===============================
-- name: 'gcr.io/cloud-builders/gcloud'
+
+
+- name: 'gcr.io/cloud-builders/gsutil'
   args:
-    - compute
-    - ssh
-    - bornoeduinfo@instance-group-2-kvxj
-    - --zone=us-central1-c
-    - --command
-    - |
-        cd /var/www/html/nabaax
-        php artisan migrate --force
-        php artisan optimize:clear
-        php artisan optimize
+    - '-m'
+    - 'rsync'
+    - '-r'
+    - '-x'
+    - '^(vendor|node_modules|storage/logs|\.env)'
+    - '.'
+    - 'gs://nabaax-static-media-bucket-1/app-files'
 
 options:
   logging: CLOUD_LOGGING_ONLY
