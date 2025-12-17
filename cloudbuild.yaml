@@ -81,3 +81,4 @@ options:
     - |
       gcloud compute ssh bornoeduinfo@instance-group-2-kvxj --command \
       "gsutil -m rsync -r gs://nabaax-static-media-bucket-1/app-files /var/www/html/nabaax"
+      
