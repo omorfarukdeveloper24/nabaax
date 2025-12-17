@@ -45,8 +45,11 @@ steps:
       "bornoeduinfo@instance-group-2-kvxj" \
       --project "project-3a2b1ad7-77c7-4b62-946" \
       --command "
-        sudo gsutil rsync -r \
+        sudo gsutil rsync -r -x '^(vendor|node_modules|storage/logs|\.env)' \
         gs://nabaax-static-media-bucket-1/app-files /var/www/html/nabaax &&
+        sudo chown -R www-data:www-data /var/www/html/nabaax &&
+        sudo chmod -R 775 /var/www/html/nabaax/storage &&
+        sudo chmod -R 775 /var/www/html/nabaax/bootstrap/cache &&
         cd /var/www/html/nabaax &&
         php artisan migrate --force &&
         php artisan optimize
