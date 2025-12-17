@@ -56,15 +56,28 @@ steps:
 #   logging: CLOUD_LOGGING_ONLY
 
 
-- name: 'gcr.io/cloud-builders/gsutil'
+# - name: 'gcr.io/cloud-builders/gsutil'
+#   args:
+#     - '-m'
+#     - 'rsync'
+#     - '-r'
+#     - '-x'
+#     - '^(vendor|node_modules|storage/logs|\.env)'
+#     - '.'
+#     - 'gs://nabaax-static-media-bucket-1/app-files'
+
+# options:
+#   logging: CLOUD_LOGGING_ONLY
+
+
+
+- name: 'gcr.io/cloud-builders/gcloud'
   args:
-    - '-m'
-    - 'rsync'
-    - '-r'
-    - '-x'
-    - '^(vendor|node_modules|storage/logs|\.env)'
-    - '.'
-    - 'gs://nabaax-static-media-bucket-1/app-files'
+    - 'compute'
+    - 'ssh'
+    - 'instance-name'
+    - '--zone=us-central1-c'
+    - '--command=cd /var/www/html/nabaax && git pull origin main && php artisan optimize:clear'
 
 options:
   logging: CLOUD_LOGGING_ONLY
