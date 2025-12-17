@@ -18,7 +18,9 @@ steps:
     - 'COMPOSER_MEMORY_LIMIT=-1'
 
 
-
+# ===============================
+# STEP 1: Sync code to GCS
+# ===============================
 - name: 'gcr.io/cloud-builders/gsutil'
   args:
     - '-m'
@@ -28,6 +30,27 @@ steps:
     - '^(vendor|node_modules|storage/logs|\.env)'
     - '.'
     - 'gs://nabaax-static-media-bucket-1/app-files'
+
+
+# ===============================
+# STEP 2: Deploy on VM
+# ===============================
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  entrypoint: 'bash'
+  args:
+    - '-c'
+    - |
+      gcloud compute ssh \
+      --zone "us-central1-c" \
+      "bornoeduinfo@instance-group-2-kvxj" \
+      --project "project-3a2b1ad7-77c7-4b62-946" \
+      --command "
+        sudo gsutil rsync -r \
+        gs://nabaax-static-media-bucket-1/app-files /var/www/html/nabaax &&
+        cd /var/www/html/nabaax &&
+        php artisan migrate --force &&
+        php artisan optimize
+      "
 
 options:
   logging: CLOUD_LOGGING_ONLY
