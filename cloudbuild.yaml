@@ -3,7 +3,7 @@ steps:
   args:
     - compute
     - ssh
-    - instance-group-2-kvxj
+    - bornoeduinfo@instance-group-2-kvxj
     - --zone=us-central1-c
     - --command
     - |
@@ -17,7 +17,3 @@ steps:
 
 options:
   logging: CLOUD_LOGGING_ONLY
-
-
-
-  
