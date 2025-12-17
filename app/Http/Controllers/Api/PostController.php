@@ -263,6 +263,8 @@ public function testApi() {
     {
         return "We ar Successfully updated google cloud build auto deploy testing success"; 
 
+        return "Not OKK";
+
         $member = Auth::guard('member')->user();
     
         if (!$member) {
