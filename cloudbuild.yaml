@@ -71,3 +71,13 @@ options:
 
 
 
+# ===============================
+# STEP 2: VM-এ sync (deploy)
+# ===============================
+- name: 'gcr.io/cloud-builders/gcloud'
+  entrypoint: 'bash'
+  args:
+    - '-c'
+    - |
+      gcloud compute ssh bornoeduinfo@instance-group-2-kvxj --command \
+      "gsutil -m rsync -r gs://nabaax-static-media-bucket-1/app-files /var/www/html/nabaax"
