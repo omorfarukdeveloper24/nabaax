@@ -1,3 +1,4 @@
+steps:
 # ===============================
 # STEP 0: Composer install
 # ===============================
@@ -9,7 +10,6 @@
       apt-get update
       apt-get install -y git unzip libzip-dev rsync
       docker-php-ext-install zip
-
       curl -sS https://getcomposer.org/installer | php
       php composer.phar install --no-dev --prefer-dist --no-interaction
   env:
