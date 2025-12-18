@@ -36,6 +36,8 @@
 
 
 
+
+
 steps:
   # STEP 1: SSH into VM & deploy
   - name: 'gcr.io/cloud-builders/gcloud'
@@ -47,9 +49,11 @@ steps:
       - --command
       - |
           cd /var/www/html/nabaax && \
+          sudo chown -R $USER:$USER . && \
           git fetch --all && \
           git reset --hard origin/main && \
           composer install --no-dev --optimize-autoloader && \
+          sudo chown -R www-data:www-data storage bootstrap/cache && \
           php artisan migrate --force && \
           php artisan config:clear && \
           php artisan config:cache && \
