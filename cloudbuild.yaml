@@ -37,13 +37,41 @@
 
 
 
-steps:
+# steps:
   # STEP 1: SSH into VM & deploy
+#   - name: 'gcr.io/cloud-builders/gcloud'
+#     args:
+#       - compute
+#       - ssh
+#       - bornoeduinfo@instance-group-2-kvxj
+#       - --zone=us-central1-c
+#       - --command
+#       - |
+#           cd /var/www/html/nabaax && \
+#           sudo chown -R bornoeduinfo:www-data . && \
+#           git fetch --all && \
+#           git reset --hard origin/main && \
+#           composer install --no-dev --optimize-autoloader && \
+#           sudo chmod -R 775 storage bootstrap/cache && \
+#           sudo chown -R bornoeduinfo:www-data storage bootstrap/cache && \
+#           php artisan migrate --force && \
+#           php artisan config:clear && \
+#           php artisan config:cache && \
+#           php artisan route:cache
+
+# options:
+#   logging: CLOUD_LOGGING_ONLY
+
+
+
+
+steps:
+  # STEP 1: SSH into NEW VM & deploy
   - name: 'gcr.io/cloud-builders/gcloud'
     args:
       - compute
       - ssh
-      - bornoeduinfo@instance-group-2-kvxj
+      - bornoeduinfo@instance-group-2-2nc5
       - --zone=us-central1-c
       - --command
       - |
