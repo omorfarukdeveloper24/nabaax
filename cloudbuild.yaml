@@ -47,7 +47,8 @@ steps:
       - --command
       - |
           cd /var/www/html/nabaax && \
-          git pull origin main && \
+          git fetch --all && \
+          git reset --hard origin/main && \
           composer install --no-dev --optimize-autoloader && \
           php artisan migrate --force && \
           php artisan config:clear && \
