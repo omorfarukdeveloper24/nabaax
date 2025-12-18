@@ -37,7 +37,6 @@
 
 
 
-
 steps:
   # STEP 1: SSH into VM & deploy
   - name: 'gcr.io/cloud-builders/gcloud'
