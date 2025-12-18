@@ -48,7 +48,7 @@ steps:
       - --command
       - |
           cd /var/www/html/nabaax && \
-          sudo chown -R $USER:$USER . && \
+          sudo chown -R bornoeduinfo:bornoeduinfo . && \
           git fetch --all && \
           git reset --hard origin/main && \
           composer install --no-dev --optimize-autoloader && \
