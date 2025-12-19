@@ -28,6 +28,10 @@ class FrontendController extends Controller
         return view('frontEnd.layouts.pages.index');
     }
 
+    public function admob(){
+        return view('frontEnd.layouts.pages.admob');
+    }
+
     public function student_add() {
         return view('frontEnd.layouts.pages.addstudent');
     }

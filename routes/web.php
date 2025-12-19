@@ -54,6 +54,7 @@ Route::group(['namespace' => 'Frontend', 'middleware' => ['ipcheck', 'check_refe
     
     Route::get('/', [FrontendController::class, 'index'])->name('home');
     Route::get('/privary-policy', [FrontendController::class, 'privary_policy']);
+    Route::get('/admob', [FrontendController::class, 'admob']);
     Route::get('/childsafety-standards', [FrontendController::class, 'childsafety_standards']);
     
     
