@@ -20,6 +20,11 @@ jobs:
             cd /var/www/html/nabaax
             
             php artisan down || true
+
+            git reset --hard 
+            git clean -fd
+
+            
             git pull origin main
             
             export COMPOSER_ALLOW_SUPERUSER=1
@@ -36,4 +41,3 @@ jobs:
             php artisan up
             echo "🚀 Laravel Deployment Successful!"
 
-            
