@@ -35,3 +35,5 @@ jobs:
             
             php artisan up
             echo "🚀 Laravel Deployment Successful!"
+
+            
