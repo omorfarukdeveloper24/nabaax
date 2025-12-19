@@ -319,6 +319,48 @@
                                 </ul>
                             </div>
                         </li>
+                        <!-- END DEPOSIT NAV ITEM -->
+
+
+                        <li>
+                            <a href="#sidebar-withdraw" 
+                               data-bs-toggle="collapse"
+                               class="{{ request()->routeIs('withdraw.index') ? 'active' : '' }}">
+                                <i data-feather="trending-down"></i>
+                                <span> Withdraw </span>
+                                <span class="menu-arrow"></span>
+                            </a>
+                        
+                            <div class="collapse {{ request()->routeIs('withdraw.index') ? 'show' : '' }}" 
+                                 id="sidebar-withdraw">
+                                 
+                                <ul class="nav-second-level">
+                        
+                                    <li>
+                                        <a href="{{ route('withdraw.index', ['status' => 'pending']) }}"
+                                           class="{{ request('status') == 'pending' ? 'active' : '' }}">
+                                            <i data-feather="minus"></i> Pending
+                                        </a>
+                                    </li>
+                        
+                                    <li>
+                                        <a href="{{ route('withdraw.index', ['status' => 'approved']) }}"
+                                           class="{{ request('status') == 'approved' ? 'active' : '' }}">
+                                            <i data-feather="minus"></i> Successful
+                                        </a>
+                                    </li>
+                        
+                                    <li>
+                                        <a href="{{ route('withdraw.index', ['status' => 'rejected']) }}"
+                                           class="{{ request('status') == 'rejected' ? 'active' : '' }}">
+                                            <i data-feather="minus"></i> Rejected
+                                        </a>
+                                    </li>
+                        
+                                </ul>
+                            </div>
+                        </li>
+                        <!-- END WITHDRAW NAV ITEM -->
                         
                         
                         

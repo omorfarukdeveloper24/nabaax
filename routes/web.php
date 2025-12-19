@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Frontend\CustomerController;
 use App\Http\Controllers\Admin\CreatePageController;
 use App\Http\Controllers\Admin\DepositController;
+use App\Http\Controllers\Admin\WithdrawController;
 
 
 Auth::routes();
@@ -142,11 +143,16 @@ Route::group(['namespace' => 'Admin', 'middleware' => ['auth', 'lock', 'check_re
     Route::post('permissions/update', [PermissionController::class, 'update'])->name('permissions.update');
     Route::post('permissions/destroy', [PermissionController::class, 'destroy'])->name('permissions.destroy');
 
-    
-    // wallet code route
+
+    // deposit code route
     Route::get('deposit/manage', [DepositController::class,'index'])->name('deposit.index');
     Route::get('deposit/history', [DepositController::class,'history'])->name('deposit.history');
     Route::post('deposit/status', [DepositController::class,'status'])->name('deposit.status');
+
+    // withdraw code route
+    Route::get('withdraw/manage', [WithdrawController::class,'index'])->name('withdraw.index');
+    Route::get('withdraw/history', [WithdrawController::class,'history'])->name('withdraw.history');
+    Route::post('withdraw/status', [WithdrawController::class,'status'])->name('withdraw.status');
     
     
     
