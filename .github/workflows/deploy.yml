@@ -1,0 +1,37 @@
+name: Deploy Laravel to VM
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.GCP_IP }}
+          username: ${{ secrets.GCP_USER }}
+          key: ${{ secrets.GCP_SSH_KEY }}
+          script: |
+            set -e
+            cd /var/www/html/nabaax
+            
+            php artisan down || true
+            git pull origin main
+            
+            export COMPOSER_ALLOW_SUPERUSER=1
+            composer install --no-dev --optimize-autoloader
+            
+            php artisan migrate --force
+            
+            php artisan config:cache
+            php artisan route:cache
+            sudo chmod -R 775 storage bootstrap/cache
+            
+            sudo service php8.1-fpm reload
+            
+            php artisan up
+            echo "🚀 Laravel Deployment Successful!"
