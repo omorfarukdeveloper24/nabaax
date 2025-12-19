@@ -20,10 +20,9 @@ jobs:
             cd /var/www/html/nabaax
             
             php artisan down || true
-
+            
             git reset --hard 
             git clean -fd
-
             
             git pull origin main
             
@@ -36,8 +35,7 @@ jobs:
             php artisan route:cache
             sudo chmod -R 775 storage bootstrap/cache
             
-            sudo service php8.1-fpm reload
+            sudo service php8.2-fpm reload
             
             php artisan up
             echo "🚀 Laravel Deployment Successful!"
-
