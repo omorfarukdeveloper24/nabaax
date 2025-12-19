@@ -88,9 +88,10 @@ public function testApi() {
             'data' => $posts
         ]);
     }
-    
-    
-    
+
+
+
+
     
     public function list()
     {
@@ -111,6 +112,11 @@ public function testApi() {
     
         if ($miniAds->isEmpty()) {
             $miniAds = collect([]);
+        }
+    
+        $seed = request()->has('page') ? session()->get('post_seed') : rand(1, 9999);
+        if (!request()->has('page')) {
+            session()->put('post_seed', $seed);
         }
     
         $posts = Post::with(['member', 'media'])
@@ -136,10 +142,8 @@ public function testApi() {
                     ->from('post_views')
                     ->where('member_id', $memberId);
             })
-            ->latest()
-            ->paginate(10);
-            
-        
+            ->inRandomOrder($seed) 
+            ->paginate(15);
     
         $posts->getCollection()->transform(function ($post, $index) use ($memberId, $miniAds) {
             $isFollowing = Follow::where('follower_id', $memberId)
@@ -147,8 +151,7 @@ public function testApi() {
                 ->exists();
     
             $post->is_following = $isFollowing;
-            
-            
+    
             $followBoost = FollowBoost::where('member_id', $post->member->id)->first();
     
             if ($followBoost && $followBoost->status === 'active') {
@@ -156,11 +159,9 @@ public function testApi() {
             } else {
                 $post->follow_boost_status = 'inactive';
             }
-            
-            // PostBoost check
+    
             $postBoost = PostBoost::where('post_id', $post->id)->latest()->first();
-            
-        
+    
             if ($postBoost && $postBoost->status === 'active') {
                 $post->post_boost = [
                     'id' => $postBoost->id,
@@ -176,7 +177,6 @@ public function testApi() {
             }
     
             if ($miniAds->count() > 0) {
-                
                 $start = ($index * 2) % $miniAds->count();
                 $miniAdPair = [];
     
@@ -197,8 +197,15 @@ public function testApi() {
             'data' => $posts
         ]);
     }
+    
+    
+    
 
-
+    
+    
+    
+    // This code our Correct post code latest version 22 June 2024
+    
     
     
     // public function list()
@@ -214,6 +221,14 @@ public function testApi() {
     
     //     $memberId = $member->id;
     
+    //     $miniAds = Miniad::where('status', 1)
+    //         ->select('id', 'title', 'image', 'link')
+    //         ->get();
+    
+    //     if ($miniAds->isEmpty()) {
+    //         $miniAds = collect([]);
+    //     }
+    
     //     $posts = Post::with(['member', 'media'])
     //         ->withCount([
     //             'likes as like_count' => function ($q) {
@@ -222,7 +237,7 @@ public function testApi() {
     //             'likes as dislike_count' => function ($q) {
     //                 $q->where('type', 2);
     //             },
-    //             'comments as comment_count' 
+    //             'comments as comment_count'
     //         ])
     //         ->withExists([
     //             'likes as liked_by_me' => function ($q) use ($memberId) {
@@ -234,27 +249,74 @@ public function testApi() {
     //         ])
     //         ->whereNotIn('id', function ($query) use ($memberId) {
     //             $query->select('post_id')
-    //                   ->from('post_views')
-    //                   ->where('member_id', $memberId);
+    //                 ->from('post_views')
+    //                 ->where('member_id', $memberId);
     //         })
     //         ->latest()
     //         ->paginate(10);
             
+        
+    
+    //     $posts->getCollection()->transform(function ($post, $index) use ($memberId, $miniAds) {
+    //         $isFollowing = Follow::where('follower_id', $memberId)
+    //             ->where('following_id', $post->member->id)
+    //             ->exists();
+    
+    //         $post->is_following = $isFollowing;
             
-    //         $posts->getCollection()->transform(function ($post) use ($memberId) {
-    //             $isFollowing = Follow::where('follower_id', $memberId)
-    //                 ->where('following_id', $post->member->id)
-    //                 ->exists();
             
-    //             $post->is_following = $isFollowing;
-    //             return $post;
-    //         });
+    //         $followBoost = FollowBoost::where('member_id', $post->member->id)->first();
+    
+    //         if ($followBoost && $followBoost->status === 'active') {
+    //             $post->follow_boost_status = 'active';
+    //         } else {
+    //             $post->follow_boost_status = 'inactive';
+    //         }
+            
+    //         // PostBoost check
+    //         $postBoost = PostBoost::where('post_id', $post->id)->latest()->first();
+            
+        
+    //         if ($postBoost && $postBoost->status === 'active') {
+    //             $post->post_boost = [
+    //                 'id' => $postBoost->id,
+    //                 'message_link' => $postBoost->message_link,
+    //                 'website_link' => $postBoost->website_link,
+    //                 'status' => 'active'
+    //             ];
+    //         } else {
+    //             $post->post_boost = [
+    //                 'id' => null,
+    //                 'status' => 'inactive'
+    //             ];
+    //         }
+    
+    //         if ($miniAds->count() > 0) {
+                
+    //             $start = ($index * 2) % $miniAds->count();
+    //             $miniAdPair = [];
+    
+    //             for ($i = 0; $i < 2; $i++) {
+    //                 $miniAdPair[] = $miniAds[($start + $i) % $miniAds->count()];
+    //             }
+    
+    //             $post->mini_ads = $miniAdPair;
+    //         } else {
+    //             $post->mini_ads = [];
+    //         }
+    
+    //         return $post;
+    //     });
     
     //     return response()->json([
     //         'status' => 'success',
     //         'data' => $posts
     //     ]);
     // }
+
+
+    
+    
     
     
     
