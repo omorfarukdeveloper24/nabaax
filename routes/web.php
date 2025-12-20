@@ -104,14 +104,14 @@ Route::group(['prefix' => 'customer', 'namespace' => 'Frontend', 'middleware' =>
 
 
 // unathenticate admin route
-Route::group(['namespace' => 'Admin', 'prefix' => 'admin', 'middleware' => ['customer', 'ipcheck', 'check_refer']], function () {
+Route::group(['namespace' => 'Admin', 'prefix' => 'nb65vartex', 'middleware' => ['customer', 'ipcheck', 'check_refer']], function () {
     Route::get('locked', [DashboardController::class, 'locked'])->name('locked');
     Route::post('unlocked', [DashboardController::class, 'unlocked'])->name('unlocked');
-});
+}); 
 
 
 // auth route
-Route::group(['namespace' => 'Admin', 'middleware' => ['auth', 'lock', 'check_refer'], 'prefix' => 'admin'], function () {
+Route::group(['namespace' => 'Admin', 'middleware' => ['auth', 'lock', 'check_refer'], 'prefix' => 'nb65vartex'], function () {
     Route::get('dashboard', [DashboardController::class, 'dashboard'])->name('dashboard');
     // Route::get('change-password', [DashboardController::class, 'changepassword'])->name('change_password');
     Route::post('new-password', [DashboardController::class, 'newpassword'])->name('new_password');
