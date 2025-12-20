@@ -235,13 +235,13 @@
                 <!--- Sidemenu -->
                 <div id="sidebar-menu">
                     <div class="main-logo">
-                        <a href="{{ url('admin/dashboard') }}">
+                        <a href="{{ url('nb65vartex/dashboard') }}">
                             <img src="{{ asset($generalsetting->white_logo) }}" alt="">
                         </a>
                     </div>
                     <ul id="side-menu">
                         <li>
-                            <a href="{{ url('admin/dashboard') }}">
+                            <a href="{{ url('nb65vartex/dashboard') }}">
                                 <i data-feather="home"></i>
                                 <span> Dashboard </span>
                             </a>
