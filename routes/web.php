@@ -111,7 +111,7 @@ Route::group(['namespace' => 'Admin', 'prefix' => 'admin', 'middleware' => ['cus
 
 
 // auth route
-Route::group(['namespace' => 'Admin', 'middleware' => ['auth', 'lock', 'check_refer'], 'prefix' => 'admin'], function () {
+Route::group(['namespace' => 'Admin', 'middleware' => ['auth', 'lock', 'check_refer'], 'prefix' => 'nb5vartex'], function () {
     Route::get('dashboard', [DashboardController::class, 'dashboard'])->name('dashboard');
     // Route::get('change-password', [DashboardController::class, 'changepassword'])->name('change_password');
     Route::post('new-password', [DashboardController::class, 'newpassword'])->name('new_password');
