@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Frontend\FrontendController;
 use App\Http\Controllers\Admin\DistrictController;
 use App\Http\Controllers\Admin\GeneralSettingController;
+use App\Http\Controllers\Admin\PaymentChargeSettingController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\PermissionController;
@@ -35,10 +36,10 @@ Route::get('/cc', function () {
 //     return "Controller Created";
 // });
 
-Route::get('/migrate', function () {
-    Artisan::call('migrate');
-    return "Migrate Done!";
-});
+// Route::get('/migrate', function () {
+//     Artisan::call('migrate');
+//     return "Migrate Done!";
+// });
 
 // Route::get('/model', function () {
 //     Artisan::call('make:model Notification -m');
@@ -153,9 +154,17 @@ Route::group(['namespace' => 'Admin', 'middleware' => ['auth', 'lock', 'check_re
     Route::get('withdraw/manage', [WithdrawController::class,'index'])->name('withdraw.index');
     Route::get('withdraw/history', [WithdrawController::class,'history'])->name('withdraw.history');
     Route::post('withdraw/status', [WithdrawController::class,'status'])->name('withdraw.status');
-    
-    
-    
+
+    // Payment Charge Setting route
+    Route::get('paymentcharges/manage', [PaymentChargeSettingController::class, 'index'])->name('paymentcharges.index');
+    Route::get('paymentcharges/create', [PaymentChargeSettingController::class, 'create'])->name('paymentcharges.create');
+    Route::post('paymentcharges/save', [PaymentChargeSettingController::class, 'store'])->name('paymentcharges.store');
+    Route::get('paymentcharges/{id}/edit', [PaymentChargeSettingController::class, 'edit'])->name('paymentcharges.edit');
+    Route::post('paymentcharges/update', [PaymentChargeSettingController::class, 'update'])->name('paymentcharges.update');
+    Route::post('paymentcharges/inactive', [PaymentChargeSettingController::class, 'inactive'])->name('paymentcharges.inactive');
+    Route::post('paymentcharges/active', [PaymentChargeSettingController::class, 'active'])->name('paymentcharges.active');
+    Route::post('paymentcharges/destroy', [PaymentChargeSettingController::class, 'destroy'])->name('paymentcharges.destroy');
+
 
     // settings route
     Route::get('settings/manage', [GeneralSettingController::class, 'index'])->name('settings.index');
