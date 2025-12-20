@@ -16,9 +16,6 @@
         <div class="col-12">
             <div class="page-title-box">
                 <div class="page-title-box">
-                    <div class="page-title-right">
-                           <a href="{{ route('paymentcharges.create') }}" class="btn btn-primary rounded-pill">Create</a>
-                    </div>
                     <h4 class="page-title">General paymentcharge Manage</h4>
                 </div>
             </div>
