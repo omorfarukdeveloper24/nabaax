@@ -42,7 +42,7 @@
                         @foreach($data as $key=>$value)
                         <tr>
                             <td>{{$loop->iteration}}</td>
-                            <td>{{$value->name}}</td>
+                            <td>{{$value->member->name}}</td>
                             <td>{{$value->receiver_number}}</td>
                             <td>{{$value->method}}</td>
                             <td>{{$value->amount}}</td>
