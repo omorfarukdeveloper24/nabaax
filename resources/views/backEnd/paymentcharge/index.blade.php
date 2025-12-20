@@ -1,5 +1,5 @@
 @extends('backEnd.layouts.master')
-@section('title','General Setting Manage')
+@section('title','General paymentcharge Manage')
 
 @section('css')
 <link href="{{asset('/public/backEnd/')}}/assets/libs/datatables.net-bs5/css/dataTables.bootstrap5.min.css" rel="stylesheet" type="text/css" />
@@ -17,9 +17,9 @@
             <div class="page-title-box">
                 <div class="page-title-box">
                     <div class="page-title-right">
-                           <a href="{{ route('settings.create') }}" class="btn btn-primary rounded-pill">Create</a>
+                           <a href="{{ route('paymentcharges.create') }}" class="btn btn-primary rounded-pill">Create</a>
                     </div>
-                    <h4 class="page-title">General Setting Manage</h4>
+                    <h4 class="page-title">General paymentcharge Manage</h4>
                 </div>
             </div>
         </div>
@@ -33,10 +33,6 @@
                     <thead>
                         <tr>
                             <th>SL</th>
-                            <th>Name</th>
-                            <th>White Logo</th>
-                            <th>Dark Logo</th>
-                            <th>Favicon</th>
                             <th>Status</th>
                             <th>Action</th>
                         </tr>
@@ -47,26 +43,23 @@
                         @foreach($show_data as $key=>$value)
                         <tr>
                             <td>{{$loop->iteration}}</td>
-                            <td>{{$value->name}}</td>
-                            <td><img src="{{asset($value->white_logo)}}" class="backend-image" alt=""></td>
-                            <td><img src="{{asset($value->dark_logo)}}" class="backend-image" alt=""></td>
-                            <td><img src="{{asset($value->favicon)}}" class="backend-image" alt=""></td>
+                            
                             <td>@if($value->status==1)<span class="badge bg-soft-success text-success">Active</span> @else <span class="badge bg-soft-danger text-danger">Inactive</span> @endif</td>
                             <td>
                                 <div class="button-list">
                                     @if($value->status == 1)
-                                    <form method="post" action="{{route('settings.inactive')}}" class="d-inline"> 
+                                    <form method="post" action="{{route('paymentcharges.inactive')}}" class="d-inline"> 
                                     @csrf
                                     <input type="hidden" value="{{$value->id}}" name="hidden_id">       
                                     <button type="button" class="btn btn-xs  btn-secondary waves-effect waves-light change-confirm"><i class="fe-thumbs-down"></i></button></form>
                                     @else
-                                    <form method="post" action="{{route('settings.active')}}" class="d-inline">
+                                    <form method="post" action="{{route('paymentcharges.active')}}" class="d-inline">
                                         @csrf
                                     <input type="hidden" value="{{$value->id}}" name="hidden_id">        
                                     <button type="button" class="btn btn-xs  btn-success waves-effect waves-light change-confirm"><i class="fe-thumbs-up"></i></button></form>
                                     @endif
 
-                                    <a href="{{route('settings.edit',$value->id)}}" class="btn btn-xs btn-primary waves-effect waves-light"><i class="fe-edit-1"></i></a>
+                                    <a href="{{route('paymentcharges.edit',$value->id)}}" class="btn btn-xs btn-primary waves-effect waves-light"><i class="fe-edit-1"></i></a>
                                     </div>
                             </td>
                         </tr>
