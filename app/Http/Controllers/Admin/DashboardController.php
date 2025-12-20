@@ -22,12 +22,12 @@ class DashboardController extends Controller
     }
     public function dashboard(){
         $users = User::get();
-        return view('backEnd.admin.dashboard');
+        return view('backEnd.nb65vartex.dashboard');
         
     }
     public function changepassword()
     {
-        return view('backEnd.admin.changepassword');
+        return view('backEnd.nb65vartex.changepassword');
     }
     public function newpassword(Request $request)
     {
