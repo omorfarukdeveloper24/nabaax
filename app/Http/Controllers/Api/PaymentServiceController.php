@@ -8,6 +8,7 @@ use App\Models\Member;
 use App\Models\Deposit;
 use App\Models\WalletWithdraw;
 use App\Models\BalanceTransfer;
+use App\Models\PaymentChargeSetting;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -25,6 +26,7 @@ class PaymentServiceController extends Controller
     public function dpstore(Request $request)
     {
         $member = Auth::guard('member')->user();
+        $dipositlimit = PaymentChargeSetting::first()->min_deposit;
         
         if (!$request->amount) {
             return response()->json([
@@ -33,10 +35,10 @@ class PaymentServiceController extends Controller
             ]);
         }
     
-        if ($request->amount < 100) {
+        if ($request->amount < $dipositlimit) {
             return response()->json([
                 'status'  => 'failed',
-                'message' => 'Minimum 100 amount required.'
+                'message' => 'Minimum ' . $dipositlimit . ' amount required.'
             ]);
         }
     
@@ -94,6 +96,7 @@ class PaymentServiceController extends Controller
     public function withdraw_store(Request $request)
     {
         $member = Auth::guard('member')->user();
+        $withdrawlimit = PaymentChargeSetting::first()->min_withdraw;
         
         if (!$request->amount) {
             return response()->json([
@@ -101,11 +104,11 @@ class PaymentServiceController extends Controller
                 'message' => 'Please enter your amount.'
             ]);
         }
-    
-        if ($request->amount < 100) {
+
+        if ($request->amount < $withdrawlimit) {
             return response()->json([
                 'status'  => 'failed',
-                'message' => 'Minimum 100 amount required.'
+                'message' => 'Minimum ' . $withdrawlimit . ' amount required.'
             ]);
         }
     
@@ -182,6 +185,7 @@ class PaymentServiceController extends Controller
     
     public function balance_transfer(Request $request){
         $member = Auth::guard('member')->user();
+        $transferlimit = PaymentChargeSetting::first()->transfer_limit;
        
         if (!$request->amount) {
             return response()->json([
@@ -189,11 +193,11 @@ class PaymentServiceController extends Controller
                 'message' => 'Please enter your amount.'
             ]);
         }
-    
-        if ($request->amount < 100) {
+
+        if ($request->amount < $transferlimit) {
             return response()->json([
                 'status'  => 'failed',
-                'message' => 'Minimum 100 amount required.'
+                'message' => 'Minimum ' . $transferlimit . ' amount required.'
             ]);
         }
     
