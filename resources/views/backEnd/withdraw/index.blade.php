@@ -57,7 +57,7 @@
                                         @csrf
                                         <input type="hidden" value="{{$value->id}}" name="hidden_id">       
                                         <input type="hidden" value="approved" name="status">       
-                                        <button type="button" class="change-confirm"><i class="fe-thumbs-down"></i></button>
+                                        <button type="button" class="change-confirm"><i class="fe-thumbs-up"></i></button>
                                     </form>
                                     @endif
                                   
