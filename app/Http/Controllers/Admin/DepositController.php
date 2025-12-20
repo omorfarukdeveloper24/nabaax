@@ -20,12 +20,14 @@ class DepositController extends Controller
     public function index(Request $request)
     {
         $status = $request->status ?? 'pending';
-        $data = Deposit::when($request->status, function ($query) use ($request) {
-                    $query->where('status', $request->status);
-                })
-                ->latest()
-                ->paginate(50);
-        // return $data;
+        $data = Deposit::with(['member' => function ($query) {
+                $query->select('id', 'name'); 
+            }])
+            ->when($request->status, function ($query) use ($request) {
+                $query->where('status', $request->status);
+            })
+            ->latest()
+            ->paginate(30);
 
         return view('backEnd.deposit.index', compact('data','status'));
     }

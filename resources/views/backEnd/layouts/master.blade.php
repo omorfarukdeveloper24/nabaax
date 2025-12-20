@@ -326,7 +326,7 @@
                             <a href="#sidebar-withdraw" 
                                data-bs-toggle="collapse"
                                class="{{ request()->routeIs('withdraw.index') ? 'active' : '' }}">
-                                <i data-feather="trending-down"></i>
+                                <i data-feather="trending-up"></i>
                                 <span> Withdraw </span>
                                 <span class="menu-arrow"></span>
                             </a>
@@ -365,32 +365,6 @@
                         
                         
                         
-                        
-                        <li>
-                            <a href="#sidebar-withdraw" data-bs-toggle="collapse">
-                                <i data-feather="trending-up"></i>
-                                <span> Withdraw </span>
-                                <span class="menu-arrow"></span>
-                            </a>
-                            <div class="collapse" id="sidebar-withdraw">
-                                <ul class="nav-second-level">
-                                    <li>
-                                        <a href="#"><i data-feather="minus"></i>
-                                            Pending</a>
-                                    </li>
-                                    <li>
-                                        <a href="#"><i data-feather="minus"></i>
-                                            Successfull</a>
-                                    </li>
-                                    <li>
-                                        <a href="#"><i data-feather="minus"></i>
-                                            Rejected</a>
-                                    </li>
-
-                                </ul>
-                            </div>
-                        </li> 
-                        <!-- nav items -->
 
 
                         <!-- nav items end -->

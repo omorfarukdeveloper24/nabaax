@@ -28,9 +28,8 @@
                         <tr>
                             <th>SL</th>
                             <th>Name</th>
-                            <th>Sender Number</th>
+                            <th>Receiver Number</th>
                             <th>Method</th>
-                            <th>Transaction</th>
                             <th>Amount</th>
                             <th>Status</th>
                             @if($status == 'pending')
@@ -44,9 +43,8 @@
                         <tr>
                             <td>{{$loop->iteration}}</td>
                             <td>{{$value->name}}</td>
-                            <td>{{$value->sender_number}}</td>
+                            <td>{{$value->receiver_number}}</td>
                             <td>{{$value->method}}</td>
-                            <td>{{$value->tnx_id}}</td>
                             <td>{{$value->amount}}</td>
                            <td>
                              <span class="badge bg-soft-success text-success">{{$value->status}}</span>
