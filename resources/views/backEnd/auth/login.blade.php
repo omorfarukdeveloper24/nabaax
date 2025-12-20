@@ -136,6 +136,7 @@
             transform: translateY(60px);
             transition: 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
             pointer-events: none;
+            margin-top: 100px;
         }
 
         body.light-on .login-card {
