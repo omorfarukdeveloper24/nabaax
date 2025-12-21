@@ -33,40 +33,92 @@ class WithdrawController extends Controller
     }
 
     
+    // public function status(Request $request)
+    // {
+        
+    //     $withdraw = WalletWithdraw::find($request->hidden_id);
+
+    //     if (!$withdraw) {
+    //         Toastr::error('withdraw not found!');
+    //         return redirect()->back();
+    //     }
+        
+        
+
+    //     $old_status = $withdraw->status;
+    //     $new_status = $request->status;
+
+    //     $withdraw->status = $request->status;
+    //     $withdraw->save();
+
+        
+    //     if ($member) {
+    //         if ($new_status === 'approved' && $old_status !== 'approved') {
+
+    //             Toastr::success('Withdraw approved and successfully processed.');
+    //             return redirect()->back();
+    //         } 
+
+    //         elseif ($new_status === 'rejected' && $old_status !== 'rejected') 
+    //             $member->balance += $withdraw->amount; 
+    //             $member->save();
+                
+    //             Toastr::danger('Amount refunded to member account.');
+    //             return redirect()->back();
+    //         }
+    //     }
+
+        
+    // }
+
+
+
+
     public function status(Request $request)
     {
-        
         $withdraw = WalletWithdraw::find($request->hidden_id);
 
         if (!$withdraw) {
-            Toastr::error('withdraw not found!');
+            Toastr::error('Withdraw not found!');
             return redirect()->back();
         }
-        
-        
 
         $old_status = $withdraw->status;
         $new_status = $request->status;
 
-        $withdraw->status = $request->status;
+        $withdraw->status = $new_status;
         $withdraw->save();
 
-        
+        $member = Member::find($withdraw->member_id);
+
         if ($member) {
             if ($new_status === 'approved' && $old_status !== 'approved') {
-
-                Toastr::info('Withdraw approved and successfully processed.');
+                Toastr::success('Withdraw approved and successfully processed.');
+                return redirect()->back();
             } 
-
-            elseif ($new_status === 'rejected' && $old_status !== 'rejected') 
+            elseif ($new_status === 'rejected' && $old_status !== 'rejected') {
                 $member->balance += $withdraw->amount; 
                 $member->save();
                 
-                Toastr::info('Amount refunded to member account.');
+                Toastr::error('Withdraw rejected and amount refunded.'); 
+                return redirect()->back();
             }
         }
 
-        Toastr::success('withdraw marked as ' . $request->status . ' successfully');
+        
+        Toastr::info('Withdraw status updated to ' . $new_status);
         return redirect()->back();
     }
+
+
+
+
+
+
+
+
+
+
+
+
 }
