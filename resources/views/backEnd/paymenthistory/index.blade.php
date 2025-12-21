@@ -27,26 +27,26 @@
         }
 
         /* Credit - Premium Green */
-        .badge-credit {
-            background-color: #e6fcf5; /* হালকা সবুজ ব্যাকগ্রাউন্ড */
-            color: #0ca678;           /* গাঢ় সবুজ টেক্সট */
+        /* .badge-credit {
+            background-color: #e6fcf5; 
+            color: #0ca678;           
             border: 1px solid #c3fae8;
-        }
+        } */
         
-        .badge-credit:hover {
+        .badge-credit {
             background-color: #0ca678;
             color: white;
             box-shadow: 0 4px 10px rgba(12, 166, 120, 0.3);
         }
 
         /* Debit - Premium Red */
-        .badge-debit {
-            background-color: #fff5f5; /* হালকা লাল ব্যাকগ্রাউন্ড */
-            color: #fa5252;           /* গাঢ় লাল টেক্সট */
+        /* .badge-debit {
+            background-color: #fff5f5; 
+            color: #fa5252;          
             border: 1px solid #ffe3e3;
-        }
+        } */
 
-        .badge-debit:hover {
+        .badge-debit {
             background-color: #fa5252;
             color: white;
             box-shadow: 0 4px 10px rgba(250, 82, 82, 0.3);
@@ -80,6 +80,7 @@
                                 <tr>
                                     <th>SL</th>
                                     <th>Member</th>
+                                    <th>User Name</th>
                                     <th>Payment Name</th>
                                     <th>Amount</th>
                                     <th>Method</th>
@@ -97,6 +98,11 @@
                                         <td>
                                             {{ $value->member->name }}
                                         </td>
+
+                                        <td>
+                                            {{ $value->member->username }}
+                                        </td>
+
                                         <td>
                                             {{ $value->payment_name }}
                                         </td>
