@@ -14,6 +14,8 @@ use App\Models\AdminPayHistory;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 
 class PaymentServiceController extends Controller
