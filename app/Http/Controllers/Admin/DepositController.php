@@ -74,7 +74,7 @@ class DepositController extends Controller
                         'type'         => 'credit',
                     ]);
 
-                    AdminPaymentHistory::create([
+                    AdminPayHistory::create([
                         'member_id'    => $member->id,
                         'payment_name' => 'Deposit Approved for ' . $member->name,
                         'tnx'          => $transaction_id,
