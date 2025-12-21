@@ -71,13 +71,7 @@
                                     </tr>
                                 @endforeach
                             </tbody>
-                            <!-- <tfoo>
-                                <tr>
-                                    <td colspan="3"></td>
-                                    <td><strong>{{ $total }} Tk</strong></td>
-                                    <td colspan="2"></td>
-                                </tr>
-                            </tfoo> -->
+                            
                         </table>
 
                     </div> <!-- end card body-->
