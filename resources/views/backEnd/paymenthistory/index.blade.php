@@ -9,6 +9,54 @@
         rel="stylesheet" type="text/css" />
     <link href="{{ asset('/public/backEnd/') }}/assets/libs/datatables.net-select-bs5/css/select.bootstrap5.min.css"
         rel="stylesheet" type="text/css" />
+
+    <style>
+        /* প্রিমিয়াম স্ট্যাটাস ব্যাজ ডিজাইন */
+        .status-badge {
+            padding: 6px 14px;
+            border-radius: 50px;
+            font-size: 13px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        /* Credit - Premium Green */
+        .badge-credit {
+            background-color: #e6fcf5; /* হালকা সবুজ ব্যাকগ্রাউন্ড */
+            color: #0ca678;           /* গাঢ় সবুজ টেক্সট */
+            border: 1px solid #c3fae8;
+        }
+        
+        .badge-credit:hover {
+            background-color: #0ca678;
+            color: white;
+            box-shadow: 0 4px 10px rgba(12, 166, 120, 0.3);
+        }
+
+        /* Debit - Premium Red */
+        .badge-debit {
+            background-color: #fff5f5; /* হালকা লাল ব্যাকগ্রাউন্ড */
+            color: #fa5252;           /* গাঢ় লাল টেক্সট */
+            border: 1px solid #ffe3e3;
+        }
+
+        .badge-debit:hover {
+            background-color: #fa5252;
+            color: white;
+            box-shadow: 0 4px 10px rgba(250, 82, 82, 0.3);
+        }
+
+        /* আইকন এনিমেশন (অপশনাল) */
+        .status-badge i {
+            font-size: 11px;
+        }
+    </style>
 @endsection
 
 @section('content')
@@ -47,7 +95,7 @@
                                         </td>
 
                                         <td>
-                                            {{ $value->member_id }}
+                                            {{ $value->member->name }}
                                         </td>
                                         <td>
                                             {{ $value->payment_name }}
@@ -62,10 +110,14 @@
                                         </td>
 
                                         <td>
-                                            @if ($value->type == 'Credit')
-                                                <span class="com-credit">Credit</span>
+                                            @if ($value->type == 'credit')
+                                                <span class="status-badge badge-credit">
+                                                    <i class="fas fa-plus-circle"></i> Credit
+                                                </span>
                                             @else
-                                                <span class="com-debit">Debit</span>
+                                                <span class="status-badge badge-debit">
+                                                    <i class="fas fa-minus-circle"></i> Debit
+                                                </span>
                                             @endif
                                         </td>
                                     </tr>

@@ -10,7 +10,7 @@ class AdminPayHistoryController extends Controller
 {
     public function index(Request $request)
     {
-        $data = AdminPayHistory::orderBy('id', 'DESC')->get();
+        $data = AdminPayHistory::orderBy('id', 'DESC')->with('member')->get();
         return view('backEnd.paymenthistory.index', compact('data'));
     }
 }

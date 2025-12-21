@@ -9,4 +9,10 @@ class AdminPayHistory extends Model
 {
     use HasFactory;
     protected $fillable = ['member_id', 'payment_name', 'tnx', 'amount', 'balance', 'method', 'type'];
+
+    public function member()
+    {
+        return $this->belongsTo(Member::class, 'member_id')
+                    ->select(['id', 'name', 'username']); 
+    }
 }
