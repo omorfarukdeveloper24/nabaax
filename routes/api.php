@@ -88,12 +88,14 @@ Route::group(['namespace' => 'Api','prefix'=>'v1','middleware' => 'api'], functi
                                                                                                                                                                                                                                                                                                                                           
         
         Route::post('/dpstore', [PaymentServiceController::class, 'dpstore']);  
-        Route::get('/dposit-list', [PaymentServiceController::class, 'deposit_list']);  
-        
         Route::post('/withdraw-store', [PaymentServiceController::class, 'withdraw_store']);  
-        Route::get('/withdraw-list', [PaymentServiceController::class, 'withdraw_list']);  
         Route::post('/balance-transfer', [PaymentServiceController::class, 'balance_transfer']);
+
+        Route::get('/dposit-list', [PaymentServiceController::class, 'deposit_list']);  
+        Route::get('/withdraw-list', [PaymentServiceController::class, 'withdraw_list']);  
         Route::get('/transfer-list', [PaymentServiceController::class, 'transfer_list']);
+
+        Route::get('/all-payment', [PaymentServiceController::class, 'all_payment']);
         
         Route::get('/login-checkt', [MemberController::class, 'loginCheck']);
         

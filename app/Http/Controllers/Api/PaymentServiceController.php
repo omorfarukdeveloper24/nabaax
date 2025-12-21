@@ -96,6 +96,20 @@ class PaymentServiceController extends Controller
             'data' => $deposits
         ]);
     }
+
+    public function all_payment()
+    {
+        $member = Auth::guard('member')->user();
+
+        $all_history = CustomerPayHistory::where('member_id', $member->id)
+            ->latest()
+            ->paginate(5);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $all_history,
+        ]);
+    }
     
     public function withdraw_store(Request $request)
     {
