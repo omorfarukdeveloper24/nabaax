@@ -17,6 +17,7 @@ use App\Http\Controllers\Frontend\CustomerController;
 use App\Http\Controllers\Admin\CreatePageController;
 use App\Http\Controllers\Admin\DepositController;
 use App\Http\Controllers\Admin\WithdrawController;
+use App\Http\Controllers\Admin\AdminPayHistoryController;
 
 
 Auth::routes();
@@ -176,9 +177,10 @@ Route::group(['namespace' => 'Admin', 'middleware' => ['auth', 'lock', 'check_re
     Route::post('settings/active', [GeneralSettingController::class, 'active'])->name('settings.active');
     Route::post('settings/destroy', [GeneralSettingController::class, 'destroy'])->name('settings.destroy');
     
-    
-    
-    
+
+
+    Route::get('paymenthistory/manage', [AdminPayHistoryController::class, 'index'])->name('paymenthistory.index');
+
     // contact route
     Route::get('contact/manage', [ContactController::class, 'index'])->name('contact.index');
     Route::get('contact/create', [ContactController::class, 'create'])->name('contact.create');

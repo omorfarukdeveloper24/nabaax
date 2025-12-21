@@ -103,7 +103,7 @@ class PaymentServiceController extends Controller
 
         $all_history = CustomerPayHistory::where('member_id', $member->id)
             ->latest()
-            ->paginate(5);
+            ->paginate(30);
 
         return response()->json([
             'status' => 'success',
