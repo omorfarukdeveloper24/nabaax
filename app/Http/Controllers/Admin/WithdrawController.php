@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\WalletWithdraw;
 use App\Models\Member;
+use App\Models\CustomerPayHistory;
+use App\Models\AdminPayHistory;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Session;
 use Brian2694\Toastr\Facades\Toastr;
