@@ -226,7 +226,7 @@ class PaymentServiceController extends Controller
             $member->decrement('balance', $request->amount);
             $childMember->increment('balance', $request->amount);
 
-            $transaction_id = 'TRX-' . strtoupper(Str::random(10));
+            $transaction_id = 'TRX' . now()->format('ymdHis') . strtoupper(Str::random(3));
 
             BalanceTransfer::create([
                 'sender_id'   => $member->id,
@@ -237,7 +237,7 @@ class PaymentServiceController extends Controller
             CustomerPayHistory::create([
                 'member_id' => $member->id,
                 'payment_name'  => 'Balance Sent to ' . $childMember->username,
-                'tnx'       => $transaction_id,
+                'tnx'       => $transaction_id . '-S',
                 'amount'    => $request->amount,
                 'balance'   => $member->balance,
                 'method'    => 'Wallet',
@@ -247,7 +247,7 @@ class PaymentServiceController extends Controller
             CustomerPayHistory::create([
                 'member_id' => $childMember->id,
                 'payment_name'  => 'Balance Received from ' . $member->username,
-                'tnx'       => $transaction_id,
+                'tnx'       => $transaction_id . '-R',
                 'amount'    => $request->amount,
                 'balance'   => $childMember->balance,
                 'method'    => 'Wallet',
