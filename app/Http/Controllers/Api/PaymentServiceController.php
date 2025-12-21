@@ -264,7 +264,10 @@ class PaymentServiceController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack(); 
-            return response()->json(['status' => 'failed', 'message' => 'Transaction failed. Please try again.']);
+            return response()->json([
+                'status' => 'failed', 
+                'message' => $e->getMessage()
+            ]);
         }
     }
 

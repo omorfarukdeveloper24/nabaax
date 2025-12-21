@@ -8,5 +8,5 @@ use Illuminate\Database\Eloquent\Model;
 class AdminPayHistory extends Model
 {
     use HasFactory;
-    protected $guarded = [];
+    protected $fillable = ['member_id', 'payment_name', 'tnx', 'amount', 'balance', 'method', 'type'];
 }
