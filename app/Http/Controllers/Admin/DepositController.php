@@ -70,7 +70,7 @@ class DepositController extends Controller
                         'tnx'          => $transaction_id,
                         'amount'       => $deposit->amount,
                         'balance'      => $member->balance, 
-                        'method'       => $deposit->gateway_name ?? 'Manual', 
+                        'method'       => $deposit->method ?? 'Manual', 
                         'type'         => 'credit',
                     ]);
 
@@ -80,7 +80,7 @@ class DepositController extends Controller
                         'tnx'          => $transaction_id,
                         'amount'       => $deposit->amount,
                         'balance'      => $member->balance,
-                        'method'       => $deposit->gateway_name ?? 'Manual',
+                        'method'       => $deposit->method ?? 'Manual',
                         'type'         => 'credit',
                     ]);
                 }

@@ -13,14 +13,14 @@
     <style>
         /* প্রিমিয়াম স্ট্যাটাস ব্যাজ ডিজাইন */
         .status-badge {
-            padding: 6px 14px;
+            padding: 5px 16px;
             border-radius: 50px;
             font-size: 13px;
             font-weight: 600;
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            text-transform: uppercase;
+            text-transform: capitalize;
             letter-spacing: 0.5px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
             transition: all 0.3s ease;
