@@ -369,6 +369,15 @@
                             </a>
                         </li>
                         <!-- END PAYMENT CHARGE SETTING NAV ITEM -->
+
+
+                        <li>
+                            <a href="{{ route('paymenthistory.index') }}">
+                                <i data-feather="home"></i>
+                                <span> Payment Charge  </span>
+                            </a>
+                        </li>
+                        <!-- END PAYMENT History  NAV ITEM -->
                         
                         
                         
