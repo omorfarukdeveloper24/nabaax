@@ -46,17 +46,23 @@ class WithdrawController extends Controller
         
 
         $old_status = $withdraw->status;
+        $new_status = $request->status;
+
         $withdraw->status = $request->status;
         $withdraw->save();
 
         
-        if ($request->status === 'approved' && $old_status !== 'approved') {
+        if ($member) {
+            if ($new_status === 'approved' && $old_status !== 'approved') {
 
-            $member = Member::find($withdraw->member_id);
+                Toastr::info('Withdraw approved and successfully processed.');
+            } 
 
-            if ($member) {
-                $member->balance += $withdraw->amount;
+            elseif ($new_status === 'rejected' && $old_status !== 'rejected') 
+                $member->balance += $withdraw->amount; 
                 $member->save();
+                
+                Toastr::info('Amount refunded to member account.');
             }
         }
 

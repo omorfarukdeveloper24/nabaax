@@ -141,7 +141,9 @@ class PaymentServiceController extends Controller
         }
     
        if ($member->balance >= $request->amount) {
-           
+           $member->balance = $member->balance - $request->amount;
+           $member->save();
+
             $withdraw = WalletWithdraw::create([
                 'member_id'      => $member->id,
                 'amount'         => $request->amount,
@@ -150,8 +152,7 @@ class PaymentServiceController extends Controller
                 'status'         => 'pending',
             ]);
     
-            $member->balance = $member->balance - $request->amount;
-            $member->save();
+            
     
             return response()->json([
                 'status'  => 'success',
