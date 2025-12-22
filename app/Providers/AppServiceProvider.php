@@ -17,11 +17,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        // যেহেতু প্যাকেজটি অটো-ডিসকভার হচ্ছে, এখানে আলাদা করে রেজিস্ট্রেশনের প্রয়োজন নেই।
-        // তবে আপনার আগের কোডটি সামঞ্জস্য বজায় রাখতে নিচে রাখা হলো।
-        if (class_exists(\Spatie\GoogleCloudStorage\GoogleCloudStorageServiceProvider::class)) {
-            $this->app->register(\Spatie\GoogleCloudStorage\GoogleCloudStorageServiceProvider::class);
-        }
+        //
     }
 
     /**
