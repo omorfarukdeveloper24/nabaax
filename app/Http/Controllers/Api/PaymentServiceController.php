@@ -110,6 +110,21 @@ class PaymentServiceController extends Controller
             'data' => $all_history,
         ]);
     }
+
+    public function receive_payment()
+    {
+        $member = Auth::guard('member')->user();
+
+        $receive_history = CustomerPayHistory::where('member_id', $member->id)
+            ->where('tnx', 'LIKE', '%R') 
+            ->latest()
+            ->paginate(30);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $receive_history,
+        ]);
+    }
     
     public function withdraw_store(Request $request)
     {

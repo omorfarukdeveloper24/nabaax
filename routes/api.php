@@ -96,6 +96,7 @@ Route::group(['namespace' => 'Api','prefix'=>'v1','middleware' => 'api'], functi
         Route::get('/transfer-list', [PaymentServiceController::class, 'transfer_list']);
 
         Route::get('/all-payment', [PaymentServiceController::class, 'all_payment']);
+        Route::get('/receive-payment', [PaymentServiceController::class, 'receive_payment']);
         
         Route::get('/login-checkt', [MemberController::class, 'loginCheck']);
         
