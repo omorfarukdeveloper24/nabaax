@@ -355,7 +355,7 @@ public function testApi() {
 
             // GCS-এ আপলোড
             $uploadStatus = Storage::disk('gcs')->put($fileName, $img->getEncoded());
-            return "okk";
+            return $uploadStatus;
             if ($uploadStatus) {
                 $imageUrl = Storage::disk('gcs')->url($fileName);
                 
