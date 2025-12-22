@@ -15,9 +15,9 @@ class AppServiceProvider extends ServiceProvider
      *
      * @return void
      */
-    public function register()
+     public function register()
     {
-        //
+        // প্যাকেজ অটো-ডিসকভার হলে এটি ফাঁকা রাখা যায়
     }
 
     /**
@@ -25,17 +25,17 @@ class AppServiceProvider extends ServiceProvider
      *
      * @return void
      */
+   
+
     public function boot()
     {
-        // প্রোডাকশন এনভায়রনমেন্টে HTTPS ফোর্স করা
         if (config('app.env') === 'production') {
             URL::forceScheme('https');
         }
 
-        // গ্লোবাল ভিউ কম্পোজার (General Setting)
         view()->composer('*', function ($view) {
             $generalsetting = Cache::remember('generalsetting', now()->addDays(7), function () {
-                return GeneralSetting::where('status', 1)->first();
+                return \App\Models\GeneralSetting::where('status', 1)->first();
             });
             
             $view->with([
