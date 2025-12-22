@@ -340,6 +340,7 @@ public function testApi() {
 
     if ($request->hasFile('image')) {
         try {
+            return "okk";
             $image = $request->file('image');
             $extension = 'webp';
             $name = time() . '-' . strtolower(preg_replace('/\s+/', '-', $image->getClientOriginalName()));
