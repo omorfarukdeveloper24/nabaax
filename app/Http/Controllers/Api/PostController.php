@@ -458,15 +458,15 @@ public function testApi() {
 
         
 
-    //     $miniad = MiniAd::create($data);
+        $miniad = MiniAd::create($data);
 
-    //     return response()->json([
-    //         'success' => true,
-    //         'message' => 'Mini Ad uploaded to GCS successfully!',
-    //         'url'     => $data['image'],
-    //         'data'    => $miniad
-    //     ]);
-    // }
+        return response()->json([
+            'success' => true,
+            'message' => 'Mini Ad uploaded to GCS successfully!',
+            'url'     => $data['image'],
+            'data'    => $miniad
+        ]);
+    }
     
     
    
