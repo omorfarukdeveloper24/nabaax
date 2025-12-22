@@ -317,7 +317,7 @@ public function testApi() {
 
 
 
-    public function miniads(Request $request)
+   public function miniads(Request $request)
     {
         $member = Auth::guard('member')->user();
 
@@ -337,13 +337,6 @@ public function testApi() {
         }
 
         $validated = $validator->validated();
-        $data = [
-            'member_id' => $member->id,
-            'title'     => $validated['title'],
-            'link'      => $validated['link'],
-            'status'    => $validated['status'],
-            'image'     => null,
-        ];
 
         if ($request->hasFile('image')) {
             try {
@@ -353,36 +346,43 @@ public function testApi() {
                 $name = pathinfo($name, PATHINFO_FILENAME) . '.' . $extension;
                 $fileName = 'miniads/' . $name;
 
-                // ইমেজ প্রসেসিং (Intervention Image v2 syntax)
+                // ইমেজ প্রসেসিং
                 $img = Image::make($image->getRealPath())->resize(600, null, function ($constraint) {
                     $constraint->aspectRatio();
                     $constraint->upsize();
                 })->encode($extension, 80);
 
-                // GCS-এ আপলোড করার সঠিক পদ্ধতি
+                // GCS-এ আপলোড (সরাসরি ইন্টারভেনশন অবজেক্ট থেকে স্ট্রিং নেওয়া)
                 $uploadStatus = Storage::disk('gcs')->put($fileName, $img->getEncoded(), 'public');
 
                 if ($uploadStatus) {
-                    // ডাটাবেসে সেভ করার জন্য URL তৈরি
-                    $data['image'] = Storage::disk('gcs')->url($fileName);
-                } else {
-                    throw new \Exception("GCS upload failed.");
+                    $imageUrl = Storage::disk('gcs')->url($fileName);
+                    
+                    // ডাটাবেসে সেভ করা
+                    $miniad = MiniAd::create([
+                        'member_id' => $member->id,
+                        'title'     => $validated['title'],
+                        'link'      => $validated['link'],
+                        'status'    => $validated['status'],
+                        'image'     => $imageUrl,
+                    ]);
+
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'Mini Ad uploaded successfully!',
+                        'url'     => $imageUrl,
+                        'data'    => $miniad
+                    ]);
                 }
 
             } catch (\Exception $e) {
                 \Log::error("GCS Error: " . $e->getMessage());
-                return response()->json(['success' => false, 'message' => 'Upload failed: ' . $e->getMessage()], 500);
+                return response()->json([
+                    'success' => false, 
+                    'message' => 'Upload failed: ' . $e->getMessage()
+                ], 500);
             }
         }
-
-        $miniad = MiniAd::create($data);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Mini Ad created successfully!',
-            'url'     => $data['image'],
-            'data'    => $miniad
-        ]);
     }
 
 
