@@ -627,7 +627,98 @@ class MemberController extends Controller
     }
     
     
+    // public function pertnar_program(Request $request)
+    // {
+        
+    //     $request->validate([
+    //         'referrer_code' => 'required',
+    //     ]);
     
+    //     $memberId = Auth::guard('member')->id();
+
+    //     $minimum_limit = PaymentChargeSetting::first()->partner_min_balance; 
+    //     $first_gen_bonus = PaymentChargeSetting::first()->first_gen_bonus;
+    //     $multi_gen_bonus = PaymentChargeSetting::first()->multi_gen_bonus;
+    //     $partner_own_bonus = PaymentChargeSetting::first()->partner_own_bonus;
+        
+ 
+
+    //     $member = Member::with('referrer')
+    //         ->select('id', 'name', 'username', 'balance', 'referrer_id', 'start_date', 'expired_date')
+    //         ->find($memberId);
+    
+    //     if (!$member) {
+    //         return response()->json(['error' => 'Unauthorized'], 401);
+    //     }
+    
+    //     if (!is_null($member->referrer_id)) {
+    //         return response()->json([
+    //             'error' => 'You already have a partner.',
+    //         ], 400);
+    //     }
+    
+    //     if ($member->username === $request->referrer_code) {
+    //         return response()->json([
+    //             'error' => 'You cannot use your own username as referrer code.',
+    //         ], 400);
+    //     }
+    
+    //     if ($member->balance < $minimum_limit) {
+    //         return response()->json([
+    //             'error' => 'You must have at least ' . $minimum_limit . ' balance to join the partner program.',
+    //         ], 400);
+    //     }
+    
+
+        
+    //      // default referrer id
+    //     $referrer_id = 1;
+    
+    //     if ($request->filled('referrer_code')) {
+    //         $referrer_member = Member::where('username', $request->referrer_code)
+    //             ->select('id', 'name', 'username', 'balance', 'referrer_id')
+    //             ->first();
+    
+    //         if (!$referrer_member) {
+    //             return response()->json(['error' => 'Invalid referrer code.'], 404);
+    //         }
+    
+    //         $referrer_id = $referrer_member->id;
+    //     }
+    
+    //     $member->update([
+    //         'referrer_id' => $referrer_member->id,
+    //         'start_date' => now(),
+    //         'expired_date' => now()->addDays(365),
+    //     ]);
+    
+    //     $member->decrement('balance', 1900);
+    
+    //     $commissionRates = [
+    //         1 => 400, 
+    //     ];
+    //     for ($i = 2; $i <= 100; $i++) {
+    //         $commissionRates[$i] = 50; 
+    //     }
+    
+    //     $currentReferrer = $referrer_member; 
+    //     $level = 1;
+    
+    //     while ($currentReferrer && $level <= 100) {
+    //         if (isset($commissionRates[$level])) {
+    //             $currentReferrer->increment('balance', $commissionRates[$level]);
+    //         }
+    
+    //         $currentReferrer = $currentReferrer->referrer;
+    //         $level++;
+    //     }
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'message' => 'Partner program joined successfully!',
+    //         'member_id' => $member->id,
+    //         'referrer_id' => $referrer_member->id,
+    //     ]);
+    // }
 
    public function pertnar_program(Request $request)
     {
@@ -637,6 +728,8 @@ class MemberController extends Controller
         ]);
     
         $memberId = Auth::guard('member')->id();
+
+        
         $member = Member::with('referrer')
             ->select('id', 'name', 'username', 'balance', 'referrer_id', 'start_date', 'expired_date')
             ->find($memberId);
