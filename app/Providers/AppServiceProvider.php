@@ -6,47 +6,16 @@ use Illuminate\Support\ServiceProvider;
 use App\Models\GeneralSetting;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\URL;
-use Illuminate\Support\Facades\Storage;
-use League\Flysystem\Filesystem;
-use Google\Cloud\Storage\StorageClient;
-use Spatie\GoogleCloudStorage\GoogleCloudStorageAdapter;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     *
-     * @return void
-     */
     public function register()
     {
-        //
+        // এখানে কিছু করার দরকার নেই
     }
 
-    /**
-     * Bootstrap any application services.
-     *
-     * @return void
-     */
     public function boot()
     {
-        // GCS ড্রাইভার সাপোর্ট যোগ করা
-        Storage::extend('gcs', function ($app, $config) {
-            $storageClient = new StorageClient([
-                'projectId' => $config['project_id'],
-                'keyFilePath' => $config['key_file'],
-            ]);
-
-            $bucket = $storageClient->bucket($config['bucket']);
-            $adapter = new GoogleCloudStorageAdapter($bucket, $config['path_prefix'] ?? '');
-
-            return new \Illuminate\Filesystem\FilesystemAdapter(
-                new Filesystem($adapter, $config),
-                $adapter,
-                $config
-            );
-        });
-
         // প্রোডাকশনে HTTPS ফোর্স করা
         if (config('app.env') === 'production') {
             URL::forceScheme('https');
@@ -62,5 +31,8 @@ class AppServiceProvider extends ServiceProvider
                 'generalsetting' => $generalsetting,
             ]);
         });
+        
+        // নোট: এখানে কোনো Storage::extend রাখার দরকার নেই। 
+        // প্যাকেজটি অটোমেটিক 'gcs' ড্রাইভার রেজিস্টার করবে।
     }
 }
