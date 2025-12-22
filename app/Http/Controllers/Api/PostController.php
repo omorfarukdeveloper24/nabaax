@@ -340,7 +340,7 @@ public function testApi() {
 
     if ($request->hasFile('image')) {
         try {
-            return "okk";
+            
             $image = $request->file('image');
             $extension = 'webp';
             $name = time() . '-' . strtolower(preg_replace('/\s+/', '-', $image->getClientOriginalName()));
@@ -355,7 +355,7 @@ public function testApi() {
 
             // GCS-এ আপলোড
             $uploadStatus = Storage::disk('gcs')->put($fileName, $img->getEncoded());
-
+            return "okk";
             if ($uploadStatus) {
                 $imageUrl = Storage::disk('gcs')->url($fileName);
                 
