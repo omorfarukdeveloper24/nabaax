@@ -10,22 +10,10 @@ use Illuminate\Support\Facades\Storage;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     *
-     * @return void
-     */
-     public function register()
+    public function register()
     {
-        // প্যাকেজ অটো-ডিসকভার হলে এটি ফাঁকা রাখা যায়
+        // আলাদা করে প্যাকেজ রেজিস্টার করার প্রয়োজন নেই
     }
-
-    /**
-     * Bootstrap any application services.
-     *
-     * @return void
-     */
-   
 
     public function boot()
     {
@@ -35,7 +23,7 @@ class AppServiceProvider extends ServiceProvider
 
         view()->composer('*', function ($view) {
             $generalsetting = Cache::remember('generalsetting', now()->addDays(7), function () {
-                return \App\Models\GeneralSetting::where('status', 1)->first();
+                return GeneralSetting::where('status', 1)->first();
             });
             
             $view->with([
