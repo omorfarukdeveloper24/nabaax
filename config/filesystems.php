@@ -56,6 +56,14 @@ return [
             'throw' => false,
         ],
 
+        'gcs' => [
+            'driver' => 'gcs',
+            'project_id' => env('GCS_PROJECT_ID'),
+            'key_file' => env('GCS_KEY_FILE'),
+            'bucket' => env('GCS_BUCKET'),
+            'visibility' => 'public',
+        ],
+
     ],
 
     /*

@@ -317,103 +317,170 @@ public function testApi() {
 
     
     
-    
-    
-    
-   
     public function miniads(Request $request)
     {
-        return "We ar Successfully updated google cloud build auto deploy testing success"; 
-
-        return "Not OKK";
-
         $member = Auth::guard('member')->user();
-    
+
         if (!$member) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized'
             ], 401);
         }
-    
+
         $validator = Validator::make($request->all(), [
             'title'  => 'required|string|max:255',
             'image'  => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
             'link'   => 'required|max:255',
             'status' => 'required|in:0,1',
         ]);
-    
+
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
                 'errors'  => $validator->errors(),
             ], 422);
         }
-    
+
         $validated = $validator->validated();
-    
+
         $data = [
             'member_id' => $member->id,
             'title'     => $validated['title'],
             'link'      => $validated['link'] ?? null,
             'status'    => $validated['status'],
         ];
-    
+
         if ($request->hasFile('image')) {
             $image = $request->file('image');
-    
-            $uploadPath = public_path('uploads/miniads/');
-            if (!file_exists($uploadPath)) {
-                mkdir($uploadPath, 0777, true);
-            }
-    
-
+            
+            // ১. নাম তৈরি করা
             $name = time() . '-' . strtolower(preg_replace('/\s+/', '-', $image->getClientOriginalName()));
             $name = preg_replace('"\.(jpg|jpeg|png|webp)$"', '.webp', $name);
-    
-            $tempPath = $uploadPath . 'temp_' . $name;
-            $finalPath = $uploadPath . $name;
-    
+            $fileName = 'miniads/' . $name;
 
+            // ২. ইমেজ ইন্টারভেনশন দিয়ে প্রসেসিং করা
             $targetWidth = 600;
             $img = Image::make($image->getRealPath());
-            $originalWidth = $img->width();
-            $originalHeight = $img->height();
-            $ratio = $originalHeight / $originalWidth;
-            $targetHeight = intval($targetWidth * $ratio);
-    
+            
             $img->resize($targetWidth, null, function ($constraint) {
                 $constraint->aspectRatio();
                 $constraint->upsize();
-            });
-    
-            $img->resizeCanvas($targetWidth, $targetHeight, 'center', false, '#ffffff');
-    
-            $quality = 90;
-            do {
-                $img->encode('webp', $quality)->save($tempPath);
-                $size = filesize($tempPath) / 1024 / 1024; // in MB
-                $quality -= 5;
-            } while ($size > 2 && $quality >= 10);
-    
+            })->encode('webp', 80); // WebP ফরম্যাটে ৮০% কোয়ালিটিতে কনভার্ট
 
-            if (file_exists($tempPath)) {
-                rename($tempPath, $finalPath);
-            }
-    
-            
-            $data['image'] = 'public/uploads/miniads/' . $name;
+            // ৩. সরাসরি GCS বাকেটে আপলোড করা
+            // এখানে $img->stream() ব্যবহার করা হয়েছে যেন লোকাল সার্ভারে ফাইল সেভ না করতে হয়
+            Storage::disk('gcs')->put($fileName, $img->stream(), 'public');
+
+            // ৪. ডাটাবেসে GCS এর ফুল URL অথবা পাথ সেভ করা
+            $data['image'] = Storage::disk('gcs')->url($fileName);
         }
-    
-   
+
         $miniad = MiniAd::create($data);
-    
+
         return response()->json([
-            'success' => 'success',
-            'message' => 'Mini Ad created successfully!',
+            'success' => true,
+            'message' => 'Mini Ad uploaded to GCS successfully!',
+            'url'     => $data['image'],
             'data'    => $miniad
         ]);
     }
+    
+    
+   
+    // public function miniads(Request $request)
+    // {
+    //     return "We ar Successfully updated google cloud build auto deploy testing success"; 
+
+    //     return "Not OKK";
+
+    //     $member = Auth::guard('member')->user();
+    
+    //     if (!$member) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Unauthorized'
+    //         ], 401);
+    //     }
+    
+    //     $validator = Validator::make($request->all(), [
+    //         'title'  => 'required|string|max:255',
+    //         'image'  => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
+    //         'link'   => 'required|max:255',
+    //         'status' => 'required|in:0,1',
+    //     ]);
+    
+    //     if ($validator->fails()) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'errors'  => $validator->errors(),
+    //         ], 422);
+    //     }
+    
+    //     $validated = $validator->validated();
+    
+    //     $data = [
+    //         'member_id' => $member->id,
+    //         'title'     => $validated['title'],
+    //         'link'      => $validated['link'] ?? null,
+    //         'status'    => $validated['status'],
+    //     ];
+    
+    //     if ($request->hasFile('image')) {
+    //         $image = $request->file('image');
+    
+    //         $uploadPath = public_path('uploads/miniads/');
+    //         if (!file_exists($uploadPath)) {
+    //             mkdir($uploadPath, 0777, true);
+    //         }
+    
+
+    //         $name = time() . '-' . strtolower(preg_replace('/\s+/', '-', $image->getClientOriginalName()));
+    //         $name = preg_replace('"\.(jpg|jpeg|png|webp)$"', '.webp', $name);
+    
+    //         $tempPath = $uploadPath . 'temp_' . $name;
+    //         $finalPath = $uploadPath . $name;
+    
+
+    //         $targetWidth = 600;
+    //         $img = Image::make($image->getRealPath());
+    //         $originalWidth = $img->width();
+    //         $originalHeight = $img->height();
+    //         $ratio = $originalHeight / $originalWidth;
+    //         $targetHeight = intval($targetWidth * $ratio);
+    
+    //         $img->resize($targetWidth, null, function ($constraint) {
+    //             $constraint->aspectRatio();
+    //             $constraint->upsize();
+    //         });
+    
+    //         $img->resizeCanvas($targetWidth, $targetHeight, 'center', false, '#ffffff');
+    
+    //         $quality = 90;
+    //         do {
+    //             $img->encode('webp', $quality)->save($tempPath);
+    //             $size = filesize($tempPath) / 1024 / 1024; // in MB
+    //             $quality -= 5;
+    //         } while ($size > 2 && $quality >= 10);
+    
+
+    //         if (file_exists($tempPath)) {
+    //             rename($tempPath, $finalPath);
+    //         }
+    
+            
+    //         $data['image'] = 'public/uploads/miniads/' . $name;
+    //     }
+    
+   
+    //     $miniad = MiniAd::create($data);
+    
+    //     return response()->json([
+    //         'success' => 'success',
+    //         'message' => 'Mini Ad created successfully!',
+    //         'data'    => $miniad
+    //     ]);
+    // }
     
     // public function postvideo()
     // {

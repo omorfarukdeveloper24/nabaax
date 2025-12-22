@@ -18,6 +18,7 @@ use App\Http\Controllers\Admin\CreatePageController;
 use App\Http\Controllers\Admin\DepositController;
 use App\Http\Controllers\Admin\WithdrawController;
 use App\Http\Controllers\Admin\AdminPayHistoryController;
+use App\Http\Controllers\GcsTestController;
 
 
 Auth::routes();
