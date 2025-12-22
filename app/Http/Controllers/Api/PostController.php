@@ -352,45 +352,32 @@ public function testApi() {
             'status'    => $validated['status'],
         ];
 
-        // if ($request->hasFile('image')) {
-        //     $image = $request->file('image');
-            
-        //     // ১. নাম তৈরি করা
-        //     $name = time() . '-' . strtolower(preg_replace('/\s+/', '-', $image->getClientOriginalName()));
-        //     $name = preg_replace('"\.(jpg|jpeg|png|webp)$"', '.webp', $name);
-        //     $fileName = 'miniads/' . $name;
-
-        //     // ২. ইমেজ ইন্টারভেনশন দিয়ে প্রসেসিং করা
-        //     $targetWidth = 600;
-        //     $img = Image::make($image->getRealPath());
-            
-        //     $img->resize($targetWidth, null, function ($constraint) {
-        //         $constraint->aspectRatio();
-        //         $constraint->upsize();
-        //     })->encode('webp', 80); // WebP ফরম্যাটে ৮০% কোয়ালিটিতে কনভার্ট
-
-        //     // ৩. সরাসরি GCS বাকেটে আপলোড করা
-        //     // এখানে $img->stream() ব্যবহার করা হয়েছে যেন লোকাল সার্ভারে ফাইল সেভ না করতে হয়
-        //     Storage::disk('gcs')->put($fileName, $img->stream(), 'public');
-
-        //     // ৪. ডাটাবেসে GCS এর ফুল URL অথবা পাথ সেভ করা
-        //     $data['image'] = Storage::disk('gcs')->url($fileName);
-        // }
-
         if ($request->hasFile('image')) {
             $image = $request->file('image');
-            $fileName = 'miniads/' . time() . '.webp';
             
-            // রিসাইজ করার পর সরাসরি আপলোড
-            $img = Image::make($image->getRealPath())->resize(600, null, function ($constraint) {
-                $constraint->aspectRatio();
-            })->encode('webp', 80);
+            // ১. নাম তৈরি করা
+            $name = time() . '-' . strtolower(preg_replace('/\s+/', '-', $image->getClientOriginalName()));
+            $name = preg_replace('"\.(jpg|jpeg|png|webp)$"', '.webp', $name);
+            $fileName = 'miniads/' . $name;
 
-            // ডিস্ক কাজ না করলে সরাসরি এই ড্রাইভার ব্যবহার করে দেখুন
-            Storage::disk('gcs')->put($fileName, $img->stream(), 'public');
+            // ২. ইমেজ ইন্টারভেনশন দিয়ে প্রসেসিং করা
+            $targetWidth = 600;
+            $img = Image::make($image->getRealPath());
             
+            $img->resize($targetWidth, null, function ($constraint) {
+                $constraint->aspectRatio();
+                $constraint->upsize();
+            })->encode('webp', 80); // WebP ফরম্যাটে ৮০% কোয়ালিটিতে কনভার্ট
+
+            // ৩. সরাসরি GCS বাকেটে আপলোড করা
+            // এখানে $img->stream() ব্যবহার করা হয়েছে যেন লোকাল সার্ভারে ফাইল সেভ না করতে হয়
+            Storage::disk('gcs')->put($fileName, $img->stream(), 'public');
+
+            // ৪. ডাটাবেসে GCS এর ফুল URL অথবা পাথ সেভ করা
             $data['image'] = Storage::disk('gcs')->url($fileName);
         }
+
+        
 
         $miniad = MiniAd::create($data);
 
