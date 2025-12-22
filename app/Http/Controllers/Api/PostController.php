@@ -318,72 +318,78 @@ public function testApi() {
 
 
    public function miniads(Request $request)
-    {
-        $member = Auth::guard('member')->user();
+{
+    $member = Auth::guard('member')->user();
 
-        if (!$member) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
-        }
+    if (!$member) {
+        return response()->json(['success' => false, 'message' => 'Unauthorized'], 401);
+    }
 
-        $validator = Validator::make($request->all(), [
-            'title'  => 'required|string|max:255',
-            'image'  => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
-            'link'   => 'required|max:255',
-            'status' => 'required|in:0,1',
-        ]);
+    $validator = Validator::make($request->all(), [
+        'title'  => 'required|string|max:255',
+        'image'  => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
+        'link'   => 'required|max:255',
+        'status' => 'required|in:0,1',
+    ]);
 
-        if ($validator->fails()) {
-            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
-        }
+    if ($validator->fails()) {
+        return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+    }
 
-        $validated = $validator->validated();
+    $validated = $validator->validated();
 
-        if ($request->hasFile('image')) {
-            try {
-                $image = $request->file('image');
-                $extension = 'webp';
-                $name = time() . '-' . strtolower(preg_replace('/\s+/', '-', $image->getClientOriginalName()));
-                $name = pathinfo($name, PATHINFO_FILENAME) . '.' . $extension;
-                $fileName = 'miniads/' . $name;
+    if ($request->hasFile('image')) {
+        try {
+            $image = $request->file('image');
+            $extension = 'webp';
+            $name = time() . '-' . strtolower(preg_replace('/\s+/', '-', $image->getClientOriginalName()));
+            $name = pathinfo($name, PATHINFO_FILENAME) . '.' . $extension;
+            $fileName = 'miniads/' . $name;
 
-                // ইমেজ প্রসেসিং
-                $img = Image::make($image->getRealPath())->resize(600, null, function ($constraint) {
-                    $constraint->aspectRatio();
-                    $constraint->upsize();
-                })->encode($extension, 80);
+            // ইমেজ প্রসেসিং
+            $img = Image::make($image->getRealPath())->resize(600, null, function ($constraint) {
+                $constraint->aspectRatio();
+                $constraint->upsize();
+            })->encode($extension, 80);
 
-                // GCS-এ আপলোড (সরাসরি ইন্টারভেনশন অবজেক্ট থেকে স্ট্রিং নেওয়া)
-                $uploadStatus = Storage::disk('gcs')->put($fileName, $img->getEncoded(), 'public');
+            // GCS-এ আপলোড
+            $uploadStatus = Storage::disk('gcs')->put($fileName, $img->getEncoded());
 
-                if ($uploadStatus) {
-                    $imageUrl = Storage::disk('gcs')->url($fileName);
-                    
-                    // ডাটাবেসে সেভ করা
-                    $miniad = MiniAd::create([
-                        'member_id' => $member->id,
-                        'title'     => $validated['title'],
-                        'link'      => $validated['link'],
-                        'status'    => $validated['status'],
-                        'image'     => $imageUrl,
-                    ]);
+            if ($uploadStatus) {
+                $imageUrl = Storage::disk('gcs')->url($fileName);
+                
+                // ডাটাবেসে সেভ করা
+                $miniad = MiniAd::create([
+                    'member_id' => $member->id,
+                    'title'     => $validated['title'],
+                    'link'      => $validated['link'],
+                    'status'    => $validated['status'],
+                    'image'     => $imageUrl,
+                ]);
 
-                    return response()->json([
-                        'success' => true,
-                        'message' => 'Mini Ad uploaded successfully!',
-                        'url'     => $imageUrl,
-                        'data'    => $miniad
-                    ]);
-                }
-
-            } catch (\Exception $e) {
-                \Log::error("GCS Error: " . $e->getMessage());
+                // সাকসেস রেসপন্স
                 return response()->json([
-                    'success' => false, 
-                    'message' => 'Upload failed: ' . $e->getMessage()
-                ], 500);
+                    'success' => true,
+                    'message' => 'Mini Ad uploaded successfully!',
+                    'url'     => $imageUrl,
+                    'data'    => $miniad
+                ]);
+            } else {
+                return response()->json(['success' => false, 'message' => 'Failed to upload to GCS'], 500);
             }
+
+        } catch (\Exception $e) {
+            \Log::error("GCS Error: " . $e->getMessage());
+            return response()->json([
+                'success' => false, 
+                'message' => 'Exception error: ' . $e->getMessage()
+            ], 500);
         }
     }
+
+    // ইমেজ না থাকলে রেসপন্স
+    return response()->json(['success' => false, 'message' => 'No image file found in request'], 400);
+}
 
 
 
