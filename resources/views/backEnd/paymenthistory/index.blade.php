@@ -83,6 +83,7 @@
                                     <th>User Name</th>
                                     <th>Payment Name</th>
                                     <th>Amount</th>
+                                    <th>Balance</th>
                                     <th>Method</th>
                                     <th>Type</th>
                                 </tr>
@@ -109,6 +110,9 @@
 
                                         <td>
                                             {{ $value->amount }}
+                                        </td>
+                                        <td>
+                                            {{ $value->balance }}
                                         </td>
 
                                         <td>
