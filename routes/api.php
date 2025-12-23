@@ -148,7 +148,7 @@ Route::group(['namespace' => 'Api','prefix'=>'v1','middleware' => 'api'], functi
     });
 
     Route::prefix('comment')->middleware('member')->group(function () {
-        Route::get('/list/', [CommentController::class, 'list']);      
+        Route::get('/list', [CommentController::class, 'list']);      
         Route::post('/store', [CommentController::class, 'store']);   
         Route::get('/details/{id}', [CommentController::class, 'details']);   
         Route::post('/update/{id}', [CommentController::class, 'update']); 
@@ -159,7 +159,7 @@ Route::group(['namespace' => 'Api','prefix'=>'v1','middleware' => 'api'], functi
         Route::get('/list', [LikeController::class, 'list']);        
         Route::post('/store', [LikeController::class, 'store']);       
         Route::get('/details/{id}', [LikeController::class, 'details']); 
-        Route::post('/update/{id}', [LikeController::class, 'update']); 
+        Route::post('/update', [LikeController::class, 'update']); 
         Route::post('/destroy', [LikeController::class, 'destroy']);
     });
 
