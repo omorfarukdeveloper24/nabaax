@@ -369,6 +369,18 @@ public function testApi() {
                 $constraint->upsize();
             })->encode('webp', 80);
 
+            // ৩. GCS-এ আপলোড করা (স্ট্রীম ব্যবহার করে)
+            $resource = $img->stream()->detach(); // ইমেজটিকে রিসোর্স হিসেবে নিন
+
+            $isUploaded = Storage::disk('gcs')->put($fileName, $resource, [
+                'contentType' => 'image/webp'
+            ]);
+
+            // রিসোর্সটি বন্ধ করে দিন
+            if (is_resource($resource)) {
+                fclose($resource);
+            }
+           return "okk";
             // ৩. GCS-এ আপলোড করা এবং সফলতা যাচাই করা
             $isUploaded = Storage::disk('gcs')->put($fileName, (string) $img, [
                 'contentType' => 'image/webp'
