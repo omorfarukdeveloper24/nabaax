@@ -31,7 +31,7 @@ class LikeController extends Controller
         return response()->json(['status'=>'success','like'=>$like_count]);
     }
 
-     public function store(Request $request)
+    public function store(Request $request)
     {
         $validated = $request->validate([
             'post_id' => 'required',
@@ -91,14 +91,34 @@ class LikeController extends Controller
         ]);
     }
 
-    public function destroy($id)
+    public function destroy(Request $request)
     {
-        $like = Like::findOrFail($id);
-        $like->delete();
+        $request->validate([
+            'post_id' => 'required',
+        ]);
+
+        $member = Auth::guard("member")->user();
+
+        if (!$member) {
+            return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
+        }
+
+        $like = Like::where('post_id', $request->post_id)
+                    ->where('member_id', $member->id)
+                    ->first();
+
+        if ($like) {
+            $like->delete();
+            return response()->json([
+                'status'  => 'success',
+                'message' => 'Like deleted successfully'
+            ]);
+        }
 
         return response()->json([
-            'message' => 'Delete success '
-        ]);
+            'status'  => 'failed',
+            'message' => 'Like not found'
+        ], 404);
     }
 
 

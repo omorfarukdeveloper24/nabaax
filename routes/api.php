@@ -160,7 +160,7 @@ Route::group(['namespace' => 'Api','prefix'=>'v1','middleware' => 'api'], functi
         Route::post('/store', [LikeController::class, 'store']);       
         Route::get('/details/{id}', [LikeController::class, 'details']); 
         Route::post('/update/{id}', [LikeController::class, 'update']); 
-        Route::post('/destroy/{id}', [LikeController::class, 'destroy']); 
+        Route::post('/destroy', [LikeController::class, 'destroy']);
     });
 
     Route::prefix('share')->middleware('member')->group(function () {
