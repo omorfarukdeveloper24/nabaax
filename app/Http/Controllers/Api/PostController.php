@@ -319,7 +319,7 @@ public function testApi() {
 
 
 
-     public function miniads(Request $request)
+    public function miniads(Request $request)
 {
     $member = Auth::guard('member')->user();
 
@@ -351,27 +351,31 @@ public function testApi() {
         'title'     => $validated['title'],
         'link'      => $validated['link'] ?? null,
         'status'    => $validated['status'],
-        'image'     => null, // ডিফল্ট নাল রাখলাম
+        'image'     => null,
     ];
 
     if ($request->hasFile('image')) {
         try {
             $image = $request->file('image');
             
+            // ১. ফাইল নেম তৈরি
             $originalName = pathinfo($image->getClientOriginalName(), PATHINFO_FILENAME);
             $cleanName = time() . '-' . strtolower(preg_replace('/\s+/', '-', $originalName)) . '.webp';
             $fileName = 'miniads/' . $cleanName;
 
-            // ২. ইমেজ প্রসেসিং
+            // ২. ইমেজ প্রসেসিং (Intervention Image)
             $img = Image::make($image->getRealPath());
             $img->resize(600, null, function ($constraint) {
                 $constraint->aspectRatio();
                 $constraint->upsize();
-            })->encode('webp', 80);
+            });
 
-            // ৩. GCS-এ আপলোড করা (সবথেকে নিরাপদ পদ্ধতি)
-            // সরাসরি বাফারের ডাটা ব্যবহার করা হচ্ছে
-            $isUploaded = Storage::disk('gcs')->getDriver()->put($fileName, (string) $img, [
+            // ইমেজটিকে ওয়েবপি ফরম্যাটে এনকোড করা
+            $encodedImage = $img->encode('webp', 80);
+
+            // ৩. GCS-এ আপলোড করা (সঠিক পদ্ধতি)
+            // সরাসরি Storage::disk('gcs')->put() ব্যবহার করা হয়েছে যা আপনার এররটি দূর করবে
+            $isUploaded = Storage::disk('gcs')->put($fileName, $encodedImage->getEncoded(), [
                 'contentType' => 'image/webp'
             ]);
 
@@ -379,7 +383,7 @@ public function testApi() {
             if (!$isUploaded) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'GCS storage rejected the file.'
+                    'message' => 'GCS storage rejected the file. Please check bucket status.'
                 ], 500);
             }
 
