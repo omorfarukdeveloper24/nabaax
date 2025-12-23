@@ -632,7 +632,7 @@ class MemberController extends Controller
     
     
 
-    public function partner_program(Request $request)
+    public function pertnar_program(Request $request)
     {
         // ১. ভ্যালিডেশন
         $request->validate([
