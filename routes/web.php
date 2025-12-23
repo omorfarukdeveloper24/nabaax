@@ -19,6 +19,7 @@ use App\Http\Controllers\Admin\DepositController;
 use App\Http\Controllers\Admin\WithdrawController;
 use App\Http\Controllers\Admin\AdminPayHistoryController;
 use App\Http\Controllers\GcsTestController;
+use Illuminate\Support\Facades\Storage;
 
 
 Auth::routes();
@@ -30,6 +31,21 @@ Route::get('/cc', function () {
     Artisan::call('view:clear');
     Artisan::call('migrate');
     return "Cleared!";
+});
+
+Route::get('/test-gcs', function () {
+    try {
+        $disk = Storage::disk('gcs');
+        $fileName = 'test-connection.txt';
+        $content = 'Google Cloud Storage is working!';
+
+        // একটি ছোট ফাইল আপলোড করার চেষ্টা
+        $disk->put($fileName, $content);
+
+        return "Connection Successful! File uploaded to: " . $disk->url($fileName);
+    } catch (\Exception $e) {
+        return "Connection Failed: " . $e->getMessage();
+    }
 });
 
 
