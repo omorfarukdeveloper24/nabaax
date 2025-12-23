@@ -319,7 +319,7 @@ public function testApi() {
 
 
 
-    public function miniads(Request $request)
+     public function miniads(Request $request)
 {
     $member = Auth::guard('member')->user();
 
@@ -351,6 +351,7 @@ public function testApi() {
         'title'     => $validated['title'],
         'link'      => $validated['link'] ?? null,
         'status'    => $validated['status'],
+        'image'     => null, // ডিফল্ট নাল রাখলাম
     ];
 
     if ($request->hasFile('image')) {
@@ -369,46 +370,39 @@ public function testApi() {
                 $constraint->upsize();
             })->encode('webp', 80);
 
-            // ৩. GCS-এ আপলোড করা (স্ট্রীম ব্যবহার করে)
-            $resource = $img->stream()->detach(); // ইমেজটিকে রিসোর্স হিসেবে নিন
+            // ৩. GCS-এ আপলোড করা (Stream পদ্ধতি যা আপনার টেস্টে সফল হয়েছে)
+            $resource = $img->stream()->detach(); 
 
             $isUploaded = Storage::disk('gcs')->put($fileName, $resource, [
                 'contentType' => 'image/webp'
+                // ইউনিফর্ম মোডের কারণে এখানে 'visibility' দেওয়া যাবে না
             ]);
 
-            // রিসোর্সটি বন্ধ করে দিন
+            // রিসোর্সটি মেমোরি থেকে মুক্ত করা
             if (is_resource($resource)) {
                 fclose($resource);
             }
-           return "okk";
-            // ৩. GCS-এ আপলোড করা এবং সফলতা যাচাই করা
-            $isUploaded = Storage::disk('gcs')->put($fileName, (string) $img, [
-                'contentType' => 'image/webp'
-            ]);
 
-            // যদি আপলোড ব্যর্থ হয় তবে এরর রিটার্ন করবে
+            // যদি আপলোড ব্যর্থ হয়
             if (!$isUploaded) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'GCS storage rejected the file. Please check your Service Account permissions and bucket status.'
+                    'message' => 'GCS storage rejected the file. Please check bucket permissions.'
                 ], 500);
             }
 
-            // ৪. পূর্ণাঙ্গ URL তৈরি করা
+            // ৪. সফল হলে পূর্ণাঙ্গ URL জেনারেট করা
             $data['image'] = Storage::disk('gcs')->url($fileName);
 
         } catch (\Exception $e) {
-            // ৫. কোনো কারিগরি ত্রুটি হলে তা মেসেজে দেখাবে
             return response()->json([
                 'success' => false,
                 'message' => 'System Error: ' . $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine()
             ], 500);
         }
     }
 
-    // ৬. ডাটাবেসে সেভ করা
+    // ৫. ডাটাবেসে সেভ করা
     $miniad = MiniAd::create($data);
 
     return response()->json([
