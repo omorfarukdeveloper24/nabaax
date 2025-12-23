@@ -371,7 +371,6 @@ public function testApi() {
 
             // ৩. GCS-এ আপলোড করা এবং সফলতা যাচাই করা
             $isUploaded = Storage::disk('gcs')->put($fileName, (string) $img, [
-                'visibility' => 'public',
                 'contentType' => 'image/webp'
             ]);
 
