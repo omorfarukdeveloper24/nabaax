@@ -358,40 +358,32 @@ public function testApi() {
         try {
             $image = $request->file('image');
             
-            // ১. ফাইল নেম তৈরি
             $originalName = pathinfo($image->getClientOriginalName(), PATHINFO_FILENAME);
             $cleanName = time() . '-' . strtolower(preg_replace('/\s+/', '-', $originalName)) . '.webp';
             $fileName = 'miniads/' . $cleanName;
 
-            // ২. ইমেজ প্রসেসিং (Intervention Image)
+            // ২. ইমেজ প্রসেসিং
             $img = Image::make($image->getRealPath());
             $img->resize(600, null, function ($constraint) {
                 $constraint->aspectRatio();
                 $constraint->upsize();
             })->encode('webp', 80);
 
-            // ৩. GCS-এ আপলোড করা (Stream পদ্ধতি যা আপনার টেস্টে সফল হয়েছে)
-            $resource = $img->stream()->detach(); 
-
-            $isUploaded = Storage::disk('gcs')->put($fileName, $resource, [
+            // ৩. GCS-এ আপলোড করা (সবথেকে নিরাপদ পদ্ধতি)
+            // সরাসরি বাফারের ডাটা ব্যবহার করা হচ্ছে
+            $isUploaded = Storage::disk('gcs')->getDriver()->put($fileName, (string) $img, [
                 'contentType' => 'image/webp'
-                // ইউনিফর্ম মোডের কারণে এখানে 'visibility' দেওয়া যাবে না
             ]);
-
-            // রিসোর্সটি মেমোরি থেকে মুক্ত করা
-            if (is_resource($resource)) {
-                fclose($resource);
-            }
 
             // যদি আপলোড ব্যর্থ হয়
             if (!$isUploaded) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'GCS storage rejected the file. Please check bucket permissions.'
+                    'message' => 'GCS storage rejected the file.'
                 ], 500);
             }
 
-            // ৪. সফল হলে পূর্ণাঙ্গ URL জেনারেট করা
+            // ৪. সফল হলে URL জেনারেট করা
             $data['image'] = Storage::disk('gcs')->url($fileName);
 
         } catch (\Exception $e) {
