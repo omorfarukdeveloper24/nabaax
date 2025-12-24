@@ -322,6 +322,7 @@ public function testApi() {
     public function miniads(Request $request)
 {
     $member = Auth::guard('member')->user();
+    return "ok";
 
     if (!$member) {
         return response()->json([
