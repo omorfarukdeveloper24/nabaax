@@ -252,7 +252,7 @@ a { text-decoration: none; }
             <div class="sc-admin-dashboard">
 
               <a href="#"><div class="sc-admin-card">
-                  <div class="sc-admin-icon bg-blue"><i data-feather="wallet"></i> </div>
+                  <div class="sc-admin-icon bg-blue"><i data-feather="database"></i>  </div>
                   <div class="school-admin-details">
                     <h3> {{ $total_balance }} </h3>
                     <p>All Balance</p>
