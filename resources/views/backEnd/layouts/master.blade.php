@@ -364,7 +364,7 @@
 
                          <li>
                             <a href="{{ route('paymentcharges.index') }}">
-                                <i data-feather="home"></i>
+                                <i data-feather="feather"></i>
                                 <span> Payment Charge  </span>
                             </a>
                         </li>
@@ -373,7 +373,7 @@
 
                         <li>
                             <a href="{{ route('paymenthistory.index') }}">
-                                <i data-feather="home"></i>
+                                <i data-feather="clipboard"></i>
                                 <span> Payment History  </span>
                             </a>
                         </li>

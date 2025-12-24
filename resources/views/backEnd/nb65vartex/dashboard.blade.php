@@ -252,7 +252,7 @@ a { text-decoration: none; }
             <div class="sc-admin-dashboard">
 
               <a href="#"><div class="sc-admin-card">
-                  <div class="sc-admin-icon bg-blue"><i class="fa-solid fa-money-check-dollar"></i>  </div>
+                  <div class="sc-admin-icon bg-blue"><i data-feather="briefcase"></i>  </div>
                   <div class="school-admin-details">
                     <h3> {{ $total_balance }} </h3>
                     <p>All Balance</p>
@@ -260,7 +260,7 @@ a { text-decoration: none; }
               </div></a>
 
               <a href="#"><div class="sc-admin-card">
-                  <div class="sc-admin-icon bg-green"><i data-feather="dollar-sign"></i></div>
+                  <div class="sc-admin-icon bg-green"><i data-feather="printer"></i></div>
                   <div class="school-admin-details">
                     <h3> {{ $total_cash }} </h3>
                     <p>Total Cash</p>
@@ -268,7 +268,7 @@ a { text-decoration: none; }
               </div></a>
 
               <a href="#"><div class="sc-admin-card">
-                  <div class="sc-admin-icon bg-purple"><i data-feather="download"></i></div>
+                  <div class="sc-admin-icon bg-purple"><i data-feather="download-cloud"></i></div>
                   <div class="school-admin-details">
                     <h3> {{ $total_deposit }} </h3>
                     <p>Total Deposit</p>
@@ -276,7 +276,7 @@ a { text-decoration: none; }
               </div></a>
 
               <a href="#"><div class="sc-admin-card">
-                  <div class="sc-admin-icon bg-orange"><i data-feather="external-link"></i></div>
+                  <div class="sc-admin-icon bg-orange"><i data-feather="upload-cloud"></i></div>
                   <div class="school-admin-details">
                     <h3> {{ $total_withdraw }} </h3>
                     <p>Total Withdraw</p>
