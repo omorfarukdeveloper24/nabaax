@@ -378,7 +378,7 @@ public function testApi() {
             $isUploaded = Storage::disk('gcs')->put($fileName, $encodedImage->getEncoded(), [
                 'contentType' => 'image/webp'
             ]);
-            return $isUploaded;
+            return "ok";
             // dd($isUploaded);
 
             // যদি আপলোড ব্যর্থ হয়
