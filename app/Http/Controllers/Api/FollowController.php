@@ -36,76 +36,175 @@ class FollowController extends Controller
 
     //     return response()->json(['message' => 'Follow সফলভাবে সম্পন্ন হয়েছে!']);
     // }
-    
-    
-   public function follow(Request $request)
+
+
+
+
+
+
+    public function follow(Request $request)
     {
         $follower = Auth::guard('member')->user();
         $following_id = $request->id;
-    
+
         if ($follower->id == $following_id) {
             return response()->json(['message' => 'You cannot follow yourself!'], 400);
         }
-    
+
         $exists = Follow::where('follower_id', $follower->id)
             ->where('following_id', $following_id)
             ->exists();
-    
+
         if ($exists) {
             return response()->json(['message' => 'You are already following this member!'], 400);
         }
-    
-        
+
+        // বুস্ট চেক লজিক (আপনার আগের কোড অনুযায়ী)
         $boost = FollowBoost::where('member_id', $following_id)
             ->where('status', 'active')
             ->first();
-    
+
         $followType = 0; 
-    
         if ($boost && $boost->remaining_amount > 0) {
             $follower->increment('balance', 1);
             $boost->decrement('remaining_amount', 1);
-    
-            if ($boost->remaining_amount <= 1) {
+            if ($boost->remaining_amount <= 0) {
                 $boost->update(['status' => 'completed']);
             }
-    
             $followType = 1; 
         }
-       
 
-        Follow::create([
+        // নতুন লজিক: চেক করুন উল্টো দিক থেকে ফলো আছে কি না (অর্থাৎ B কি A কে ফলো করে?)
+        $is_mutual = Follow::where('follower_id', $following_id)
+            ->where('following_id', $follower->id)
+            ->first();
+
+        // ফলো রেকর্ড তৈরি
+        $new_follow = Follow::create([
             'follower_id' => $follower->id,
             'following_id' => $following_id,
-            'type' => $followType
+            'type' => $followType,
+            'is_friend' => $is_mutual ? true : false // যদি B ফলো করে থাকে তবে A এখন Friend
         ]);
-    
-        return response()->json(['message' => 'Follow completed successfully!']);
+
+        // যদি Mutual হয়, তবে B এর রেকর্ডটিও আপডেট করতে হবে যে সে এখন A এর বন্ধু
+        if ($is_mutual) {
+            $is_mutual->update(['is_friend' => true]);
+            $message = 'You are now friends!';
+        } else {
+            $message = 'Follow completed successfully!';
+        }
+
+        return response()->json(['message' => $message]);
     }
+
+
+
+
+
+
+    public function unfollow(Request $request)
+{
+    $follower = Auth::guard('member')->user();
+    $following_id = $request->following_id;
+
+    $follow = Follow::where('follower_id', $follower->id)
+        ->where('following_id', $following_id)
+        ->first();
+
+    if (!$follow) {
+        return response()->json(['message' => 'Follow record not found.'], 404);
+    }
+
+    if ($follow->type == 1) {
+        return response()->json(['message' => 'You cannot unfollow earning boosts.'], 400);
+    }
+
+    // লজিক: আনফলো করার আগে চেক করুন তারা বন্ধু কি না
+    // যদি বন্ধু থাকে, তবে ওপর পক্ষের (B) বন্ধু স্ট্যাটাস ফলস করে দিতে হবে
+    Follow::where('follower_id', $following_id)
+        ->where('following_id', $follower->id)
+        ->update(['is_friend' => false]);
+
+    $follow->delete();
+
+    return response()->json(['message' => 'Unfollowed successfully.']);
+}
+
+
+
+
 
     
     
-    public function unfollow(Request $request)
-    {
-        $follower = Auth::guard('member')->user();
-        $follow = Follow::where('follower_id', $follower->id)
-            ->where('following_id', $request->following_id)
-            ->first();
+//    public function follow(Request $request)
+//     {
+//         $follower = Auth::guard('member')->user();
+//         $following_id = $request->id;
     
-        if (!$follow) {
-            return response()->json(['message' => 'Follow record not found.'], 404);
-        }
+//         if ($follower->id == $following_id) {
+//             return response()->json(['message' => 'You cannot follow yourself!'], 400);
+//         }
     
-        if ($follow->type == 1) {
-            return response()->json([
-                'message' => 'You cannot unfollow this member because you are earning from their boost.'
-            ], 400);
-        }
+//         $exists = Follow::where('follower_id', $follower->id)
+//             ->where('following_id', $following_id)
+//             ->exists();
     
-        $follow->delete();
+//         if ($exists) {
+//             return response()->json(['message' => 'You are already following this member!'], 400);
+//         }
     
-        return response()->json(['message' => 'Follow has been successfully removed.']);
-    }
+        
+//         $boost = FollowBoost::where('member_id', $following_id)
+//             ->where('status', 'active')
+//             ->first();
+    
+//         $followType = 0; 
+    
+//         if ($boost && $boost->remaining_amount > 0) {
+//             $follower->increment('balance', 1);
+//             $boost->decrement('remaining_amount', 1);
+    
+//             if ($boost->remaining_amount <= 1) {
+//                 $boost->update(['status' => 'completed']);
+//             }
+    
+//             $followType = 1; 
+//         }
+       
+
+//         Follow::create([
+//             'follower_id' => $follower->id,
+//             'following_id' => $following_id,
+//             'type' => $followType
+//         ]);
+    
+//         return response()->json(['message' => 'Follow completed successfully!']);
+//     }
+
+    
+    
+//     public function unfollow(Request $request)
+//     {
+//         $follower = Auth::guard('member')->user();
+//         $follow = Follow::where('follower_id', $follower->id)
+//             ->where('following_id', $request->following_id)
+//             ->first();
+    
+//         if (!$follow) {
+//             return response()->json(['message' => 'Follow record not found.'], 404);
+//         }
+    
+//         if ($follow->type == 1) {
+//             return response()->json([
+//                 'message' => 'You cannot unfollow this member because you are earning from their boost.'
+//             ], 400);
+//         }
+    
+//         $follow->delete();
+    
+//         return response()->json(['message' => 'Follow has been successfully removed.']);
+//     }
 
 
   
