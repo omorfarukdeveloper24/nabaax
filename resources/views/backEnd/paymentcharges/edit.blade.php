@@ -101,7 +101,7 @@
 
                             <div class="col-sm-6">
                                 <div class="form-group mb-3">
-                                    <label for="partner_own_bonus" class="form-label">Partner Program Own Bonus *</label>
+                                    <label for="partner_own_bonus" class="form-label">Partner Program Cost *</label>
                                     <input type="number" class="form-control @error('partner_own_bonus') is-invalid @enderror"
                                         name="partner_own_bonus" value="{{ $edit_data->partner_own_bonus }}" id="partner_own_bonus" required="">
                                     @error('partner_own_bonus')

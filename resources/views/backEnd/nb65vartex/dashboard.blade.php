@@ -252,36 +252,36 @@ a { text-decoration: none; }
               <a href="#"><div class="sc-admin-card">
                   <div class="sc-admin-icon bg-blue"><i class="fa-solid fa-users"></i></div>
                   <div class="school-admin-details">
-                    <h3> 10 </h3>
-                    <p>Orginal Balance</p>
+                    <h3> {{ $total_balance }} </h3>
+                    <p>All Balance</p>
                   </div>
               </div></a>
 
               <a href="#"><div class="sc-admin-card">
                   <div class="sc-admin-icon bg-green"><i class="fa-solid fa-chalkboard-user"></i></div>
                   <div class="school-admin-details">
-                    <h3>05<h3>
-                    <p>All Teachers</p>
+                    <h3> {{ $total_cash }} </h3>
+                    <p>Total Cash</p>
                   </div>
               </div></a>
 
               <a href="#"><div class="sc-admin-card">
                   <div class="sc-admin-icon bg-purple"><i class="fa-solid fa-school"></i></div>
                   <div class="school-admin-details">
-                    <h3>03</h3>
-                    <p>Classes</p>
+                    <h3> {{ $total_deposit }} </h3>
+                    <p>Total Deposit</p>
                   </div>
               </div></a>
 
               <a href="#"><div class="sc-admin-card">
                   <div class="sc-admin-icon bg-orange"><i class="fa-solid fa-bullhorn"></i></div>
                   <div class="school-admin-details">
-                    <h3>08</h3>
-                    <p>Notices</p>
+                    <h3> {{ $total_withdraw }} </h3>
+                    <p>Total Withdraw</p>
                   </div>
               </div></a>
 
-              <a href="#"><div class="sc-admin-card">
+              <!-- <a href="#"><div class="sc-admin-card">
                   <div class="sc-admin-icon bg-teal"><i class="fa-solid fa-money-check-dollar"></i></div>
                   <div class="school-admin-details">
                     <h3>10</h3>
@@ -311,7 +311,7 @@ a { text-decoration: none; }
                     <h3>10</h3>
                     <p>Total Exams</p>
                   </div>
-              </div></a>
+              </div></a> -->
 
               <!-- <a href="#"><div class="sc-admin-card">
                   <div class="sc-admin-icon bg-cyan"><i class="fa-solid fa-clock"></i></div>
