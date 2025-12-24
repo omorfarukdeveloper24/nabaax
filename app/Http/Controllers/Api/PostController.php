@@ -362,7 +362,7 @@ public function testApi() {
                 $file = $request->file('image');
                 
                 // GCS এ আপলোড (এটি অটোমেটিক ডিস্ক 'gcs' ব্যবহার করবে যদি .env তে সেট থাকে)
-                $path = Storage::disk('gcs')->put('uploads/members', $file);
+                $path = Storage::disk('gcs')->put($file);
 
                 // ফাইলের URL পেতে
                 $url = Storage::disk('gcs')->url($path);
