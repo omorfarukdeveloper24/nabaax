@@ -77,6 +77,7 @@ class WithdrawController extends Controller
      public function status(Request $request)
 {
         $withdraw = WalletWithdraw::find($request->hidden_id);
+        $company = Company::first();
 
         if (!$withdraw) {
             Toastr::error('Withdraw not found!');
@@ -92,13 +93,22 @@ class WithdrawController extends Controller
             return redirect()->back();
         }
 
+        if (!$company) {
+            Toastr::error('Company settings not found!');
+            return redirect()->back();
+        }
+
         try {
             DB::beginTransaction();
 
             $withdraw->status = $new_status;
             $withdraw->save();
 
+
+
             if ($new_status === 'approved' && $old_status !== 'approved') {
+
+                $company->decrement('balance', $withdraw->amount);
                 
                 $transaction_id = 'WTH' . now()->format('ymdHis') . strtoupper(Str::random(3));
 

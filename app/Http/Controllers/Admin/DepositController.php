@@ -8,6 +8,7 @@ use App\Models\Deposit;
 use App\Models\Member;
 use App\Models\CustomerPayHistory;
 use App\Models\AdminPayHistory;
+use App\Models\Company;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Session;
 use Brian2694\Toastr\Facades\Toastr;
@@ -40,9 +41,15 @@ class DepositController extends Controller
     public function status(Request $request)
     {
         $deposit = Deposit::find($request->hidden_id);
+        $company = Company::first();
 
         if (!$deposit) {
             Toastr::error('Deposit not found!');
+            return redirect()->back();
+        }
+
+        if (!$company) {
+            Toastr::error('Company settings not found!');
             return redirect()->back();
         }
 
@@ -62,6 +69,8 @@ class DepositController extends Controller
                 if ($member) {
                     $member->increment('balance', $deposit->amount);
 
+                    $company->increment('balance', $deposit->amount);
+
                     $transaction_id = 'DEP' . $deposit->tnx_id;
 
                     CustomerPayHistory::create([
@@ -74,7 +83,7 @@ class DepositController extends Controller
                         'type'         => 'credit',
                     ]);
 
-                    
+
                 }
             }
 

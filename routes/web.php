@@ -54,10 +54,10 @@ Route::get('/test-gcs', function () {
 //     return "Controller Created";
 // });
 
-Route::get('/migrate', function () {
-    Artisan::call('migrate');
-    return "Migrate Done!";
-});
+// Route::get('/migrate', function () {
+//     Artisan::call('migrate');
+//     return "Migrate Done!";
+// });
 
 // Route::get('/model', function () {
 //     Artisan::call('make:model Notification -m');
