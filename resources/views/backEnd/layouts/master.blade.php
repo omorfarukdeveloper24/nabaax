@@ -374,7 +374,7 @@
                         <li>
                             <a href="{{ route('paymenthistory.index') }}">
                                 <i data-feather="home"></i>
-                                <span> Payment Charge  </span>
+                                <span> Payment History  </span>
                             </a>
                         </li>
                         <!-- END PAYMENT History  NAV ITEM -->

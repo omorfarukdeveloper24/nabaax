@@ -10,7 +10,7 @@
             display: none !important;
         }
         body {
-/*          background: linear-gradient(135deg, #f8f9fc 0%, #eef1f7 100%) !important;*/
+        /*  background: linear-gradient(135deg, #f8f9fc 0%, #eef1f7 100%) !important;*/
          /* background: #0f111a !important;*/
         }
 
@@ -250,7 +250,7 @@ a { text-decoration: none; }
             <div class="sc-admin-dashboard">
 
               <a href="#"><div class="sc-admin-card">
-                  <div class="sc-admin-icon bg-blue"><i class="fa-solid fa-users"></i></div>
+                  <div class="sc-admin-icon bg-blue"><i data-feather="wallet"></i> </div>
                   <div class="school-admin-details">
                     <h3> {{ $total_balance }} </h3>
                     <p>All Balance</p>
@@ -258,7 +258,7 @@ a { text-decoration: none; }
               </div></a>
 
               <a href="#"><div class="sc-admin-card">
-                  <div class="sc-admin-icon bg-green"><i class="fa-solid fa-chalkboard-user"></i></div>
+                  <div class="sc-admin-icon bg-green"><i data-feather="dollar-sign"></i></div>
                   <div class="school-admin-details">
                     <h3> {{ $total_cash }} </h3>
                     <p>Total Cash</p>
@@ -266,7 +266,7 @@ a { text-decoration: none; }
               </div></a>
 
               <a href="#"><div class="sc-admin-card">
-                  <div class="sc-admin-icon bg-purple"><i class="fa-solid fa-school"></i></div>
+                  <div class="sc-admin-icon bg-purple"><<i data-feather="download"></i></div>
                   <div class="school-admin-details">
                     <h3> {{ $total_deposit }} </h3>
                     <p>Total Deposit</p>
@@ -274,7 +274,7 @@ a { text-decoration: none; }
               </div></a>
 
               <a href="#"><div class="sc-admin-card">
-                  <div class="sc-admin-icon bg-orange"><i class="fa-solid fa-bullhorn"></i></div>
+                  <div class="sc-admin-icon bg-orange"><i data-feather="external-link"></i></div>
                   <div class="school-admin-details">
                     <h3> {{ $total_withdraw }} </h3>
                     <p>Total Withdraw</p>
