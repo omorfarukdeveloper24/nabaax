@@ -28,7 +28,7 @@ class DashboardController extends Controller
         $users = User::get();
 
         $total_balance = Member::sum('balance');
-        $total_cash = Company::balance->first();
+        $total_cash = Company::value('balance') ?? 0;
         $total_deposit = Deposit::where('status','approved')->sum('amount');
         $total_withdraw = WalletWithdraw::where('status','approved')->sum('amount');
         return view('backEnd.nb65vartex.dashboard', compact('users','total_balance','total_cash','total_deposit','total_withdraw'));
