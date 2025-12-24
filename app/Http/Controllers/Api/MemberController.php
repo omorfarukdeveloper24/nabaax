@@ -634,7 +634,7 @@ class MemberController extends Controller
 
     public function pertnar_program(Request $request)
     {
-        // ১. ভ্যালিডেশন
+        
         $request->validate([
             'referrer_code' => 'required|string',
         ]);
@@ -642,7 +642,6 @@ class MemberController extends Controller
         $memberId = Auth::guard('member')->id();
         $settings = PaymentChargeSetting::first();
 
-        // সেটিংস থেকে ডেটা নেওয়া
         $minimum_limit   = $settings->partner_min_balance; 
         $first_gen_bonus = $settings->first_gen_bonus;
         $multi_gen_bonus = $settings->multi_gen_bonus;
@@ -650,7 +649,6 @@ class MemberController extends Controller
 
         $member = Member::find($memberId);
 
-        // ২. প্রাথমিক সিকিউরিটি চেক
         if (!$member) {
             return response()->json(['error' => 'Unauthorized access.'], 401);
         }
@@ -672,11 +670,11 @@ class MemberController extends Controller
             return response()->json(['error' => 'Invalid referrer code. User not found.'], 404);
         }
 
-        // ৩. ট্রানজ্যাকশন শুরু (যাতে কোনো এরর হলে টাকা না কাটে)
+        
         DB::beginTransaction();
 
         try {
-            // মেম্বার আপডেট এবং জয়েনিং ফি কাটা
+            
             $member->update([
                 'referrer_id' => $referrer_member->id,
                 'start_date'  => now(),
@@ -684,11 +682,11 @@ class MemberController extends Controller
             ]);
 
             $member->decrement('balance', $partner_cost);
-            $member->refresh(); // আপডেট ব্যালেন্স নেওয়ার জন্য
+            $member->refresh(); 
 
             $join_tnx = 'PRT-' . strtoupper(Str::random(10));
 
-            // কাস্টমার পে হিস্ট্রি (Debit)
+            
             CustomerPayHistory::create([
                 'member_id'    => $member->id,
                 'payment_name' => 'Partner Program Joining Fee',
@@ -699,7 +697,7 @@ class MemberController extends Controller
                 'type'         => 'debit',
             ]);
 
-            // অ্যাডমিন পে হিস্ট্রি (Credit)
+            
             AdminPayHistory::create([
                 'member_id'    => $member->id,
                 'payment_name' => 'Partner Joining Fee from ' . $member->username,
@@ -710,11 +708,11 @@ class MemberController extends Controller
                 'type'         => 'credit',
             ]);
 
-            // ৪. জেনারেশন বোনাস ডিস্ট্রিবিউশন লুপ
+            
             $currentReferrer = $referrer_member; 
             $level = 1;
 
-            // সর্বোচ্চ ১০০ লেভেল পর্যন্ত বোনাস ডিস্ট্রিবিউশন
+            
             while ($currentReferrer && $level <= 100) {
                 $amount = ($level === 1) ? $first_gen_bonus : $multi_gen_bonus;
 
@@ -724,7 +722,7 @@ class MemberController extends Controller
 
                     $bonus_tnx = 'GEN' . $level . '-' . strtoupper(Str::random(10));
 
-                    // রেফারারের ইনকাম হিস্ট্রি (Credit)
+                    
                     CustomerPayHistory::create([
                         'member_id'    => $currentReferrer->id,
                         'payment_name' => "Generation Bonus (L-$level) from " . $member->username,
@@ -735,7 +733,7 @@ class MemberController extends Controller
                         'type'         => 'credit',
                     ]);
 
-                    // অ্যাডমিন ডেবিট রেকর্ড
+                   
                     AdminPayHistory::create([
                         'member_id'    => $currentReferrer->id,
                         'payment_name' => "Generation Bonus (L-$level) paid to " . $currentReferrer->username,
@@ -747,17 +745,16 @@ class MemberController extends Controller
                     ]);
                 }
 
-                // চেইন বজায় রাখতে পরবর্তী রেফারার খুঁজে বের করা
+                
                 if ($currentReferrer->referrer_id) {
                     $currentReferrer = Member::find($currentReferrer->referrer_id);
                 } else {
-                    $currentReferrer = null; // চেইন শেষ
+                    $currentReferrer = null; 
                 }
                 
                 $level++;
             }
 
-            // সব অপারেশন সফল হলে ডাটাবেসে সেভ হবে
             DB::commit();
 
             return response()->json([

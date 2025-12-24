@@ -75,12 +75,13 @@ class LikeController extends Controller
         return response()->json($like);
     }
 
+    
+
     public function update(Request $request)
     {
-        // ১. ভ্যালিডেশন
         $validated = $request->validate([
             'post_id' => 'required',
-            'type'    => 'required', // নতুন টাইপ (যেমন: Like=1, Love=2)
+            'type'    => 'required', 
         ]);
 
         $member = Auth::guard("member")->user();
@@ -89,13 +90,11 @@ class LikeController extends Controller
             return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
         }
 
-        // ২. আগের দেওয়া লাইকটি খুঁজে বের করা
         $like = Like::where('post_id', $request->post_id)
                     ->where('member_id', $member->id)
                     ->first();
 
         if ($like) {
-            // ৩. যদি লাইক খুঁজে পাওয়া যায়, তবে টাইপ আপডেট করা
             $like->update([
                 'type' => $validated['type']
             ]);
@@ -107,7 +106,6 @@ class LikeController extends Controller
             ]);
         }
 
-        // ৪. যদি কোনো লাইক রেকর্ড না থাকে
         return response()->json([
             'status' => 'failed',
             'message' => 'No reaction found to update. Please like first.'
