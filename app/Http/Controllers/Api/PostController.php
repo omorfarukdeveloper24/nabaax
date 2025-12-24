@@ -379,6 +379,8 @@ public function testApi() {
                 'contentType' => 'image/webp'
             ]);
 
+            dd($isUploaded);
+
             // যদি আপলোড ব্যর্থ হয়
             if (!$isUploaded) {
                 return response()->json([
