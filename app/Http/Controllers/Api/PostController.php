@@ -322,7 +322,6 @@ public function testApi() {
     public function miniads(Request $request)
 {
     $member = Auth::guard('member')->user();
-    return "ok";
 
     if (!$member) {
         return response()->json([
@@ -358,7 +357,19 @@ public function testApi() {
     if ($request->hasFile('image')) {
         try {
             $image = $request->file('image');
-            
+
+            if ($request->hasFile('image')) {
+                $file = $request->file('image');
+                
+                // GCS এ আপলোড (এটি অটোমেটিক ডিস্ক 'gcs' ব্যবহার করবে যদি .env তে সেট থাকে)
+                $path = Storage::disk('gcs')->put('uploads/members', $file);
+
+                // ফাইলের URL পেতে
+                $url = Storage::disk('gcs')->url($path);
+
+                return response()->json(['url' => $url]);
+            }
+            return "no file";
             // ১. ফাইল নেম তৈরি
             $originalName = pathinfo($image->getClientOriginalName(), PATHINFO_FILENAME);
             $cleanName = time() . '-' . strtolower(preg_replace('/\s+/', '-', $originalName)) . '.webp';
