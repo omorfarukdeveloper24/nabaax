@@ -35,16 +35,26 @@ Route::get('/cc', function () {
 
 Route::get('/test-gcs', function () {
     try {
-        $disk = Storage::disk('gcs');
-        $fileName = 'test-connection.txt';
-        $content = 'Google Cloud Storage is working!';
+        // ১. একটি ছোট ফাইল বাকেটে আপলোড করার চেষ্টা
+        $testFileName = 'test-connection.txt';
+        $content = 'GCS Connection is working at ' . now();
+        
+        $upload = Storage::disk('gcs')->put($testFileName, $content);
 
-        // একটি ছোট ফাইল আপলোড করার চেষ্টা
-        $disk->put($fileName, $content);
-
-        return "Connection Successful! File uploaded to: " . $disk->url($fileName);
+        if ($upload) {
+            // ২. ফাইলটির URL দেখার চেষ্টা
+            $url = Storage::disk('gcs')->url($testFileName);
+            return response()->json([
+                'success' => true, 
+                'message' => 'Connected to Google Cloud Bucket!',
+                'url' => $url
+            ]);
+        }
     } catch (\Exception $e) {
-        return "Connection Failed: " . $e->getMessage();
+        return response()->json([
+            'success' => false, 
+            'error' => $e->getMessage()
+        ]);
     }
 });
 
