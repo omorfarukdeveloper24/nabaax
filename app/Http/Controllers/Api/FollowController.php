@@ -267,7 +267,7 @@ class FollowController extends Controller
     }
 
 
-    public function suggestedMembers()
+    public function suggestions()
     {
         $member = Auth::guard('member')->user();
 
