@@ -20,6 +20,7 @@ use App\Http\Controllers\Admin\WithdrawController;
 use App\Http\Controllers\Admin\AdminPayHistoryController;
 use App\Http\Controllers\GcsTestController;
 use Illuminate\Support\Facades\Storage;
+use Google\Cloud\Storage\StorageClient;
 
 
 Auth::routes();
@@ -33,25 +34,30 @@ Route::get('/cc', function () {
     return "Cleared!";
 });
 
-Route::get('/test-gcs', function () {
+Route::get('/test-gcs-direct', function () {
     try {
-        $disk = Storage::disk('gcs');
-        $fileName = 'debug-test-' . time() . '.txt';
+        $keyFileData = json_decode(file_get_contents(base_path(env('GCS_KEY_FILE'))), true);
         
-        // এখানে কোনো ৩য় প্যারামিটার (যেমন: 'public') দেবেন না
-        $uploaded = $disk->put($fileName, 'Testing GCS upload without visibility');
+        $storage = new StorageClient([
+            'projectId' => env('GCS_PROJECT_ID'),
+            'keyFile' => $keyFileData,
+        ]);
 
-        if ($uploaded) {
-            return response()->json([
-                'status' => 'success',
-                'url' => $disk->url($fileName)
-            ]);
-        }
-    } catch (\Exception $e) {
+        $bucket = $storage->bucket(env('GCS_BUCKET'));
+        
+        // কোনো ACL ছাড়াই আপলোড
+        $object = $bucket->upload('Direct upload test content', [
+            'name' => 'direct-test-' . time() . '.txt'
+        ]);
+
         return response()->json([
-            'status' => 'failed',
-            'message' => $e->getMessage()
-        ], 500);
+            'status' => 'success',
+            'message' => 'Uploaded directly using Google SDK!',
+            'url' => "https://storage.googleapis.com/" . env('GCS_BUCKET') . "/" . $object->name()
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()]);
     }
 });
 
