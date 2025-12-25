@@ -369,12 +369,16 @@ public function miniads(Request $request)
             $cleanName = time() . '-' . strtolower(preg_replace('/\s+/', '-', $originalName)) . '.webp';
             $fileName = 'miniads/' . $cleanName;
 
-            // ২. রিসাইজ ছাড়া সরাসরি ইমেজ এনকোড (শুধুমাত্র WebP ফরম্যাটে কনভার্ট হবে)
-            // আপনি যদি কনভার্টও করতে না চান, তবে সরাসরি ফাইলটি আপলোড করতে পারেন।
-            $img = Image::make($image->getRealPath());
             
-            // এখানে কোনো resize() ফাংশন নেই, সরাসরি এনকোড হচ্ছে
-            $encodedImage = $img->encode('webp', 80); 
+
+            // ২. রিসাইজ ছাড়া সরাসরি ইমেজ এনকোড
+            $img = Image::make($image->getRealPath());
+
+            // ইমেজ যদি মেটাডাটার কারণে ঘুরে গিয়ে থাকে, তবে এটি তাকে সঠিক ওরিয়েন্টেশনে নিয়ে আসবে
+            $img->orientate(); 
+
+            // সরাসরি এনকোড হচ্ছে (রিসাইজ ছাড়া)
+            $encodedImage = $img->encode('webp', 80);
 
             // ৩. গুগল ক্লাউড SDK কনফিগারেশন
             $keyFileData = config('filesystems.disks.gcs.key_file');
