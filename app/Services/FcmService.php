@@ -60,24 +60,19 @@ public function sendToTokensSequential(array $tokens, string $title, string $bod
 
 
 
-    /**
-     * Kreait version ভেদে send() কখনো string, কখনো array/object হতে পারে।
-     * এখানে আমরা সবক্ষেত্রেই একটি string messageId রিটার্ন করি।
-     */
+
     private function normalizeMessageId($res): string
     {
-        // সরাসরি string পেলে সেটাই
+
         if (is_string($res)) {
             return $res;
         }
 
-        // array হলে probable keys: name | messageId | message_id
         if (is_array($res)) {
             $id = $res['name'] ?? $res['messageId'] ?? $res['message_id'] ?? null;
             if (is_string($id) && $id !== '') {
                 return $id;
-            }
-            // name নেই? array এর প্রথম ভ্যালু নিন (fallback)
+            }k)
             $first = reset($res);
             if (is_string($first) && $first !== '') {
                 return $first;
@@ -86,7 +81,6 @@ public function sendToTokensSequential(array $tokens, string $title, string $bod
             return 'unknown-message-id';
         }
 
-        // object হলে name()/messageId()/toString() ট্রাই করুন
         if (is_object($res)) {
             if (method_exists($res, 'name')) {
                 $id = $res->name();
@@ -102,8 +96,6 @@ public function sendToTokensSequential(array $tokens, string $title, string $bod
             }
             return 'unknown-message-id';
         }
-
-        // অন্য যেকোনো কিছুর জন্য
         return 'unknown-message-id';
     }
 }
