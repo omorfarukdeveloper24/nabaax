@@ -1532,6 +1532,42 @@ class MemberController extends Controller
     //         'data' => $data,
     //     ], 200);
     // }
+
+
+    public function monetizationReport()
+    {
+        $member = Auth::guard('member')->user();
+
+        if (!$member) {
+            return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
+        }
+
+        $total_followers = Follow::where('following_id', $member->id)->count();
+        $total_partners = Member::where('referrer_id', $member->id)->count();
+
+        $partner_status  = ($total_partners >= 10) ? 'Complete' : 'Incomplete';
+        $follower_status = ($total_followers >= 1000) ? 'Complete' : 'Incomplete';
+
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'member_info' => [
+                    'name' => $member->name,
+                    'username' => $member->username,
+                ],
+                'stats' => [
+                    'total_followers' => $total_followers,
+                    'total_partners' => $total_partners,
+                ],
+                'requirements' => [
+                    'partner_requirement' => $partner_status, 
+                    'follower_requirement' => $follower_status, 
+                ],
+                
+            ]
+        ], 200);
+    }
     
     
     
