@@ -56,6 +56,7 @@ class MemberController extends Controller
                     "pagelist",
                     "setting",
                     "sendNotification",
+                    "messageWithNotification",
                 ],
      ]);
     }
@@ -1997,6 +1998,60 @@ class MemberController extends Controller
             'failure_count' => $res['failure'],
             'failed_tokens' => $res['failed_tokens'],
         ], 201);
+    }
+
+
+    public function messageWithNotification(Request $request, \App\Services\FcmService $fcm)
+    {
+        $data = $request->validate([
+            'title'      => 'required|string',
+            'body'       => 'required|string',
+            'payload'    => 'nullable|array',
+            'firebase_id'=> 'required|string',
+        ]);
+        
+        // return $request;
+    
+        // find the device record by firebase_id
+        $device = DeviceToken::where('firebase_id', $data['firebase_id'])
+                    ->select('id','member_id','firebase_id','token')
+                    ->first();
+    
+        if (!$device || empty($device->token)) {
+            return response()->json([
+                'ok' => false,
+                'error' => 'Device token not found for this firebase_id',
+            ], 404);
+        }
+    
+        $payload = array_merge($data['payload'] ?? [], [
+            'type' => 'general_notification',
+        ]);
+    
+        // send to a single token using service's sendToToken method
+        try {
+            // If your FcmService has sendToToken signature (token, title, body, data, image?)
+            $messageId = $fcm->sendToToken(
+                $device->token,
+                $data['title'],
+                $data['body'],
+                $payload
+            );
+    
+            return response()->json([
+                'ok' => true,
+                'target' => 'token',
+                'message_id' => $messageId,
+            ], 200);
+        } catch (\Throwable $e) {
+            // log and return failure
+            \Log::error('FCM send error: '.$e->getMessage(), ['device' => $device->toArray()]);
+            return response()->json([
+                'ok' => false,
+                'error' => 'Failed to send notification',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
     }
 
 
