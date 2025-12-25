@@ -34,33 +34,16 @@ Route::get('/cc', function () {
 });
 
 Route::get('/test-gcs', function () {
-    // লারাভেলকে বলা হচ্ছে এরর স্ক্রিনে দেখাও
+    // সরাসরি PHP এরর এনাবল করা
     ini_set('display_errors', 1);
+    ini_set('display_startup_errors', 1);
     error_reporting(E_ALL);
 
     try {
-        // ডিস্কটি লোড হচ্ছে কি না চেক করা
         $disk = Storage::disk('gcs');
-        
-        $testFileName = 'test-connection-' . time() . '.txt';
-        $content = 'GCS Connection Test';
-        
-        // আপলোড করার চেষ্টা
-        $upload = $disk->put($testFileName, $content);
-
-        return response()->json([
-            'status' => 'Upload Attempted',
-            'result' => $upload ? 'Success' : 'Failed',
-            'file_url' => $upload ? $disk->url($testFileName) : null
-        ]);
-
-    } catch (\Throwable $e) { // Exception এর বদলে Throwable ব্যবহার করুন সব ধরনের এরর ধরার জন্য
-        return response()->json([
-            'success' => false,
-            'error_message' => $e->getMessage(),
-            'file' => $e->getFile(),
-            'line' => $e->getLine()
-        ], 500);
+        return "GCS Disk is ready!";
+    } catch (\Throwable $e) {
+        return "Error: " . $e->getMessage();
     }
 });
 
