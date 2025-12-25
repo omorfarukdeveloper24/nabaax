@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Follow;
+use App\Models\Member;
 use App\Models\FollowBoost;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
