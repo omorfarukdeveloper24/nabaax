@@ -36,28 +36,24 @@ Route::get('/cc', function () {
 Route::get('/test-gcs', function () {
     try {
         $disk = Storage::disk('gcs');
-        $fileName = 'final-test-' . time() . '.txt';
-        $content = 'Hello GCS! Your Laravel connection is working perfectly.';
+        $fileName = 'debug-test-' . time() . '.txt';
+        
+        // সরাসরি ক্লাউড লেভেলে আপলোড ট্রাই করা
+        $uploaded = $disk->put($fileName, 'Testing GCS upload');
 
-        // বাকেটে ফাইল পুশ করা
-        $uploaded = $disk->put($fileName, $content, [
-            'visibility' => 'public'
+        return response()->json([
+            'status' => 'success',
+            'url' => $disk->url($fileName)
         ]);
 
-        if ($uploaded) {
-            $url = $disk->url($fileName);
-            return response()->json([
-                'success' => true,
-                'message' => 'File uploaded successfully!',
-                'file_name' => $fileName,
-                'public_url' => $url
-            ]);
-        }
-
-        return "Upload failed without error.";
-
-    } catch (\Throwable $e) {
-        return "Critical Error: " . $e->getMessage();
+    } catch (\Exception $e) {
+        // এবার আমরা আসল এরর মেসেজটি দেখতে পাব
+        return response()->json([
+            'status' => 'failed',
+            'message' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine()
+        ], 500);
     }
 });
 

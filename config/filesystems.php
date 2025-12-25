@@ -63,6 +63,7 @@ return [
             'bucket' => env('GCS_BUCKET'),
             'path_prefix' => env('GCS_PATH_PREFIX', null),
             'storage_api_uri' => env('GCS_STORAGE_API_URI', null),
+            'throw' => true,
             
         ],
 
