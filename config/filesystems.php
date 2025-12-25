@@ -66,6 +66,10 @@ return [
             'path_prefix' => env('GCS_PATH_PREFIX', null),
             'storage_api_uri' => env('GCS_STORAGE_API_URI', null),
             'throw' => true,
+            
+            // নিচের এই লাইনটি যোগ করুন (এটি খুবই গুরুত্বপূর্ণ)
+            'visibility' => \League\Flysystem\Visibility::PUBLIC, 
+            'visibility_handler' => \Spatie\FlysystemGoogleCloudStorage\UniformBucketLevelAccessVisibility::class,
         ],
 
     ],
