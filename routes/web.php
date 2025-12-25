@@ -38,19 +38,15 @@ Route::get('/test-gcs', function () {
         $disk = Storage::disk('gcs');
         $fileName = 'debug-test-' . time() . '.txt';
         
-        // নোট: ইউনিফর্ম এক্সেসের কারণে আমরা এখানে 'visibility' পাঠাবো না
-        $uploaded = $disk->put($fileName, 'Testing GCS upload from Laravel');
+        // এখানে কোনো ৩য় প্যারামিটার (যেমন: 'public') দেবেন না
+        $uploaded = $disk->put($fileName, 'Testing GCS upload without visibility');
 
         if ($uploaded) {
             return response()->json([
                 'status' => 'success',
-                'message' => 'File uploaded successfully!',
                 'url' => $disk->url($fileName)
             ]);
         }
-
-        return "Upload failed for unknown reason.";
-
     } catch (\Exception $e) {
         return response()->json([
             'status' => 'failed',
