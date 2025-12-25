@@ -643,8 +643,7 @@ public function miniads(Request $request)
     //     ]);
     // }
 
-    
-    
+
 
 
     public function store(Request $request)
@@ -652,37 +651,13 @@ public function miniads(Request $request)
         $request->validate([
             'content' => 'nullable|string',
             'visibility' => 'required',
-            'scheduled_at' => 'nullable',
-            'media.*' => 'nullable|file|max:51200', // max 50MB
+            'media.*' => 'nullable|file',
         ]);
 
         $member = Auth::guard("member")->user();
-        
-        if (!$member) {
-            return response()->json([
-                'status' => 'failed',
-                'message' => 'Unauthorized user'
-            ], 401);
-        }
+        if (!$member) return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
 
-        // বুস্ট চেক (যদি বুস্ট এনাবল থাকে)
-        if ($request->boost_status == 1) {
-            if (BoostService::hasActiveBoost($member->id)) {
-                return response()->json([
-                    'status' => 'failed',
-                    'message' => 'You already have an active boost!'
-                ], 403);
-            }
-
-            if ($member->balance < $request->amount) {
-                return response()->json([
-                    'status' => 'failed',
-                    'message' => 'Not enough balance'
-                ], 403);
-            }
-        }
-
-        // ১. পোস্ট ক্রিয়েট করা
+        // ১. পোস্ট তৈরি
         $post = Post::create([
             'member_id' => $member->id,
             'content' => $request->content ?? null,
@@ -692,101 +667,224 @@ public function miniads(Request $request)
             'scheduled_at' => $request->scheduled_at,
         ]);
 
-        // ২. মিডিয়া আপলোড প্রসেস (GCS)
         if ($request->hasFile('media')) {
             try {
                 // GCS কনফিগারেশন
                 $keyFileData = config('filesystems.disks.gcs.key_file');
-                if (!is_array($keyFileData)) {
-                    $keyFileData = json_decode(file_get_contents(base_path($keyFileData)), true);
-                }
-
-                $storage = new StorageClient([
-                    'projectId' => config('filesystems.disks.gcs.project_id'),
-                    'keyFile' => $keyFileData,
-                ]);
+                if (!is_array($keyFileData)) $keyFileData = json_decode(file_get_contents(base_path($keyFileData)), true);
+                
+                $storage = new StorageClient(['projectId' => config('filesystems.disks.gcs.project_id'), 'keyFile' => $keyFileData]);
                 $bucket = $storage->bucket(config('filesystems.disks.gcs.bucket'));
 
                 foreach ($request->file('media') as $file) {
                     $extension = strtolower($file->getClientOriginalExtension());
-                    $cleanName = time() . '-' . uniqid() . '-' . strtolower(preg_replace('/\s+/', '-', $file->getClientOriginalName()));
-                    
                     $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
                     $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
 
+                    // --- ইমেজ প্রসেসিং (১২০০পিএক্স এবং ৫০০ কেবি লিমিট) ---
                     if (in_array($extension, $imageExtensions)) {
-                        // ইমেজ প্রসেসিং
-                        $name = preg_replace('"\.(jpg|jpeg|png|webp)$"', '.webp', $cleanName);
-                        $img = Image::make($file->getRealPath())->resize(800, null, function ($constraint) {
+                        $img = Image::make($file->getRealPath());
+                        
+                        // রেজুলেশন ঠিক রেখে ১২০০ পিক্সেল চওড়া করা
+                        $img->resize(1200, null, function ($constraint) {
                             $constraint->aspectRatio();
                             $constraint->upsize();
-                        })->encode('webp', 80);
+                        });
 
-                        $filePath = 'posts/images/' . $name;
-                        $bucket->upload($img->getEncoded(), [
-                            'name' => $filePath,
+                        // কোয়ালিটি কমিয়ে ৫০০ কেবি এর নিচে আনা
+                        $quality = 85; 
+                        $encoded = $img->encode('webp', $quality);
+                        
+                        while (strlen($encoded) / 1024 > 500 && $quality > 10) {
+                            $quality -= 5;
+                            $encoded = $img->encode('webp', $quality);
+                        }
+
+                        $fileName = 'posts/images/' . time() . '-' . uniqid() . '.webp';
+                        $bucket->upload($encoded, [
+                            'name' => $fileName, 
                             'metadata' => ['contentType' => 'image/webp']
                         ]);
 
                         Post_media::create([
                             'post_id' => $post->id,
                             'media_type' => 'image',
-                            'path' => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $filePath,
+                            'path' => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $fileName,
                         ]);
 
+                    // --- ভিডিও প্রসেসিং (সরাসরি আপলোড) ---
                     } elseif (in_array($extension, $videoExtensions)) {
-                        // ভিডিও সরাসরি আপলোড
-                        $filePath = 'posts/videos/' . $cleanName;
+                        $fileName = 'posts/videos/' . time() . '-' . uniqid() . '.' . $extension;
+                        
+                        // ভিডিও কোনো পরিবর্তন ছাড়াই সরাসরি আপলোড হচ্ছে
                         $bucket->upload(fopen($file->getRealPath(), 'r'), [
-                            'name' => $filePath,
+                            'name' => $fileName,
                             'metadata' => ['contentType' => $file->getMimeType()]
                         ]);
 
                         Post_media::create([
                             'post_id' => $post->id,
                             'media_type' => 'video',
-                            'path' => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $filePath,
+                            'path' => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $fileName,
                         ]);
                     }
                 }
             } catch (\Exception $e) {
-                Log::error("Post Media Upload Error: " . $e->getMessage());
+                \Log::error("Media Upload Error: " . $e->getMessage());
             }
         }
 
-        // ৩. বুস্ট সার্ভিস লজিক
-        if ($request->boost_status == 1) {
-            $member->balance -= $request->amount;
-            $member->save();
-
-            PostBoost::create([
-                'post_id'         => $post->id,  
-                'member_id'       => $member->id,
-                'boost_amount'     => $request->amount,
-                'remaining_amount' => $request->amount, 
-                'message_link'     => $request->message_link,
-                'website_link'     => $request->website_link,
-                'age_from'        => $request->age_from,
-                'age_to'          => $request->age_to,
-                'start_date'      => Carbon::now(),
-                'end_date'        => $request->end_date ? Carbon::parse($request->end_date)->format('Y-m-d') : null,
-                'gender'          => $request->gender,
-                'location'        => $request->location,
-                'profession'      => $request->profession,
-                'income_range'    => $request->income_range,
-                'click_cost'      => '10',
-                'status'          => 'active',
-            ]);
-        }
-
-        $post->load(['boost', 'media']);
-
         return response()->json([
-            'status'  => 'success',
-            'message' => 'Post created successfully!',
-            'post'    => $post,
+            'status' => 'success', 
+            'message' => 'Post created successfully!', 
+            'post' => $post->load('media')
         ]);
     }
+
+    
+    
+
+
+    // public function store(Request $request)
+    // {
+    //     $request->validate([
+    //         'content' => 'nullable|string',
+    //         'visibility' => 'required',
+    //         'scheduled_at' => 'nullable',
+    //         'media.*' => 'nullable|file|max:51200', // max 50MB
+    //     ]);
+
+    //     $member = Auth::guard("member")->user();
+        
+    //     if (!$member) {
+    //         return response()->json([
+    //             'status' => 'failed',
+    //             'message' => 'Unauthorized user'
+    //         ], 401);
+    //     }
+
+    //     // বুস্ট চেক (যদি বুস্ট এনাবল থাকে)
+    //     if ($request->boost_status == 1) {
+    //         if (BoostService::hasActiveBoost($member->id)) {
+    //             return response()->json([
+    //                 'status' => 'failed',
+    //                 'message' => 'You already have an active boost!'
+    //             ], 403);
+    //         }
+
+    //         if ($member->balance < $request->amount) {
+    //             return response()->json([
+    //                 'status' => 'failed',
+    //                 'message' => 'Not enough balance'
+    //             ], 403);
+    //         }
+    //     }
+
+    //     // ১. পোস্ট ক্রিয়েট করা
+    //     $post = Post::create([
+    //         'member_id' => $member->id,
+    //         'content' => $request->content ?? null,
+    //         'boost_status' => $request->boost_status ?? 0,
+    //         'visibility' => $request->visibility,
+    //         'is_pinned' => $request->is_pinned ?? false,
+    //         'scheduled_at' => $request->scheduled_at,
+    //     ]);
+
+    //     // ২. মিডিয়া আপলোড প্রসেস (GCS)
+    //     if ($request->hasFile('media')) {
+    //         try {
+    //             // GCS কনফিগারেশন
+    //             $keyFileData = config('filesystems.disks.gcs.key_file');
+    //             if (!is_array($keyFileData)) {
+    //                 $keyFileData = json_decode(file_get_contents(base_path($keyFileData)), true);
+    //             }
+
+    //             $storage = new StorageClient([
+    //                 'projectId' => config('filesystems.disks.gcs.project_id'),
+    //                 'keyFile' => $keyFileData,
+    //             ]);
+    //             $bucket = $storage->bucket(config('filesystems.disks.gcs.bucket'));
+
+    //             foreach ($request->file('media') as $file) {
+    //                 $extension = strtolower($file->getClientOriginalExtension());
+    //                 $cleanName = time() . '-' . uniqid() . '-' . strtolower(preg_replace('/\s+/', '-', $file->getClientOriginalName()));
+                    
+    //                 $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+    //                 $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
+
+    //                 if (in_array($extension, $imageExtensions)) {
+    //                     // ইমেজ প্রসেসিং
+    //                     $name = preg_replace('"\.(jpg|jpeg|png|webp)$"', '.webp', $cleanName);
+    //                     $img = Image::make($file->getRealPath())->resize(800, null, function ($constraint) {
+    //                         $constraint->aspectRatio();
+    //                         $constraint->upsize();
+    //                     })->encode('webp', 80);
+
+    //                     $filePath = 'posts/images/' . $name;
+    //                     $bucket->upload($img->getEncoded(), [
+    //                         'name' => $filePath,
+    //                         'metadata' => ['contentType' => 'image/webp']
+    //                     ]);
+
+    //                     Post_media::create([
+    //                         'post_id' => $post->id,
+    //                         'media_type' => 'image',
+    //                         'path' => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $filePath,
+    //                     ]);
+
+    //                 } elseif (in_array($extension, $videoExtensions)) {
+    //                     // ভিডিও সরাসরি আপলোড
+    //                     $filePath = 'posts/videos/' . $cleanName;
+    //                     $bucket->upload(fopen($file->getRealPath(), 'r'), [
+    //                         'name' => $filePath,
+    //                         'metadata' => ['contentType' => $file->getMimeType()]
+    //                     ]);
+
+    //                     Post_media::create([
+    //                         'post_id' => $post->id,
+    //                         'media_type' => 'video',
+    //                         'path' => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $filePath,
+    //                     ]);
+    //                 }
+    //             }
+    //         } catch (\Exception $e) {
+    //             Log::error("Post Media Upload Error: " . $e->getMessage());
+    //         }
+    //     }
+
+    //     // ৩. বুস্ট সার্ভিস লজিক
+    //     if ($request->boost_status == 1) {
+    //         $member->balance -= $request->amount;
+    //         $member->save();
+
+    //         PostBoost::create([
+    //             'post_id'         => $post->id,  
+    //             'member_id'       => $member->id,
+    //             'boost_amount'     => $request->amount,
+    //             'remaining_amount' => $request->amount, 
+    //             'message_link'     => $request->message_link,
+    //             'website_link'     => $request->website_link,
+    //             'age_from'        => $request->age_from,
+    //             'age_to'          => $request->age_to,
+    //             'start_date'      => Carbon::now(),
+    //             'end_date'        => $request->end_date ? Carbon::parse($request->end_date)->format('Y-m-d') : null,
+    //             'gender'          => $request->gender,
+    //             'location'        => $request->location,
+    //             'profession'      => $request->profession,
+    //             'income_range'    => $request->income_range,
+    //             'click_cost'      => '10',
+    //             'status'          => 'active',
+    //         ]);
+    //     }
+
+    //     $post->load(['boost', 'media']);
+
+    //     return response()->json([
+    //         'status'  => 'success',
+    //         'message' => 'Post created successfully!',
+    //         'post'    => $post,
+    //     ]);
+    // }
     
     
 
