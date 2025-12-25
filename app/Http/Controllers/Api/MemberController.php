@@ -1202,6 +1202,14 @@ class MemberController extends Controller
         $member->upazila  = $upazila;
         $member->profession  = $profession;
         $member->division = $division;
+
+        $followers_count = Follow::where('following_id', $member->id)->count();
+
+        $following_count = Follow::where('follower_id', $member->id)->count();
+
+        $friends_count = Follow::where('follower_id', $member->id)
+                            ->where('is_friend', 1)
+                            ->count();
         
         $boost = FollowBoost::where('member_id', $member->id)
             ->where('status', 'active')
@@ -1217,7 +1225,9 @@ class MemberController extends Controller
         return response()->json([
             'status' => 'success',
             'message'=> 'Your Profile Details',
-            'follow_boost' => $boost_status,
+            'follow_boost' => $boost_status,'followers_count' => $followers_count, 
+            'following_count' => $following_count, 
+            'friends_count'   => $friends_count,
             'data'   => $member,
         ], 200);
     }
