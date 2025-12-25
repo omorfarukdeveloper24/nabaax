@@ -437,351 +437,6 @@ public function miniads(Request $request)
 
 
 
-//     public function miniads(Request $request)
-// {
-//     $member = Auth::guard('member')->user();
-
-//     if (!$member) {
-//         return response()->json([
-//             'success' => false,
-//             'message' => 'Unauthorized'
-//         ], 401);
-//     }
-
-//     $validator = Validator::make($request->all(), [
-//         'title'  => 'required|string|max:255',
-//         'image'  => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
-//         'link'   => 'required|max:255',
-//         'status' => 'required|in:0,1',
-//     ]);
-
-//     if ($validator->fails()) {
-//         return response()->json([
-//             'success' => false,
-//             'errors'  => $validator->errors(),
-//         ], 422);
-//     }
-
-//     $validated = $validator->validated();
-
-//     $data = [
-//         'member_id' => $member->id,
-//         'title'     => $validated['title'],
-//         'link'      => $validated['link'] ?? null,
-//         'status'    => $validated['status'],
-//         'image'     => null,
-//     ];
-
-//     if ($request->hasFile('image')) {
-//         try {
-//             $image = $request->file('image');
-            
-            
-//             // ১. ফাইল নেম তৈরি
-//             $originalName = pathinfo($image->getClientOriginalName(), PATHINFO_FILENAME);
-//             $cleanName = time() . '-' . strtolower(preg_replace('/\s+/', '-', $originalName)) . '.webp';
-//             $fileName = 'miniads/' . $cleanName;
-
-//             // ২. ইমেজ প্রসেসিং (Intervention Image)
-//             $img = Image::make($image->getRealPath());
-//             $img->resize(600, null, function ($constraint) {
-//                 $constraint->aspectRatio();
-//                 $constraint->upsize();
-//             });
-
-//             // ইমেজটিকে ওয়েবপি ফরম্যাটে এনকোড করা
-//             $encodedImage = $img->encode('webp', 80);
-
-//             // ৩. GCS-এ আপলোড করা (সঠিক পদ্ধতি)
-//             // সরাসরি Storage::disk('gcs')->put() ব্যবহার করা হয়েছে যা আপনার এররটি দূর করবে
-//             $isUploaded = Storage::disk('gcs')->put($fileName, $encodedImage->getEncoded(), [
-//                 'contentType' => 'image/webp'
-//             ]);
-            
-//             // dd($isUploaded);
-
-//             // যদি আপলোড ব্যর্থ হয়
-//             if (!$isUploaded) {
-//                 return response()->json([
-//                     'success' => false,
-//                     'message' => 'GCS storage rejected the file. Please check bucket status.'
-//                 ], 500);
-//             }
-
-//             // ৪. সফল হলে URL জেনারেট করা
-//             $data['image'] = Storage::disk('gcs')->url($fileName);
-
-//         } catch (\Exception $e) {
-//             return response()->json([
-//                 'success' => false,
-//                 'message' => 'System Error: ' . $e->getMessage(),
-//             ], 500);
-//         }
-//     }
-
-//     // ৫. ডাটাবেসে সেভ করা
-//     $miniad = MiniAd::create($data);
-
-//     return response()->json([
-//         'success' => true,
-//         'message' => 'Mini Ad uploaded to GCS successfully!',
-//         'url'     => $data['image'],
-//         'data'    => $miniad
-//     ]);
-// }
-
-
-
-//    public function miniads(Request $request)
-// {
-//     $member = Auth::guard('member')->user();
-
-//     if (!$member) {
-//         return response()->json([
-//             'success' => false,
-//             'message' => 'Unauthorized'
-//         ], 401);
-//     }
-
-//     $validator = Validator::make($request->all(), [
-//         'title'  => 'required|string|max:255',
-//         'image'  => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
-//         'link'   => 'required|max:255',
-//         'status' => 'required|in:0,1',
-//     ]);
-
-//     if ($validator->fails()) {
-//         return response()->json([
-//             'success' => false,
-//             'errors'  => $validator->errors(),
-//         ], 422);
-//     }
-
-//     $validated = $validator->validated();
-
-//     $data = [
-//         'member_id' => $member->id,
-//         'title'     => $validated['title'],
-//         'link'      => $validated['link'] ?? null,
-//         'status'    => $validated['status'],
-//     ];
-
-//     if ($request->hasFile('image')) {
-//         try {
-//             $image = $request->file('image');
-            
-//             // ১. ফাইল নেম তৈরি
-//             $originalName = pathinfo($image->getClientOriginalName(), PATHINFO_FILENAME);
-//             $cleanName = time() . '-' . strtolower(preg_replace('/\s+/', '-', $originalName)) . '.webp';
-//             $fileName = 'miniads/' . $cleanName;
-
-//             // ২. ইমেজ প্রসেসিং (Intervention Image)
-//             $img = Image::make($image->getRealPath());
-//             $img->resize(600, null, function ($constraint) {
-//                 $constraint->aspectRatio();
-//                 $constraint->upsize();
-//             })->encode('webp', 80);
-
-//             // ৩. GCS-এ আপলোড করা (stream এর পরিবর্তে সরাসরি স্ট্রিং ডেটা ব্যবহার)
-//             // অনেক সময় stream() GCS ড্রাইভারের সাথে সমস্যা করে, তাই __toString() বা detach() নিরাপদ
-//             Storage::disk('gcs')->put($fileName, (string) $img, [
-//                 'visibility' => 'public',
-//                 'contentType' => 'image/webp'
-//             ]);
-
-//             // ৪. পূর্ণাঙ্গ URL তৈরি করা
-//             $data['image'] = Storage::disk('gcs')->url($fileName);
-
-//         } catch (\Exception $e) {
-//             return response()->json([
-//                 'success' => false,
-//                 'message' => 'File upload failed: ' . $e->getMessage()
-//             ], 500);
-//         }
-//     }
-
-//     // ৫. ডাটাবেসে সেভ করা
-//     $miniad = MiniAd::create($data);
-
-//     return response()->json([
-//         'success' => true,
-//         'message' => 'Mini Ad uploaded to GCS successfully!',
-//         'url'     => $data['image'],
-//         'data'    => $miniad
-//     ]);
-// }
-
-
-
-
-    
-    
-    // public function miniads(Request $request)
-    // {
-    //     $member = Auth::guard('member')->user();
-
-    //     if (!$member) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Unauthorized'
-    //         ], 401);
-    //     }
-
-    //     $validator = Validator::make($request->all(), [
-    //         'title'  => 'required|string|max:255',
-    //         'image'  => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
-    //         'link'   => 'required|max:255',
-    //         'status' => 'required|in:0,1',
-    //     ]);
-
-    //     if ($validator->fails()) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'errors'  => $validator->errors(),
-    //         ], 422);
-    //     }
-
-    //     $validated = $validator->validated();
-
-    //     $data = [
-    //         'member_id' => $member->id,
-    //         'title'     => $validated['title'],
-    //         'link'      => $validated['link'] ?? null,
-    //         'status'    => $validated['status'],
-    //     ];
-
-    //     if ($request->hasFile('image')) {
-    //         $image = $request->file('image');
-            
-    //         // ১. নাম তৈরি করা
-    //         $name = time() . '-' . strtolower(preg_replace('/\s+/', '-', $image->getClientOriginalName()));
-    //         $name = preg_replace('"\.(jpg|jpeg|png|webp)$"', '.webp', $name);
-    //         $fileName = 'miniads/' . $name;
-
-    //         // ২. ইমেজ ইন্টারভেনশন দিয়ে প্রসেসিং করা
-    //         $targetWidth = 600;
-    //         $img = Image::make($image->getRealPath());
-            
-    //         $img->resize($targetWidth, null, function ($constraint) {
-    //             $constraint->aspectRatio();
-    //             $constraint->upsize();
-    //         })->encode('webp', 80); // WebP ফরম্যাটে ৮০% কোয়ালিটিতে কনভার্ট
-
-    //         // ৩. সরাসরি GCS বাকেটে আপলোড করা
-    //         // এখানে $img->stream() ব্যবহার করা হয়েছে যেন লোকাল সার্ভারে ফাইল সেভ না করতে হয়
-    //         Storage::disk('gcs')->put($fileName, $img->stream(), 'public');
-
-    //         // ৪. ডাটাবেসে GCS এর ফুল URL অথবা পাথ সেভ করা
-    //         $data['image'] = Storage::disk('gcs')->url($fileName);
-    //     }
-
-        
-
-    //     $miniad = MiniAd::create($data);
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'message' => 'Mini Ad uploaded to GCS successfully!',
-    //         'url'     => $data['image'],
-    //         'data'    => $miniad
-    //     ]);
-    // }
-    
-    
-   
-    // public function miniads(Request $request)
-    // {
-    //     return "We ar Successfully updated google cloud build auto deploy testing success"; 
-
-    //     return "Not OKK";
-
-    //     $member = Auth::guard('member')->user();
-    
-    //     if (!$member) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Unauthorized'
-    //         ], 401);
-    //     }
-    
-    //     $validator = Validator::make($request->all(), [
-    //         'title'  => 'required|string|max:255',
-    //         'image'  => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
-    //         'link'   => 'required|max:255',
-    //         'status' => 'required|in:0,1',
-    //     ]);
-    
-    //     if ($validator->fails()) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'errors'  => $validator->errors(),
-    //         ], 422);
-    //     }
-    
-    //     $validated = $validator->validated();
-    
-    //     $data = [
-    //         'member_id' => $member->id,
-    //         'title'     => $validated['title'],
-    //         'link'      => $validated['link'] ?? null,
-    //         'status'    => $validated['status'],
-    //     ];
-    
-    //     if ($request->hasFile('image')) {
-    //         $image = $request->file('image');
-    
-    //         $uploadPath = public_path('uploads/miniads/');
-    //         if (!file_exists($uploadPath)) {
-    //             mkdir($uploadPath, 0777, true);
-    //         }
-    
-
-    //         $name = time() . '-' . strtolower(preg_replace('/\s+/', '-', $image->getClientOriginalName()));
-    //         $name = preg_replace('"\.(jpg|jpeg|png|webp)$"', '.webp', $name);
-    
-    //         $tempPath = $uploadPath . 'temp_' . $name;
-    //         $finalPath = $uploadPath . $name;
-    
-
-    //         $targetWidth = 600;
-    //         $img = Image::make($image->getRealPath());
-    //         $originalWidth = $img->width();
-    //         $originalHeight = $img->height();
-    //         $ratio = $originalHeight / $originalWidth;
-    //         $targetHeight = intval($targetWidth * $ratio);
-    
-    //         $img->resize($targetWidth, null, function ($constraint) {
-    //             $constraint->aspectRatio();
-    //             $constraint->upsize();
-    //         });
-    
-    //         $img->resizeCanvas($targetWidth, $targetHeight, 'center', false, '#ffffff');
-    
-    //         $quality = 90;
-    //         do {
-    //             $img->encode('webp', $quality)->save($tempPath);
-    //             $size = filesize($tempPath) / 1024 / 1024; // in MB
-    //             $quality -= 5;
-    //         } while ($size > 2 && $quality >= 10);
-    
-
-    //         if (file_exists($tempPath)) {
-    //             rename($tempPath, $finalPath);
-    //         }
-    
-            
-    //         $data['image'] = 'public/uploads/miniads/' . $name;
-    //     }
-    
-   
-    //     $miniad = MiniAd::create($data);
-    
-    //     return response()->json([
-    //         'success' => 'success',
-    //         'message' => 'Mini Ad created successfully!',
-    //         'data'    => $miniad
-    //     ]);
-    // }
     
     // public function postvideo()
     // {
@@ -990,35 +645,44 @@ public function miniads(Request $request)
 
     
     
-    
-    
+
 
     public function store(Request $request)
     {
-     
-        
-        // return $request->all();
-        
-        
         $request->validate([
-            // 'member_id' => 'required',
             'content' => 'nullable|string',
             'visibility' => 'required',
             'scheduled_at' => 'nullable',
+            'media.*' => 'nullable|file|max:51200', // max 50MB
         ]);
-        
-        
+
         $member = Auth::guard("member")->user();
         
-       if (!$member) {
-        return response()->json([
-            'status' => failed,
+        if (!$member) {
+            return response()->json([
+                'status' => 'failed',
                 'message' => 'Unauthorized user'
             ], 401);
         }
 
-        // return $member;
-        
+        // বুস্ট চেক (যদি বুস্ট এনাবল থাকে)
+        if ($request->boost_status == 1) {
+            if (BoostService::hasActiveBoost($member->id)) {
+                return response()->json([
+                    'status' => 'failed',
+                    'message' => 'You already have an active boost!'
+                ], 403);
+            }
+
+            if ($member->balance < $request->amount) {
+                return response()->json([
+                    'status' => 'failed',
+                    'message' => 'Not enough balance'
+                ], 403);
+            }
+        }
+
+        // ১. পোস্ট ক্রিয়েট করা
         $post = Post::create([
             'member_id' => $member->id,
             'content' => $request->content ?? null,
@@ -1026,173 +690,92 @@ public function miniads(Request $request)
             'visibility' => $request->visibility,
             'is_pinned' => $request->is_pinned ?? false,
             'scheduled_at' => $request->scheduled_at,
-            
         ]);
-        
-        // return $member;
-        
+
+        // ২. মিডিয়া আপলোড প্রসেস (GCS)
         if ($request->hasFile('media')) {
-            $uploadImagePath = public_path('uploads/post/images/');
-            $uploadVideoPath = public_path('uploads/post/videos/');
-        
-            if (!file_exists($uploadImagePath)) mkdir($uploadImagePath, 0777, true);
-            if (!file_exists($uploadVideoPath)) mkdir($uploadVideoPath, 0777, true);
-        
-            foreach ($request->file('media') as $file) {
-        
-                $extension = strtolower($file->getClientOriginalExtension());
-                $name = time() . '-' . strtolower(preg_replace('/\s+/', '-', $file->getClientOriginalName()));
-        
-                $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
-                $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
-        
-                if (in_array($extension, $imageExtensions)) {
-                    $name = preg_replace('"\.(jpg|jpeg|png|webp)$"', '.webp', $name);
-                    $imageUrl = $uploadImagePath . $name;
-        
-                    $targetWidth = 600;
-                    $img = Image::make($file->getRealPath());
-                    $img->resize($targetWidth, null, function ($constraint) {
-                        $constraint->aspectRatio();
-                        $constraint->upsize();
-                    });
-        
-                    $quality = 90;
-                    do {
-                        $tempPath = $uploadImagePath . 'temp_' . $name;
-                        $img->encode('webp', $quality)->save($tempPath);
-                        $size = filesize($tempPath) / 1024 / 1024;
-                        $quality -= 5;
-                    } while ($size > 2 && $quality >= 10);
-        
-                    rename($tempPath, $imageUrl);
-        
-                    Post_media::create([
-                        'post_id' => $post->id,
-                        'media_type' => 'image',
-                        'path' => 'public/uploads/post/images/' . $name,
-                    ]);
-                } elseif (in_array($extension, $videoExtensions)) {
-                    $videoUrl = $uploadVideoPath . $name;
-                    $file->move($uploadVideoPath, $name);
-        
-                    Post_media::create([
-                        'post_id' => $post->id,
-                        'media_type' => 'video',
-                        'path' => 'public/uploads/post/videos/' . $name,
-                    ]);
+            try {
+                // GCS কনফিগারেশন
+                $keyFileData = config('filesystems.disks.gcs.key_file');
+                if (!is_array($keyFileData)) {
+                    $keyFileData = json_decode(file_get_contents(base_path($keyFileData)), true);
                 }
+
+                $storage = new StorageClient([
+                    'projectId' => config('filesystems.disks.gcs.project_id'),
+                    'keyFile' => $keyFileData,
+                ]);
+                $bucket = $storage->bucket(config('filesystems.disks.gcs.bucket'));
+
+                foreach ($request->file('media') as $file) {
+                    $extension = strtolower($file->getClientOriginalExtension());
+                    $cleanName = time() . '-' . uniqid() . '-' . strtolower(preg_replace('/\s+/', '-', $file->getClientOriginalName()));
+                    
+                    $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+                    $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
+
+                    if (in_array($extension, $imageExtensions)) {
+                        // ইমেজ প্রসেসিং
+                        $name = preg_replace('"\.(jpg|jpeg|png|webp)$"', '.webp', $cleanName);
+                        $img = Image::make($file->getRealPath())->resize(800, null, function ($constraint) {
+                            $constraint->aspectRatio();
+                            $constraint->upsize();
+                        })->encode('webp', 80);
+
+                        $filePath = 'posts/images/' . $name;
+                        $bucket->upload($img->getEncoded(), [
+                            'name' => $filePath,
+                            'metadata' => ['contentType' => 'image/webp']
+                        ]);
+
+                        Post_media::create([
+                            'post_id' => $post->id,
+                            'media_type' => 'image',
+                            'path' => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $filePath,
+                        ]);
+
+                    } elseif (in_array($extension, $videoExtensions)) {
+                        // ভিডিও সরাসরি আপলোড
+                        $filePath = 'posts/videos/' . $cleanName;
+                        $bucket->upload(fopen($file->getRealPath(), 'r'), [
+                            'name' => $filePath,
+                            'metadata' => ['contentType' => $file->getMimeType()]
+                        ]);
+
+                        Post_media::create([
+                            'post_id' => $post->id,
+                            'media_type' => 'video',
+                            'path' => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $filePath,
+                        ]);
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error("Post Media Upload Error: " . $e->getMessage());
             }
         }
 
-
-        
-        
-        // if ($request->hasFile('images')) {
-            
-        //     foreach ($request->file('images') as $image) {
-        //         $name = time() . '-' . $image->getClientOriginalName();
-        //         $name = preg_replace('"\.(jpg|jpeg|png|webp)$"', '.webp', $name);
-        //         $name = strtolower(preg_replace('/\s+/', '-', $name));
-        //         $uploadPath = 'public/uploads/post/images';
-        //         $imageUrl = $uploadPath . $name;
-
-        //         $targetWidth = 600;
-        //         $img = Image::make($image->getRealPath());
-        //         $originalWidth = $img->width();
-        //         $originalHeight = $img->height();
-        //         $ratio = $originalHeight / $originalWidth;
-        //         $targetHeight = intval($targetWidth * $ratio);
-
-        //         $img->resize($targetWidth, null, function ($constraint) {
-        //             $constraint->aspectRatio();
-        //             $constraint->upsize();
-        //         });
-        //         $img->resizeCanvas($targetWidth, $targetHeight, 'center', false, '#ffffff');
-        //         $quality = 90;
-
-        //         do {
-        //             $tempPath = $uploadPath . 'temp_' . $name;
-        //             $img->encode('webp', $quality)->save($tempPath);
-        //             $size = filesize($tempPath) / 1024 / 1024;
-        //             $quality -= 5;
-        //         } while ($size > 2 && $quality >= 10);
-
-        //         rename($tempPath, $imageUrl);
-
-                
-        //         Post_media::create([
-        //             'post_id' => $post->id,
-        //             'media_type' => 'image',
-        //             'path' => $imageUrl,
-        //         ]);
-        //     }
-        // }
-
-
-
-        // if ($request->hasFile('videos')) {
-        //     foreach ($request->file('videos') as $video) {
-        //         $name = time() . '-' . $video->getClientOriginalName();
-        //         $name = strtolower(preg_replace('/\s+/', '-', $name));
-        //         $uploadPath = 'public/uploads/post/videos/';
-        //         $videoUrl = $uploadPath . $name;
-
-        //         $video->move(public_path($uploadPath), $name);
-
-        //         Post_media::create([
-        //             'post_id' => $post->id,
-        //             'media_type' => 'video',
-        //             'path' => $videoUrl,
-        //         ]);
-        //     }
-        // }
-
-     
-        
-        
-          
+        // ৩. বুস্ট সার্ভিস লজিক
         if ($request->boost_status == 1) {
-            
-            
-           
-            if ($request->boost_status == 1 && BoostService::hasActiveBoost($member->id)) {
-                return response()->json([
-                    'status' => 'failed',
-                    'message' => 'You already have an active boost!'
-                ], 403);
-            }
-        
-            if ($request->boost_status == 1 && $member->balance < $request->amount) {
-                return response()->json([
-                    'status' => 'failed',
-                    'message' => 'Not enough balance'
-                ], 403);
-            }
-        
-            
-            
-            
-        $member->balance -= $request->amount;
-        $member->save();
+            $member->balance -= $request->amount;
+            $member->save();
 
-        $postboost = PostBoost::create([
-                'post_id'     => $post->id,  
-                'member_id'   => $member->id,
+            PostBoost::create([
+                'post_id'         => $post->id,  
+                'member_id'       => $member->id,
                 'boost_amount'     => $request->amount,
                 'remaining_amount' => $request->amount, 
                 'message_link'     => $request->message_link,
                 'website_link'     => $request->website_link,
-                'age_from'    => $request->age_from,
-                'age_to'      => $request->age_to,
-                'start_date'  => Carbon::now(),
-                'end_date'    => $request->end_date ? Carbon::parse($request->end_date)->format('Y-m-d') : null,
-                'gender'      => $request->gender,
-                'location'    => $request->location,
-                'profession'  => $request->profession,
-                'income_range'=> $request->income_range,
-                'click_cost'  => '10',
-                'status'           => 'active',
+                'age_from'        => $request->age_from,
+                'age_to'          => $request->age_to,
+                'start_date'      => Carbon::now(),
+                'end_date'        => $request->end_date ? Carbon::parse($request->end_date)->format('Y-m-d') : null,
+                'gender'          => $request->gender,
+                'location'        => $request->location,
+                'profession'      => $request->profession,
+                'income_range'    => $request->income_range,
+                'click_cost'      => '10',
+                'status'          => 'active',
             ]);
         }
 
@@ -1204,6 +787,156 @@ public function miniads(Request $request)
             'post'    => $post,
         ]);
     }
+    
+    
+
+    // public function store(Request $request)
+    // {
+     
+        
+    //     // return $request->all();
+        
+        
+    //     $request->validate([
+    //         // 'member_id' => 'required',
+    //         'content' => 'nullable|string',
+    //         'visibility' => 'required',
+    //         'scheduled_at' => 'nullable',
+    //     ]);
+        
+        
+    //     $member = Auth::guard("member")->user();
+        
+    //    if (!$member) {
+    //     return response()->json([
+    //         'status' => failed,
+    //             'message' => 'Unauthorized user'
+    //         ], 401);
+    //     }
+
+    //     // return $member;
+        
+    //     $post = Post::create([
+    //         'member_id' => $member->id,
+    //         'content' => $request->content ?? null,
+    //         'boost_status' => $request->boost_status ?? 0,
+    //         'visibility' => $request->visibility,
+    //         'is_pinned' => $request->is_pinned ?? false,
+    //         'scheduled_at' => $request->scheduled_at,
+            
+    //     ]);
+        
+    //     // return $member;
+        
+    //     if ($request->hasFile('media')) {
+    //         $uploadImagePath = public_path('uploads/post/images/');
+    //         $uploadVideoPath = public_path('uploads/post/videos/');
+        
+    //         if (!file_exists($uploadImagePath)) mkdir($uploadImagePath, 0777, true);
+    //         if (!file_exists($uploadVideoPath)) mkdir($uploadVideoPath, 0777, true);
+        
+    //         foreach ($request->file('media') as $file) {
+        
+    //             $extension = strtolower($file->getClientOriginalExtension());
+    //             $name = time() . '-' . strtolower(preg_replace('/\s+/', '-', $file->getClientOriginalName()));
+        
+    //             $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+    //             $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
+        
+    //             if (in_array($extension, $imageExtensions)) {
+    //                 $name = preg_replace('"\.(jpg|jpeg|png|webp)$"', '.webp', $name);
+    //                 $imageUrl = $uploadImagePath . $name;
+        
+    //                 $targetWidth = 600;
+    //                 $img = Image::make($file->getRealPath());
+    //                 $img->resize($targetWidth, null, function ($constraint) {
+    //                     $constraint->aspectRatio();
+    //                     $constraint->upsize();
+    //                 });
+        
+    //                 $quality = 90;
+    //                 do {
+    //                     $tempPath = $uploadImagePath . 'temp_' . $name;
+    //                     $img->encode('webp', $quality)->save($tempPath);
+    //                     $size = filesize($tempPath) / 1024 / 1024;
+    //                     $quality -= 5;
+    //                 } while ($size > 2 && $quality >= 10);
+        
+    //                 rename($tempPath, $imageUrl);
+        
+    //                 Post_media::create([
+    //                     'post_id' => $post->id,
+    //                     'media_type' => 'image',
+    //                     'path' => 'public/uploads/post/images/' . $name,
+    //                 ]);
+    //             } elseif (in_array($extension, $videoExtensions)) {
+    //                 $videoUrl = $uploadVideoPath . $name;
+    //                 $file->move($uploadVideoPath, $name);
+        
+    //                 Post_media::create([
+    //                     'post_id' => $post->id,
+    //                     'media_type' => 'video',
+    //                     'path' => 'public/uploads/post/videos/' . $name,
+    //                 ]);
+    //             }
+    //         }
+    //     }
+    
+        
+        
+          
+    //     if ($request->boost_status == 1) {
+            
+            
+           
+    //         if ($request->boost_status == 1 && BoostService::hasActiveBoost($member->id)) {
+    //             return response()->json([
+    //                 'status' => 'failed',
+    //                 'message' => 'You already have an active boost!'
+    //             ], 403);
+    //         }
+        
+    //         if ($request->boost_status == 1 && $member->balance < $request->amount) {
+    //             return response()->json([
+    //                 'status' => 'failed',
+    //                 'message' => 'Not enough balance'
+    //             ], 403);
+    //         }
+        
+            
+            
+            
+    //     $member->balance -= $request->amount;
+    //     $member->save();
+
+    //     $postboost = PostBoost::create([
+    //             'post_id'     => $post->id,  
+    //             'member_id'   => $member->id,
+    //             'boost_amount'     => $request->amount,
+    //             'remaining_amount' => $request->amount, 
+    //             'message_link'     => $request->message_link,
+    //             'website_link'     => $request->website_link,
+    //             'age_from'    => $request->age_from,
+    //             'age_to'      => $request->age_to,
+    //             'start_date'  => Carbon::now(),
+    //             'end_date'    => $request->end_date ? Carbon::parse($request->end_date)->format('Y-m-d') : null,
+    //             'gender'      => $request->gender,
+    //             'location'    => $request->location,
+    //             'profession'  => $request->profession,
+    //             'income_range'=> $request->income_range,
+    //             'click_cost'  => '10',
+    //             'status'           => 'active',
+    //         ]);
+    //     }
+
+    //     $post->load(['boost', 'media']);
+
+    //     return response()->json([
+    //         'status'  => 'success',
+    //         'message' => 'Post created successfully!',
+    //         'post'    => $post,
+    //     ]);
+    // }
     
    
     
