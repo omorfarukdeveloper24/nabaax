@@ -59,7 +59,6 @@ class FollowController extends Controller
             return response()->json(['message' => 'You are already following this member!'], 400);
         }
 
-        // বুস্ট চেক লজিক (আপনার আগের কোড অনুযায়ী)
         $boost = FollowBoost::where('member_id', $following_id)
             ->where('status', 'active')
             ->first();
@@ -74,20 +73,17 @@ class FollowController extends Controller
             $followType = 1; 
         }
 
-        // নতুন লজিক: চেক করুন উল্টো দিক থেকে ফলো আছে কি না (অর্থাৎ B কি A কে ফলো করে?)
         $is_mutual = Follow::where('follower_id', $following_id)
             ->where('following_id', $follower->id)
             ->first();
 
-        // ফলো রেকর্ড তৈরি
         $new_follow = Follow::create([
             'follower_id' => $follower->id,
             'following_id' => $following_id,
             'type' => $followType,
-            'is_friend' => $is_mutual ? true : false // যদি B ফলো করে থাকে তবে A এখন Friend
+            'is_friend' => $is_mutual ? true : false 
         ]);
 
-        // যদি Mutual হয়, তবে B এর রেকর্ডটিও আপডেট করতে হবে যে সে এখন A এর বন্ধু
         if ($is_mutual) {
             $is_mutual->update(['is_friend' => true]);
             $message = 'You are now friends!';
@@ -104,32 +100,30 @@ class FollowController extends Controller
 
 
     public function unfollow(Request $request)
-{
-    $follower = Auth::guard('member')->user();
-    $following_id = $request->following_id;
+    {
+        $follower = Auth::guard('member')->user();
+        $following_id = $request->following_id;
 
-    $follow = Follow::where('follower_id', $follower->id)
-        ->where('following_id', $following_id)
-        ->first();
+        $follow = Follow::where('follower_id', $follower->id)
+            ->where('following_id', $following_id)
+            ->first();
 
-    if (!$follow) {
-        return response()->json(['message' => 'Follow record not found.'], 404);
+        if (!$follow) {
+            return response()->json(['message' => 'Follow record not found.'], 404);
+        }
+
+        if ($follow->type == 1) {
+            return response()->json(['message' => 'You cannot unfollow earning boosts.'], 400);
+        }
+
+        Follow::where('follower_id', $following_id)
+            ->where('following_id', $follower->id)
+            ->update(['is_friend' => false]);
+
+        $follow->delete();
+
+        return response()->json(['message' => 'Unfollowed successfully.']);
     }
-
-    if ($follow->type == 1) {
-        return response()->json(['message' => 'You cannot unfollow earning boosts.'], 400);
-    }
-
-    // লজিক: আনফলো করার আগে চেক করুন তারা বন্ধু কি না
-    // যদি বন্ধু থাকে, তবে ওপর পক্ষের (B) বন্ধু স্ট্যাটাস ফলস করে দিতে হবে
-    Follow::where('follower_id', $following_id)
-        ->where('following_id', $follower->id)
-        ->update(['is_friend' => false]);
-
-    $follow->delete();
-
-    return response()->json(['message' => 'Unfollowed successfully.']);
-}
 
 
 
@@ -220,6 +214,7 @@ class FollowController extends Controller
                     'id' => $follow->follower->id,
                     'name' => $follow->follower->name,
                     'username' => $follow->follower->username,
+                    'is_friend' => $follow->is_friend,
                     'image' => $follow->follower->image,
                 ];
             });
@@ -239,13 +234,35 @@ class FollowController extends Controller
                 return [
                     'id' => $follow->following->id,
                     'name' => $follow->following->name,
-                    'name' => $follow->following->name,
+                    'is_friend' => $follow->is_friend,
                     'username' => $follow->following->username,
                     'image' => $follow->following->image,
                 ];
             });
 
         return response()->json(['data' => $following]);
+    }
+
+
+    public function flowfriend()
+    {
+        $member = Auth::guard('member')->user();
+
+        $friends = Follow::where('follower_id', $member->id)
+            ->where('is_friend', 1) 
+            ->with('following:id,name,username,image') 
+            ->get()
+            ->map(function ($follow) {
+                return [
+                    'id'       => $follow->following->id,
+                    'name'     => $follow->following->name,
+                    'username' => $follow->following->username,
+                    'is_friend'=> $follow->is_friend,
+                    'image'    => $follow->following->image,
+                ];
+            });
+
+        return response()->json(['data' => $friends]);
     }
     
    
