@@ -364,25 +364,20 @@ public function miniads(Request $request)
         try {
             $image = $request->file('image');
 
-            // ১. ফাইল নেম এবং পাথ তৈরি
+            // ১. ফাইল নেম তৈরি
             $originalName = pathinfo($image->getClientOriginalName(), PATHINFO_FILENAME);
             $cleanName = time() . '-' . strtolower(preg_replace('/\s+/', '-', $originalName)) . '.webp';
             $fileName = 'miniads/' . $cleanName;
 
-            // ২. ইমেজ প্রসেসিং (Intervention Image)
+            // ২. রিসাইজ ছাড়া সরাসরি ইমেজ এনকোড (শুধুমাত্র WebP ফরম্যাটে কনভার্ট হবে)
+            // আপনি যদি কনভার্টও করতে না চান, তবে সরাসরি ফাইলটি আপলোড করতে পারেন।
             $img = Image::make($image->getRealPath());
-            $img->resize(600, null, function ($constraint) {
-                $constraint->aspectRatio();
-                $constraint->upsize();
-            });
+            
+            // এখানে কোনো resize() ফাংশন নেই, সরাসরি এনকোড হচ্ছে
+            $encodedImage = $img->encode('webp', 80); 
 
-            $encodedImage = $img->encode('webp', 80);
-
-            // ৩. গুগল ক্লাউড SDK কনফিগারেশন (সংশোধিত অংশ)
+            // ৩. গুগল ক্লাউড SDK কনফিগারেশন
             $keyFileData = config('filesystems.disks.gcs.key_file');
-
-            // চেক করা হচ্ছে ডাটা কি সরাসরি অ্যারে নাকি ফাইল পাথ
-            // যদি key_file স্ট্রিং হয়, তবে লারাভেল ফাইল পাথ হিসেবে হ্যান্ডেল করবে
             if (!is_array($keyFileData)) {
                 $keyFileData = json_decode(file_get_contents(base_path($keyFileData)), true);
             }
@@ -395,7 +390,7 @@ public function miniads(Request $request)
             $bucketName = config('filesystems.disks.gcs.bucket');
             $bucket = $storage->bucket($bucketName);
 
-            // ইউনিফর্ম এক্সেস বাকেটের জন্য আপলোড
+            // আপলোড
             $object = $bucket->upload($encodedImage->getEncoded(), [
                 'name' => $fileName,
                 'metadata' => [
@@ -403,7 +398,6 @@ public function miniads(Request $request)
                 ]
             ]);
 
-            // ৪. সফল হলে পাবলিক URL সেট করা
             if ($object) {
                 $data['image'] = "https://storage.googleapis.com/" . $bucketName . "/" . $fileName;
             }
