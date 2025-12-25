@@ -1970,7 +1970,7 @@ class MemberController extends Controller
             ->unique()
             ->values()
             ->all();
-    
+        return $tokens;
         if (empty($tokens)) {
             return response()->json([
                 'ok' => false,
