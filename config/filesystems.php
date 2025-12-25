@@ -56,15 +56,17 @@ return [
             'throw' => false,
         ],
 
+        
+
         'gcs' => [
             'driver' => 'gcs',
             'project_id' => env('GCS_PROJECT_ID'),
-            'key_file' => base_path(env('GCS_KEY_FILE')), 
+            'key_file' => json_decode(file_get_contents(base_path(env('GCS_KEY_FILE'))), true), 
             'bucket' => env('GCS_BUCKET'),
             'path_prefix' => env('GCS_PATH_PREFIX', null),
             'storage_api_uri' => env('GCS_STORAGE_API_URI', null),
+            'visibility' => 'public',
             'throw' => true,
-            
         ],
 
     ],
