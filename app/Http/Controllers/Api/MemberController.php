@@ -1545,9 +1545,14 @@ class MemberController extends Controller
         $total_followers = Follow::where('following_id', $member->id)->count();
         $total_partners = Member::where('referrer_id', $member->id)->count();
 
-        $partner_status  = ($total_partners >= 10) ? 'Complete' : 'Incomplete';
-        $follower_status = ($total_followers >= 1000) ? 'Complete' : 'Incomplete';
+        $partner_goal = 10;
+        $follower_goal = 1000;
 
+        $partner_percentage = min(($total_partners / $partner_goal) * 100, 100);
+        $follower_percentage = min(($total_followers / $follower_goal) * 100, 100);
+
+        $partner_status  = ($total_partners >= $partner_goal) ? 'Complete' : 'Incomplete';
+        $follower_status = ($total_followers >= $follower_goal) ? 'Complete' : 'Incomplete';
 
         return response()->json([
             'status' => 'success',
@@ -1561,10 +1566,19 @@ class MemberController extends Controller
                     'total_partners' => $total_partners,
                 ],
                 'requirements' => [
-                    'partner_requirement' => $partner_status, 
-                    'follower_requirement' => $follower_status, 
-                ],
-                
+                    'partner' => [
+                        'status' => $partner_status,
+                        'current' => $total_partners,
+                        'goal' => $partner_goal,
+                        'percentage' => round($partner_percentage, 2) . '%'
+                    ],
+                    'follower' => [
+                        'status' => $follower_status,
+                        'current' => $total_followers,
+                        'goal' => $follower_goal,
+                        'percentage' => round($follower_percentage, 2) . '%'
+                    ],
+                ]
             ]
         ], 200);
     }
