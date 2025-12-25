@@ -325,7 +325,7 @@ public function testApi() {
 
 
 
-    public function miniads(Request $request)
+public function miniads(Request $request)
 {
     $member = Auth::guard('member')->user();
 
@@ -376,20 +376,26 @@ public function testApi() {
                 $constraint->upsize();
             });
 
-            // ইমেজটিকে ওয়েবপি ফরম্যাটে এনকোড করা
             $encodedImage = $img->encode('webp', 80);
 
-            // ৩. গুগল ক্লাউড SDK ব্যবহার করে সরাসরি আপলোড (Uniform Access এর জন্য নিরাপদ)
-            $keyFileData = json_decode(file_get_contents(base_path(config('filesystems.disks.gcs.key_file'))), true);
+            // ৩. গুগল ক্লাউড SDK কনফিগারেশন (সংশোধিত অংশ)
+            $keyFileData = config('filesystems.disks.gcs.key_file');
+
+            // চেক করা হচ্ছে ডাটা কি সরাসরি অ্যারে নাকি ফাইল পাথ
+            // যদি key_file স্ট্রিং হয়, তবে লারাভেল ফাইল পাথ হিসেবে হ্যান্ডেল করবে
+            if (!is_array($keyFileData)) {
+                $keyFileData = json_decode(file_get_contents(base_path($keyFileData)), true);
+            }
             
             $storage = new StorageClient([
                 'projectId' => config('filesystems.disks.gcs.project_id'),
                 'keyFile' => $keyFileData,
             ]);
 
-            $bucket = $storage->bucket(config('filesystems.disks.gcs.bucket'));
+            $bucketName = config('filesystems.disks.gcs.bucket');
+            $bucket = $storage->bucket($bucketName);
 
-            // আপলোড করার সময় কোনো ACL বা Visibility পাঠানো হচ্ছে না
+            // ইউনিফর্ম এক্সেস বাকেটের জন্য আপলোড
             $object = $bucket->upload($encodedImage->getEncoded(), [
                 'name' => $fileName,
                 'metadata' => [
@@ -399,13 +405,16 @@ public function testApi() {
 
             // ৪. সফল হলে পাবলিক URL সেট করা
             if ($object) {
-                $data['image'] = "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $fileName;
+                $data['image'] = "https://storage.googleapis.com/" . $bucketName . "/" . $fileName;
             }
 
         } catch (\Exception $e) {
+            // বিস্তারিত লগের জন্য
+            \Log::error("GCS Upload Error: " . $e->getMessage());
+            
             return response()->json([
                 'success' => false,
-                'message' => 'System Error: ' . $e->getMessage(),
+                'message' => 'Upload failed: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -415,7 +424,7 @@ public function testApi() {
 
     return response()->json([
         'success' => true,
-        'message' => 'Mini Ad uploaded to GCS miniads folder successfully!',
+        'message' => 'Mini Ad uploaded successfully!',
         'url'     => $data['image'],
         'data'    => $miniad
     ]);
