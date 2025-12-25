@@ -38,21 +38,23 @@ Route::get('/test-gcs', function () {
         $disk = Storage::disk('gcs');
         $fileName = 'debug-test-' . time() . '.txt';
         
-        // সরাসরি ক্লাউড লেভেলে আপলোড ট্রাই করা
-        $uploaded = $disk->put($fileName, 'Testing GCS upload');
+        // নোট: ইউনিফর্ম এক্সেসের কারণে আমরা এখানে 'visibility' পাঠাবো না
+        $uploaded = $disk->put($fileName, 'Testing GCS upload from Laravel');
 
-        return response()->json([
-            'status' => 'success',
-            'url' => $disk->url($fileName)
-        ]);
+        if ($uploaded) {
+            return response()->json([
+                'status' => 'success',
+                'message' => 'File uploaded successfully!',
+                'url' => $disk->url($fileName)
+            ]);
+        }
+
+        return "Upload failed for unknown reason.";
 
     } catch (\Exception $e) {
-        // এবার আমরা আসল এরর মেসেজটি দেখতে পাব
         return response()->json([
             'status' => 'failed',
-            'message' => $e->getMessage(),
-            'file' => $e->getFile(),
-            'line' => $e->getLine()
+            'message' => $e->getMessage()
         ], 500);
     }
 });
