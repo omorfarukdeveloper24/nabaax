@@ -3,10 +3,9 @@
 namespace App\Services;
 
 use Kreait\Firebase\Factory;
-use Kreait\Firebase\Contract\Messaging;
 use Kreait\Firebase\Messaging\CloudMessage;
 use Kreait\Firebase\Messaging\Notification;
-
+use Kreait\Firebase\Messaging;
 
 class FcmService
 {
@@ -24,7 +23,7 @@ class FcmService
             ->withNotification(Notification::create($title, $body))
             ->withData($data);
 
-        $res = $this->messaging->send($message); // string | array | object (version অনুযায়ী)
+        $res = $this->messaging->send($message);
         return $this->normalizeMessageId($res);
     }
 
@@ -34,36 +33,34 @@ class FcmService
             ->withNotification(Notification::create($title, $body))
             ->withData($data);
 
-        $res = $this->messaging->send($message); // string | array | object
+        $res = $this->messaging->send($message);
         return $this->normalizeMessageId($res);
     }
 
+    public function sendToTokensSequential(array $tokens, string $title, string $body, array $data = []): array
+    {
+        $tokens = array_values(array_unique(array_filter(array_map('strval', $tokens))));
+        $ok = 0; $fail = 0; $failed = [];
 
-public function sendToTokensSequential(array $tokens, string $title, string $body, array $data = []): array
-{
-    $tokens = array_values(array_unique(array_filter(array_map('strval', $tokens))));
-    $ok=0; $fail=0; $failed=[];
-
-    foreach ($tokens as $t) {
-        try {
-            $this->sendToToken($t, $title, $body, array_map('strval', $data));
-            $ok++;
-        } catch (\Throwable $e) {
-            $fail++; $failed[] = $t;
+        foreach ($tokens as $t) {
+            try {
+                $this->sendToToken($t, $title, $body, array_map('strval', $data));
+                $ok++;
+            } catch (\Throwable $e) {
+                $fail++; 
+                $failed[] = $t;
+            }
         }
+        return ['success' => $ok, 'failure' => $fail, 'failed_tokens' => $failed];
     }
-    return ['success'=>$ok,'failure'=>$fail,'failed_tokens'=>$failed];
-}
 
-
-
-
-
-
-
+    /**
+     * Kreait version ভেদে send() কখনো string, কখনো array/object হতে পারে।
+     * এখানে আমরা সবক্ষেত্রেই একটি string messageId রিটার্ন করি।
+     */
     private function normalizeMessageId($res): string
     {
-
+        // সরাসরি string পেলে সেটাই
         if (is_string($res)) {
             return $res;
         }
@@ -72,15 +69,16 @@ public function sendToTokensSequential(array $tokens, string $title, string $bod
             $id = $res['name'] ?? $res['messageId'] ?? $res['message_id'] ?? null;
             if (is_string($id) && $id !== '') {
                 return $id;
-            }k)
+            }
+            // name নেই? array এর প্রথম ভ্যালু নিন (fallback)
             $first = reset($res);
             if (is_string($first) && $first !== '') {
                 return $first;
             }
-            // সর্বশেষ fallback
             return 'unknown-message-id';
         }
 
+        // object হলে name()/messageId()/toString() ট্রাই করুন
         if (is_object($res)) {
             if (method_exists($res, 'name')) {
                 $id = $res->name();
@@ -96,6 +94,7 @@ public function sendToTokensSequential(array $tokens, string $title, string $bod
             }
             return 'unknown-message-id';
         }
+
         return 'unknown-message-id';
     }
-}
+} // <--- এই Class এর শেষ ব্র্যাকেটটি মিসিং ছিল অথবা সিনট্যাক্স এলোমেলো ছিল।
