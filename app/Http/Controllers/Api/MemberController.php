@@ -2029,9 +2029,8 @@ class MemberController extends Controller
             'type' => 'general_notification',
         ]);
     
-        // send to a single token using service's sendToToken method
         try {
-            // If your FcmService has sendToToken signature (token, title, body, data, image?)
+        
             $messageId = $fcm->sendToToken(
                 $device->token,
                 $data['title'],

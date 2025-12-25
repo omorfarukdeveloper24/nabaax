@@ -357,19 +357,11 @@ public function testApi() {
     if ($request->hasFile('image')) {
         try {
             $image = $request->file('image');
-
-            if ($request->hasFile('image')) {
-                $file = $request->file('image');
-                
-                // GCS এ আপলোড (এটি অটোমেটিক ডিস্ক 'gcs' ব্যবহার করবে যদি .env তে সেট থাকে)
-                $path = Storage::disk('gcs')->put('member', $file);
-
-                // ফাইলের URL পেতে
-                $url = Storage::disk('gcs')->url($path);
-
-                return response()->json(['url' => $url]);
+            if (!file_exists(base_path(env('GCS_KEY_FILE')))) {
+                return "Key file not found at: " . base_path(env('GCS_KEY_FILE'));
             }
-            return "no file";
+            return "This is not Ok";
+            
             // ১. ফাইল নেম তৈরি
             $originalName = pathinfo($image->getClientOriginalName(), PATHINFO_FILENAME);
             $cleanName = time() . '-' . strtolower(preg_replace('/\s+/', '-', $originalName)) . '.webp';
@@ -390,7 +382,7 @@ public function testApi() {
             $isUploaded = Storage::disk('gcs')->put($fileName, $encodedImage->getEncoded(), [
                 'contentType' => 'image/webp'
             ]);
-            return "ok";
+            
             // dd($isUploaded);
 
             // যদি আপলোড ব্যর্থ হয়
