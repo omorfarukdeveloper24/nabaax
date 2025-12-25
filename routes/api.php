@@ -121,6 +121,7 @@ Route::group(['namespace' => 'Api','prefix'=>'v1','middleware' => 'api'], functi
         Route::get('/following', [FollowController::class, 'following']); 
         Route::post('/followboost', [FollowController::class, 'followBoost']); 
         Route::get('/flowfriend', [FollowController::class, 'flowfriend']); 
+        Route::get('/suggestions', [FollowController::class, 'suggestions']);
     });
     
    

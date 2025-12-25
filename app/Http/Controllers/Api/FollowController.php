@@ -264,6 +264,35 @@ class FollowController extends Controller
 
         return response()->json(['data' => $friends]);
     }
+
+
+    public function suggestedMembers()
+    {
+        $member = Auth::guard('member')->user();
+
+        $following_ids = Follow::where('follower_id', $member->id)
+            ->pluck('following_id')
+            ->toArray();
+
+        $suggestions = Member::where('id', '!=', $member->id) 
+            ->whereNotIn('id', $following_ids) 
+            ->where('verified', '1') 
+            ->inRandomOrder() 
+            ->limit(20) 
+            ->select('id', 'name', 'username', 'image')
+            ->get()
+            ->map(function ($suggested) {
+                return [
+                    'id' => $suggested->id,
+                    'name' => $suggested->name,
+                    'username' => $suggested->username,
+                    'image' => $suggested->image,
+                    'followers_count' => Follow::where('following_id', $suggested->id)->count(), 
+                ];
+            });
+
+        return response()->json(['data' => $suggestions]);
+    }
     
    
     
