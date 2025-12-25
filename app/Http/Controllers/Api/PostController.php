@@ -18,6 +18,7 @@ use Intervention\Image\Facades\Image;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
+use Google\Cloud\Storage\StorageClient;
 
 
 class PostController extends Controller
@@ -319,6 +320,11 @@ public function testApi() {
 
 
 
+
+
+
+
+
     public function miniads(Request $request)
 {
     $member = Auth::guard('member')->user();
@@ -357,12 +363,8 @@ public function testApi() {
     if ($request->hasFile('image')) {
         try {
             $image = $request->file('image');
-            if (!file_exists(base_path(env('GCS_KEY_FILE')))) {
-                return "Key file not found at: " . base_path(env('GCS_KEY_FILE'));
-            }
-            return "This is not Ok";
-            
-            // ১. ফাইল নেম তৈরি
+
+            // ১. ফাইল নেম এবং পাথ তৈরি
             $originalName = pathinfo($image->getClientOriginalName(), PATHINFO_FILENAME);
             $cleanName = time() . '-' . strtolower(preg_replace('/\s+/', '-', $originalName)) . '.webp';
             $fileName = 'miniads/' . $cleanName;
@@ -374,27 +376,31 @@ public function testApi() {
                 $constraint->upsize();
             });
 
-            // ইমেজটিকে ওয়েবপি ফরম্যাটে এনকোড করা
+            // ইমেজটিকে ওয়েবপি ফরম্যাটে এনকোড করা
             $encodedImage = $img->encode('webp', 80);
 
-            // ৩. GCS-এ আপলোড করা (সঠিক পদ্ধতি)
-            // সরাসরি Storage::disk('gcs')->put() ব্যবহার করা হয়েছে যা আপনার এররটি দূর করবে
-            $isUploaded = Storage::disk('gcs')->put($fileName, $encodedImage->getEncoded(), [
-                'contentType' => 'image/webp'
-            ]);
+            // ৩. গুগল ক্লাউড SDK ব্যবহার করে সরাসরি আপলোড (Uniform Access এর জন্য নিরাপদ)
+            $keyFileData = json_decode(file_get_contents(base_path(config('filesystems.disks.gcs.key_file'))), true);
             
-            // dd($isUploaded);
+            $storage = new StorageClient([
+                'projectId' => config('filesystems.disks.gcs.project_id'),
+                'keyFile' => $keyFileData,
+            ]);
 
-            // যদি আপলোড ব্যর্থ হয়
-            if (!$isUploaded) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'GCS storage rejected the file. Please check bucket status.'
-                ], 500);
+            $bucket = $storage->bucket(config('filesystems.disks.gcs.bucket'));
+
+            // আপলোড করার সময় কোনো ACL বা Visibility পাঠানো হচ্ছে না
+            $object = $bucket->upload($encodedImage->getEncoded(), [
+                'name' => $fileName,
+                'metadata' => [
+                    'contentType' => 'image/webp'
+                ]
+            ]);
+
+            // ৪. সফল হলে পাবলিক URL সেট করা
+            if ($object) {
+                $data['image'] = "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $fileName;
             }
-
-            // ৪. সফল হলে URL জেনারেট করা
-            $data['image'] = Storage::disk('gcs')->url($fileName);
 
         } catch (\Exception $e) {
             return response()->json([
@@ -409,11 +415,111 @@ public function testApi() {
 
     return response()->json([
         'success' => true,
-        'message' => 'Mini Ad uploaded to GCS successfully!',
+        'message' => 'Mini Ad uploaded to GCS miniads folder successfully!',
         'url'     => $data['image'],
         'data'    => $miniad
     ]);
 }
+
+
+
+
+
+
+
+
+//     public function miniads(Request $request)
+// {
+//     $member = Auth::guard('member')->user();
+
+//     if (!$member) {
+//         return response()->json([
+//             'success' => false,
+//             'message' => 'Unauthorized'
+//         ], 401);
+//     }
+
+//     $validator = Validator::make($request->all(), [
+//         'title'  => 'required|string|max:255',
+//         'image'  => 'required|image|mimes:jpg,jpeg,png,webp|max:2048',
+//         'link'   => 'required|max:255',
+//         'status' => 'required|in:0,1',
+//     ]);
+
+//     if ($validator->fails()) {
+//         return response()->json([
+//             'success' => false,
+//             'errors'  => $validator->errors(),
+//         ], 422);
+//     }
+
+//     $validated = $validator->validated();
+
+//     $data = [
+//         'member_id' => $member->id,
+//         'title'     => $validated['title'],
+//         'link'      => $validated['link'] ?? null,
+//         'status'    => $validated['status'],
+//         'image'     => null,
+//     ];
+
+//     if ($request->hasFile('image')) {
+//         try {
+//             $image = $request->file('image');
+            
+            
+//             // ১. ফাইল নেম তৈরি
+//             $originalName = pathinfo($image->getClientOriginalName(), PATHINFO_FILENAME);
+//             $cleanName = time() . '-' . strtolower(preg_replace('/\s+/', '-', $originalName)) . '.webp';
+//             $fileName = 'miniads/' . $cleanName;
+
+//             // ২. ইমেজ প্রসেসিং (Intervention Image)
+//             $img = Image::make($image->getRealPath());
+//             $img->resize(600, null, function ($constraint) {
+//                 $constraint->aspectRatio();
+//                 $constraint->upsize();
+//             });
+
+//             // ইমেজটিকে ওয়েবপি ফরম্যাটে এনকোড করা
+//             $encodedImage = $img->encode('webp', 80);
+
+//             // ৩. GCS-এ আপলোড করা (সঠিক পদ্ধতি)
+//             // সরাসরি Storage::disk('gcs')->put() ব্যবহার করা হয়েছে যা আপনার এররটি দূর করবে
+//             $isUploaded = Storage::disk('gcs')->put($fileName, $encodedImage->getEncoded(), [
+//                 'contentType' => 'image/webp'
+//             ]);
+            
+//             // dd($isUploaded);
+
+//             // যদি আপলোড ব্যর্থ হয়
+//             if (!$isUploaded) {
+//                 return response()->json([
+//                     'success' => false,
+//                     'message' => 'GCS storage rejected the file. Please check bucket status.'
+//                 ], 500);
+//             }
+
+//             // ৪. সফল হলে URL জেনারেট করা
+//             $data['image'] = Storage::disk('gcs')->url($fileName);
+
+//         } catch (\Exception $e) {
+//             return response()->json([
+//                 'success' => false,
+//                 'message' => 'System Error: ' . $e->getMessage(),
+//             ], 500);
+//         }
+//     }
+
+//     // ৫. ডাটাবেসে সেভ করা
+//     $miniad = MiniAd::create($data);
+
+//     return response()->json([
+//         'success' => true,
+//         'message' => 'Mini Ad uploaded to GCS successfully!',
+//         'url'     => $data['image'],
+//         'data'    => $miniad
+//     ]);
+// }
 
 
 
