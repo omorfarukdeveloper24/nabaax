@@ -2003,6 +2003,7 @@ class MemberController extends Controller
 
     public function messageWithNotification(Request $request, \App\Services\FcmService $fcm)
     {
+        return "ok";
         $data = $request->validate([
             'title'      => 'required|string',
             'body'       => 'required|string',
