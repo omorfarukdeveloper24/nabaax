@@ -34,27 +34,33 @@ Route::get('/cc', function () {
 });
 
 Route::get('/test-gcs', function () {
-    try {
-        // ১. একটি ছোট ফাইল বাকেটে আপলোড করার চেষ্টা
-        $testFileName = 'test-connection.txt';
-        $content = 'GCS Connection is working at ' . now();
-        
-        $upload = Storage::disk('gcs')->put($testFileName, $content);
+    // লারাভেলকে বলা হচ্ছে এরর স্ক্রিনে দেখাও
+    ini_set('display_errors', 1);
+    error_reporting(E_ALL);
 
-        if ($upload) {
-            // ২. ফাইলটির URL দেখার চেষ্টা
-            $url = Storage::disk('gcs')->url($testFileName);
-            return response()->json([
-                'success' => true, 
-                'message' => 'Connected to Google Cloud Bucket!',
-                'url' => $url
-            ]);
-        }
-    } catch (\Exception $e) {
+    try {
+        // ডিস্কটি লোড হচ্ছে কি না চেক করা
+        $disk = Storage::disk('gcs');
+        
+        $testFileName = 'test-connection-' . time() . '.txt';
+        $content = 'GCS Connection Test';
+        
+        // আপলোড করার চেষ্টা
+        $upload = $disk->put($testFileName, $content);
+
         return response()->json([
-            'success' => false, 
-            'error' => $e->getMessage()
+            'status' => 'Upload Attempted',
+            'result' => $upload ? 'Success' : 'Failed',
+            'file_url' => $upload ? $disk->url($testFileName) : null
         ]);
+
+    } catch (\Throwable $e) { // Exception এর বদলে Throwable ব্যবহার করুন সব ধরনের এরর ধরার জন্য
+        return response()->json([
+            'success' => false,
+            'error_message' => $e->getMessage(),
+            'file' => $e->getFile(),
+            'line' => $e->getLine()
+        ], 500);
     }
 });
 
