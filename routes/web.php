@@ -34,16 +34,30 @@ Route::get('/cc', function () {
 });
 
 Route::get('/test-gcs', function () {
-    // সরাসরি PHP এরর এনাবল করা
-    ini_set('display_errors', 1);
-    ini_set('display_startup_errors', 1);
-    error_reporting(E_ALL);
-
     try {
         $disk = Storage::disk('gcs');
-        return "GCS Disk is ready!";
+        $fileName = 'final-test-' . time() . '.txt';
+        $content = 'Hello GCS! Your Laravel connection is working perfectly.';
+
+        // বাকেটে ফাইল পুশ করা
+        $uploaded = $disk->put($fileName, $content, [
+            'visibility' => 'public'
+        ]);
+
+        if ($uploaded) {
+            $url = $disk->url($fileName);
+            return response()->json([
+                'success' => true,
+                'message' => 'File uploaded successfully!',
+                'file_name' => $fileName,
+                'public_url' => $url
+            ]);
+        }
+
+        return "Upload failed without error.";
+
     } catch (\Throwable $e) {
-        return "Error: " . $e->getMessage();
+        return "Critical Error: " . $e->getMessage();
     }
 });
 
