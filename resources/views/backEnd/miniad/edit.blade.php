@@ -1,5 +1,5 @@
 @extends('backEnd.layouts.master')
-@section('title', 'Banner Edit')
+@section('title', 'Mini Ad Edit')
 @section('css')
     <link href="{{ asset('public/backEnd') }}/assets/libs/select2/css/select2.min.css" rel="stylesheet" type="text/css" />
 @endsection
@@ -11,9 +11,9 @@
             <div class="col-12">
                 <div class="page-title-box">
                     <div class="page-title-right">
-                        <a href="{{ route('banners.index') }}" class="btn btn-primary rounded-pill">Manage</a>
+                        <a href="{{ route('miniads.index') }}" class="btn btn-primary rounded-pill">Manage</a>
                     </div>
-                    <h4 class="page-title">Banner Edit</h4>
+                    <h4 class="page-title">Mini Ad Edit</h4>
                 </div>
             </div>
         </div>
@@ -22,7 +22,7 @@
             <div class="col-lg-8">
                 <div class="card">
                     <div class="card-body">
-                        <form action="{{ route('banners.update') }}" method="POST" class="row" data-parsley-validate=""
+                        <form action="{{ route('miniads.update') }}" method="POST" class="row" data-parsley-validate=""
                             enctype="multipart/form-data">
                             @csrf
                             <input type="hidden" value="{{ $edit_data->id }}" name="id">

@@ -1,5 +1,5 @@
 @extends('backEnd.layouts.master')
-@section('title','Banner Manage')
+@section('title','Mini Ad Manage')
 @section('css')
 <link href="{{asset('/public/backEnd/')}}/assets/libs/datatables.net-bs5/css/dataTables.bootstrap5.min.css" rel="stylesheet" type="text/css" />
 <link href="{{asset('/public/backEnd/')}}/assets/libs/datatables.net-responsive-bs5/css/responsive.bootstrap5.min.css" rel="stylesheet" type="text/css" />
@@ -15,9 +15,9 @@
         <div class="col-12">
             <div class="page-title-box">
                 <div class="page-title-right">
-                    <a href="{{route('banners.create')}}" class="btn btn-primary rounded-pill">Create</a>
+                    <a href="{{route('miniads.create')}}" class="btn btn-primary rounded-pill">Create</a>
                 </div>
-                <h4 class="page-title">Banner Manage</h4>
+                <h4 class="page-title">Mini Ad Manage</h4>
             </div>
         </div>
     </div>       
@@ -43,25 +43,31 @@
                         <tr>
                             <td>{{$loop->iteration}}</td>
                             <td>{{$value->title}}</td>
-                            <td><img src="{{asset($value->image)}}" class="backend-image" alt=""></td>
+                            <td>
+                                @if($value->image)
+                                    <img src="{{ $value->image }}" class="backend-image" alt="Member Image" style="width: 50px; height: 50px; object-fit: cover;">
+                                @else
+                                    <img src="{{ asset('public/backEnd/images/no-image.png') }}" class="backend-image" alt="No Image">
+                                @endif
+                            </td>
                             <td>@if($value->status==1)<span class="com-active">Active</span> @else <span class="com-inactive">Inactive</span> @endif</td>
                             <td>
                                 <div class="button-list">
                                     @if($value->status == 1)
-                                    <form method="post" action="{{route('banners.inactive')}}" class="d-inline"> 
+                                    <form method="post" action="{{route('miniads.inactive')}}" class="d-inline"> 
                                     @csrf
                                     <input type="hidden" value="{{$value->id}}" name="hidden_id">       
                                     <button type="button" class="change-confirm"><i class="fe-thumbs-down"></i></button></form>
                                     @else
-                                    <form method="post" action="{{route('banners.active')}}" class="d-inline">
+                                    <form method="post" action="{{route('miniads.active')}}" class="d-inline">
                                         @csrf
                                     <input type="hidden" value="{{$value->id}}" name="hidden_id">        
                                     <button type="button" class="change-confirm"><i class="fe-thumbs-up"></i></button></form>
                                     @endif
 
-                                    <a href="{{route('banners.edit',$value->id)}}" class="edit-confirm"><i class="fe-edit"></i></a>
+                                    <a href="{{route('miniads.edit',$value->id)}}" class="edit-confirm"><i class="fe-edit"></i></a>
 
-                                    <form method="post" action="{{route('banners.destroy')}}" class="d-inline">        
+                                    <form method="post" action="{{route('miniads.destroy')}}" class="d-inline">        
                                         @csrf
                                     <input type="hidden" value="{{$value->id}}" name="hidden_id">
                                     <button type="submit" class="delete-confirm"><i class="fe-trash-2"></i></button></form>
