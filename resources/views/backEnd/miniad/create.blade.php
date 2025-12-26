@@ -57,20 +57,6 @@
                             <!-- col-end -->
                             <!-- ////////  COL FINISH  ///////// -->
                              
-                             <div class="col-sm-06">
-                                <div class="form-group mb-3">
-                                    <label for="link" class="form-label">link *</label>
-                                    <input type="text" class="form-control @error('link') is-invalid @enderror"
-                                        name="link" value="{{ old('link') }}" id="link" required="">
-                                    @error('link')
-                                        <span class="invalid-feedback" role="alert">
-                                            <strong>{{ $message }}</strong>
-                                        </span>
-                                    @enderror
-                                </div>
-                            </div>
-                            <!-- col-end -->
-                            <!-- ////////  COL FINISH  ///////// -->
                             <div class="col-sm-12 mb-3">
                                 <div class="form-group">
                                     <label for="image" class="form-label">Image *</label>
