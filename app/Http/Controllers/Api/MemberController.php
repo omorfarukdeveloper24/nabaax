@@ -1583,108 +1583,254 @@ class MemberController extends Controller
             ]
         ], 200);
     }
-    
-    
-    
+
+
+
     public function update(Request $request)
     {
         try {
-            // --- Validate input
-            $validated = $request->validate([
-                'name'         => 'sometimes|string|max:255',
-                'email'        => 'sometimes|email|max:255|unique:members,email,' . Auth::guard('member')->id(),
-                'phone'        => 'sometimes|string|max:20',
-                'address'      => 'nullable|string|max:500',
-                'bio'          => 'nullable|string|max:1000',
-                'location'     => 'nullable|string|max:255',
-                'gender'       => 'sometimes|string|max:50',
-                'blood'        => 'sometimes|string|max:5',
-                'religion'     => 'sometimes',
-                'monthlyincome'=> 'sometimes|numeric',
-                'profession'   => 'sometimes|string|max:255',
-                'nationality'  => 'sometimes|string|max:100',
-                'married'      => 'sometimes',
-                'division'     => 'sometimes|string|max:100',
-                'district'     => 'sometimes|string|max:100',
-                'upazila'      => 'sometimes|string|max:100',
-                'image'        => 'sometimes|image|mimes:jpg,jpeg,png,webp|max:2048',
-            ]);
-            // return $request->all();
             $member = Auth::guard('member')->user();
-    
+
             if (!$member) {
                 return response()->json([
                     'status'  => 'failed',
                     'message' => 'Member not found'
                 ], 404);
             }
-            // --- Backup old data
+
+            // --- Validate input ---
+            // image max:20480 মানে ২০ এমবি পর্যন্ত আপলোড করতে পারবে
+            $validated = $request->validate([
+                'name'          => 'sometimes|string|max:255',
+                'email'         => 'sometimes|email|max:255|unique:members,email,' . $member->id,
+                'phone'         => 'sometimes|string|max:20',
+                'address'       => 'nullable|string|max:500',
+                'bio'           => 'nullable|string|max:1000',
+                'location'      => 'nullable|string|max:255',
+                'gender'        => 'sometimes|string|max:50',
+                'blood'         => 'sometimes|string|max:5',
+                'religion'      => 'sometimes',
+                'monthlyincome' => 'sometimes|numeric',
+                'profession'    => 'sometimes|string|max:255',
+                'nationality'   => 'sometimes|string|max:100',
+                'married'       => 'sometimes',
+                'division'      => 'sometimes|string|max:100',
+                'district'      => 'sometimes|string|max:100',
+                'upazila'       => 'sometimes|string|max:100',
+                'image'         => 'sometimes|image|mimes:jpg,jpeg,png,webp|max:20480', 
+            ]);
+
+            // ব্যাকআপের জন্য বর্তমান ডাটা রাখা হচ্ছে
             $backupData = $member->only([
                 'name', 'email', 'phone', 'image', 'address', 'bio', 'location', 'gender',
                 'blood', 'religion', 'monthlyincome', 'profession', 'nationality', 'married',
                 'division', 'district', 'upazila'
             ]);
-    
+
             $updatedFields = [];
-            
-            // Update image
+
+            // ছবি বাদে অন্য সব ফিল্ড আপডেট চেক করা
             foreach ($validated as $key => $value) {
                 if ($key !== "image" && $member->$key != $value) {
                     $member->$key = $value;
                     $updatedFields[] = $key;
                 }
             }
-    
-           // ================= Profile Image =================
-            
-            $image = $request->file("image");
-            if ($image) {
-                $name = time() . "-" . $image->getClientOriginalName();
-                $name = preg_replace('"\.(jpg|jpeg|png|webp)$"', ".webp", $name);
-                $name = strtolower(Str::slug($name));
-                $uploadpath = "public/uploads/members/";
-                $imageUrl = $uploadpath . $name;
-                $img = Image::make($image->getRealPath());
-                $img->encode("webp", 90);
-                $width = 120;
-                $height = 120;
-                $img->resize($width, $height);
-                $img->save($imageUrl);
-                $imageUrl = $imageUrl;
+
+            // ================= Profile Image Processing (Professional Way) =================
+            if ($request->hasFile('image')) {
+                $image = $request->file('image');
                 
-                $member->image = $imageUrl;
-                $updatedFields[] = 'image';
-            } else {
-                $imageUrl = $member->image;
-    }
+                // ফাইলের নাম প্রফেশনাল করা (Time + Slug)
+                $originalName = pathinfo($image->getClientOriginalName(), PATHINFO_FILENAME);
+                $cleanName = time() . '-' . \Str::slug($originalName) . '.webp';
+                $fileName = 'members/' . $cleanName;
+
+                // Image Intervention ব্যবহার করে ইমেজ প্রসেসিং
+                $img = \Image::make($image->getRealPath());
                 
-                
-                
-            // --- Save backup & member data updated
+                // মোবাইল বা ক্যামেরা রোটেশন ঠিক করা
+                $img->orientate();
+
+                /**
+                 * ইমেজ রিসাইজ এবং ক্রপিং:
+                 * fit(600, 600) ইমেজটিকে ঠিক ৬০০x৬০০ সাইজে নিয়ে আসবে। 
+                 * বড় ইমেজ ক্রপ হবে এবং ছোট ইমেজকে ডিস্টর্ট না করে রিসাইজ করবে।
+                 */
+                $img->fit(600, 600, function ($constraint) {
+                    $constraint->upsize();
+                });
+
+                // প্রথমে ৭০% কোয়ালিটিতে WebP ফরম্যাটে এনকোড করা (ফাইল সাইজ কমানোর জন্য)
+                $encodedImage = $img->encode('webp', 70);
+
+                // যদি ফাইল সাইজ ৫০০kb এর বেশি থাকে, তবে কোয়ালিটি আরও কমিয়ে ৬০% করা
+                if (strlen($encodedImage->getEncoded()) > 500 * 1024) {
+                    $encodedImage = $img->encode('webp', 60);
+                }
+
+                // --- Google Cloud Storage (GCS) আপলোড লজিক ---
+                try {
+                    $keyFileData = config('filesystems.disks.gcs.key_file');
+                    if (!is_array($keyFileData)) {
+                        $keyFileData = json_decode(file_get_contents(base_path($keyFileData)), true);
+                    }
+                    
+                    $storage = new \Google\Cloud\Storage\StorageClient([
+                        'projectId' => config('filesystems.disks.gcs.project_id'),
+                        'keyFile' => $keyFileData,
+                    ]);
+
+                    $bucketName = config('filesystems.disks.gcs.bucket');
+                    $bucket = $storage->bucket($bucketName);
+
+                    // GCS এ আপলোড
+                    $object = $bucket->upload($encodedImage->getEncoded(), [
+                        'name' => $fileName,
+                        'metadata' => [
+                            'contentType' => 'image/webp'
+                        ]
+                    ]);
+
+                    if ($object) {
+                        $member->image = "https://storage.googleapis.com/" . $bucketName . "/" . $fileName;
+                        $updatedFields[] = 'image';
+                    }
+                } catch (\Exception $uploadError) {
+                    \Log::error("GCS Upload Error: " . $uploadError->getMessage());
+                    return response()->json(['status' => 'error', 'message' => 'Image upload failed.'], 500);
+                }
+            }
+
+            // --- পরিবর্তন হয়ে থাকলে ব্যাকআপ সেভ এবং মেম্বার আপডেট করা ---
             if (!empty($updatedFields)) {
-                Memberbackup::create([
+                \App\Models\Memberbackup::create([
                     'member_id'     => $member->id,
                     'backup_data'   => json_encode($backupData),
                     'updated_fields'=> json_encode($updatedFields),
                     'created_at'    => now(),
                 ]);
-    
+
                 $member->save();
             }
-    
+
             return response()->json([
                 'status'         => 'success',
                 'message'        => 'Member updated successfully!',
                 'updated_fields' => $updatedFields,
                 'data'           => $member,
             ]);
+
         } catch (\Exception $e) {
+            \Log::error("Member Update Error: " . $e->getMessage());
             return response()->json([
                 'status'  => 'error',
-                'message' => $e->getMessage()
+                'message' => 'Something went wrong: ' . $e->getMessage()
             ], 500);
         }
     }
+    
+    
+    
+    // public function update(Request $request)
+    // {
+    //     try {
+    //         // --- Validate input
+    //         $validated = $request->validate([
+    //             'name'         => 'sometimes|string|max:255',
+    //             'email'        => 'sometimes|email|max:255|unique:members,email,' . Auth::guard('member')->id(),
+    //             'phone'        => 'sometimes|string|max:20',
+    //             'address'      => 'nullable|string|max:500',
+    //             'bio'          => 'nullable|string|max:1000',
+    //             'location'     => 'nullable|string|max:255',
+    //             'gender'       => 'sometimes|string|max:50',
+    //             'blood'        => 'sometimes|string|max:5',
+    //             'religion'     => 'sometimes',
+    //             'monthlyincome'=> 'sometimes|numeric',
+    //             'profession'   => 'sometimes|string|max:255',
+    //             'nationality'  => 'sometimes|string|max:100',
+    //             'married'      => 'sometimes',
+    //             'division'     => 'sometimes|string|max:100',
+    //             'district'     => 'sometimes|string|max:100',
+    //             'upazila'      => 'sometimes|string|max:100',
+    //             'image'        => 'sometimes|image|mimes:jpg,jpeg,png,webp|max:2048',
+    //         ]);
+    //         // return $request->all();
+    //         $member = Auth::guard('member')->user();
+    
+    //         if (!$member) {
+    //             return response()->json([
+    //                 'status'  => 'failed',
+    //                 'message' => 'Member not found'
+    //             ], 404);
+    //         }
+    //         // --- Backup old data
+    //         $backupData = $member->only([
+    //             'name', 'email', 'phone', 'image', 'address', 'bio', 'location', 'gender',
+    //             'blood', 'religion', 'monthlyincome', 'profession', 'nationality', 'married',
+    //             'division', 'district', 'upazila'
+    //         ]);
+    
+    //         $updatedFields = [];
+            
+    //         // Update image
+    //         foreach ($validated as $key => $value) {
+    //             if ($key !== "image" && $member->$key != $value) {
+    //                 $member->$key = $value;
+    //                 $updatedFields[] = $key;
+    //             }
+    //         }
+    
+    //        // ================= Profile Image =================
+            
+    //         $image = $request->file("image");
+    //         if ($image) {
+    //             $name = time() . "-" . $image->getClientOriginalName();
+    //             $name = preg_replace('"\.(jpg|jpeg|png|webp)$"', ".webp", $name);
+    //             $name = strtolower(Str::slug($name));
+    //             $uploadpath = "public/uploads/members/";
+    //             $imageUrl = $uploadpath . $name;
+    //             $img = Image::make($image->getRealPath());
+    //             $img->encode("webp", 90);
+    //             $width = 120;
+    //             $height = 120;
+    //             $img->resize($width, $height);
+    //             $img->save($imageUrl);
+    //             $imageUrl = $imageUrl;
+                
+    //             $member->image = $imageUrl;
+    //             $updatedFields[] = 'image';
+    //         } else {
+    //             $imageUrl = $member->image;
+    // }
+                
+                
+                
+    //         // --- Save backup & member data updated
+    //         if (!empty($updatedFields)) {
+    //             Memberbackup::create([
+    //                 'member_id'     => $member->id,
+    //                 'backup_data'   => json_encode($backupData),
+    //                 'updated_fields'=> json_encode($updatedFields),
+    //                 'created_at'    => now(),
+    //             ]);
+    
+    //             $member->save();
+    //         }
+    
+    //         return response()->json([
+    //             'status'         => 'success',
+    //             'message'        => 'Member updated successfully!',
+    //             'updated_fields' => $updatedFields,
+    //             'data'           => $member,
+    //         ]);
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'status'  => 'error',
+    //             'message' => $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
     
    
     

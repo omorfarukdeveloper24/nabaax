@@ -364,23 +364,16 @@ public function miniads(Request $request)
         try {
             $image = $request->file('image');
 
-            // ১. ফাইল নেম তৈরি
             $originalName = pathinfo($image->getClientOriginalName(), PATHINFO_FILENAME);
             $cleanName = time() . '-' . strtolower(preg_replace('/\s+/', '-', $originalName)) . '.webp';
             $fileName = 'miniads/' . $cleanName;
 
-            
-
-            // ২. রিসাইজ ছাড়া সরাসরি ইমেজ এনকোড
             $img = Image::make($image->getRealPath());
 
-            // ইমেজ যদি মেটাডাটার কারণে ঘুরে গিয়ে থাকে, তবে এটি তাকে সঠিক ওরিয়েন্টেশনে নিয়ে আসবে
             $img->orientate(); 
 
-            // সরাসরি এনকোড হচ্ছে (রিসাইজ ছাড়া)
             $encodedImage = $img->encode('webp', 80);
 
-            // ৩. গুগল ক্লাউড SDK কনফিগারেশন
             $keyFileData = config('filesystems.disks.gcs.key_file');
             if (!is_array($keyFileData)) {
                 $keyFileData = json_decode(file_get_contents(base_path($keyFileData)), true);
@@ -394,7 +387,6 @@ public function miniads(Request $request)
             $bucketName = config('filesystems.disks.gcs.bucket');
             $bucket = $storage->bucket($bucketName);
 
-            // আপলোড
             $object = $bucket->upload($encodedImage->getEncoded(), [
                 'name' => $fileName,
                 'metadata' => [
@@ -407,7 +399,6 @@ public function miniads(Request $request)
             }
 
         } catch (\Exception $e) {
-            // বিস্তারিত লগের জন্য
             \Log::error("GCS Upload Error: " . $e->getMessage());
             
             return response()->json([
@@ -417,7 +408,6 @@ public function miniads(Request $request)
         }
     }
 
-    // ৫. ডাটাবেসে সেভ করা
     $miniad = MiniAd::create($data);
 
     return response()->json([
