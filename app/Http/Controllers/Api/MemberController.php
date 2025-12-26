@@ -1256,102 +1256,244 @@ class MemberController extends Controller
     }
     
     
-    
     public function verifywithDocument(Request $request)
     {
-        $member = Auth::guard('member')->user();
-    
-        if (!$member) {
-            return response()->json(['error' => 'Unauthorized'], 401);
-        }
-    
-        $type = $request->type;
-    
-        $rules = [
-            'type' => 'required|in:nid,birth,passport,driving',
-    
-            'country'       => 'required',
-            'post_code'     => 'required',
-            'city'          => 'required',
-        ];
-    
-        if ($type === 'nid') {
-            $rules += [
-                'nid_number' => 'required',
-                'nid_front_image' => 'required|image|mimes:jpg,png,webp,jpeg|max:2048',
-                'nid_back_image'  => 'required|image|mimes:jpg,png,webp,jpeg|max:2048',
-            ];
-        } elseif ($type === 'birth') {
-            $rules += [
-                'birth_number' => 'required',
-                'birth_image' => 'required|image|mimes:jpg,png,webp,jpeg|max:2048',
-            ];
-        } elseif ($type === 'passport') {
-            $rules += [
-                'passport_image' => 'required|image|mimes:jpg,png,webp,jpeg|max:2048',
-            ];
-        } elseif ($type === 'driving') {
-            $rules += [
-                'driving_front_image' => 'required|image|mimes:jpg,png,webp,jpeg|max:2048',
-                'driving_back_image' => 'required|image|mimes:jpg,png,webp,jpeg|max:2048',
-            ];
-        }
-    
-        $validator = Validator::make($request->all(), $rules);
-    
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-    
-        $member->update([
-            'country'       => $request->country,
-            'post_code'     => $request->post_code,
-            'city'          => $request->city,
-        ]);
-    
-        $data = [
-            'member_id' => $member->id,
-            'type' => $type,
-            'nid_number' => $request->nid_number,
-            'birth_number' => $request->birth_number,
-        ];
-    
-        $uploadPath = 'public/uploads/member_verify/';
-        $fields = [
-            'nid_front_image',
-            'nid_back_image',
-            'birth_image',
-            'identity_image',
-            'salfy_image',
-            'passport_image',
-            'driving_front_image',
-            'driving_back_image'
-        ];
-    
-        foreach ($fields as $field) {
-            if ($request->hasFile($field)) {
-                $image = $request->file($field);
-                $name = time().'-'.uniqid().'.webp';
-                $imageUrl = $uploadPath.$name;
-    
-                Image::make($image->getRealPath())
-                    ->encode('webp', 80)
-                    ->save($imageUrl);
-    
-                $data[$field] = str_replace('public/', '', $imageUrl);
+        try {
+            $member = Auth::guard('member')->user();
+
+            if (!$member) {
+                return response()->json(['error' => 'Unauthorized'], 401);
             }
+
+            $type = $request->type;
+
+            // --- ১. ভ্যালিডেশন (২০ এমবি পর্যন্ত অনুমতি দেওয়া হয়েছে) ---
+            $rules = [
+                'type'      => 'required|in:nid,birth,passport,driving',
+                'country'   => 'required',
+                'post_code' => 'required',
+                'city'      => 'required',
+            ];
+
+            if ($type === 'nid') {
+                $rules += [
+                    'nid_number'      => 'required',
+                    'nid_front_image' => 'required|image|mimes:jpg,png,webp,jpeg|max:20480',
+                    'nid_back_image'  => 'required|image|mimes:jpg,png,webp,jpeg|max:20480',
+                ];
+            } elseif ($type === 'birth') {
+                $rules += [
+                    'birth_number' => 'required',
+                    'birth_image'  => 'required|image|mimes:jpg,png,webp,jpeg|max:20480',
+                ];
+            } elseif ($type === 'passport') {
+                $rules += [
+                    'passport_image' => 'required|image|mimes:jpg,png,webp,jpeg|max:20480',
+                ];
+            } elseif ($type === 'driving') {
+                $rules += [
+                    'driving_front_image' => 'required|image|mimes:jpg,png,webp,jpeg|max:20480',
+                    'driving_back_image'  => 'required|image|mimes:jpg,png,webp,jpeg|max:20480',
+                ];
+            }
+
+            $validator = Validator::make($request->all(), $rules);
+
+            if ($validator->fails()) {
+                return response()->json(['errors' => $validator->errors()], 422);
+            }
+
+            // মেম্বার বেসিক ডাটা আপডেট
+            $member->update([
+                'country'   => $request->country,
+                'post_code' => $request->post_code,
+                'city'      => $request->city,
+            ]);
+
+            $data = [
+                'member_id'    => $member->id,
+                'type'         => $type,
+                'nid_number'   => $request->nid_number,
+                'birth_number' => $request->birth_number,
+            ];
+
+            // --- ২. GCS ও ইমেজ প্রসেসিং সেটআপ ---
+            $bucketName = config('filesystems.disks.gcs.bucket');
+            $keyFileData = config('filesystems.disks.gcs.key_file');
+            if (!is_array($keyFileData)) {
+                $keyFileData = json_decode(file_get_contents(base_path($keyFileData)), true);
+            }
+            
+            $storage = new \Google\Cloud\Storage\StorageClient([
+                'projectId' => config('filesystems.disks.gcs.project_id'),
+                'keyFile'   => $keyFileData,
+            ]);
+            $bucket = $storage->bucket($bucketName);
+
+            $fields = [
+                'nid_front_image', 'nid_back_image', 'birth_image', 
+                'identity_image', 'salfy_image', 'passport_image', 
+                'driving_front_image', 'driving_back_image'
+            ];
+
+            foreach ($fields as $field) {
+                if ($request->hasFile($field)) {
+                    $image = $request->file($field);
+                    $fileName = 'member_verify/' . time() . '-' . uniqid() . '.webp';
+
+                    // ইমেজ ইন্টারভেনশন শুরু (ডকুমেন্ট হিসেবে ক্লিয়ার রাখতে ৮০০px উইডথ)
+                    $img = Image::make($image->getRealPath())->orientate();
+                    
+                    // ডাইমেনশন কমানো যাতে সাইজ দ্রুত কমে
+                    $img->resize(800, null, function ($constraint) {
+                        $constraint->aspectRatio();
+                        $constraint->upsize();
+                    });
+
+                    // WebP এনকোডিং (প্রথমে ৮০% কোয়ালিটি)
+                    $encodedImage = $img->encode('webp', 80);
+
+                    // যদি সাইজ ৫০০kb এর বেশি হয়, কোয়ালিটি আরও কমানো
+                    if (strlen($encodedImage->getEncoded()) > 500 * 1024) {
+                        $encodedImage = $img->encode('webp', 65);
+                    }
+
+                    // GCS আপলোড
+                    $object = $bucket->upload($encodedImage->getEncoded(), [
+                        'name' => $fileName,
+                        'metadata' => [
+                            'contentType' => 'image/webp'
+                        ]
+                    ]);
+
+                    if ($object) {
+                        $data[$field] = "https://storage.googleapis.com/" . $bucketName . "/" . $fileName;
+                    }
+                }
+            }
+
+            // ভেরিফিকেশন রেকর্ড তৈরি
+            MemberVerify::create($data);
+            
+            $member->verified = 0; // ভেরিফিকেশন পেন্ডিং
+            $member->save();
+
+            return response()->json([
+                'status'  => 'success',
+                'message' => 'Verification submitted successfully!',
+                'data'    => $data,
+            ], 200);
+
+        } catch (\Exception $e) {
+            \Log::error("Member Verification Error: " . $e->getMessage());
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Something went wrong: ' . $e->getMessage()
+            ], 500);
         }
-    
-        MemberVerify::create($data);
-        $member->verified = 0;
-        $member->save();
-    
-        return response()->json([
-            'message' => 'Verification submitted successfully!',
-            'data' => $data,
-            'member' => $member
-        ], 200);
     }
+
+
+
+
+
+
+
+    // public function verifywithDocument(Request $request)
+    // {
+    //     $member = Auth::guard('member')->user();
+    
+    //     if (!$member) {
+    //         return response()->json(['error' => 'Unauthorized'], 401);
+    //     }
+    
+    //     $type = $request->type;
+    
+    //     $rules = [
+    //         'type' => 'required|in:nid,birth,passport,driving',
+    
+    //         'country'       => 'required',
+    //         'post_code'     => 'required',
+    //         'city'          => 'required',
+    //     ];
+    
+    //     if ($type === 'nid') {
+    //         $rules += [
+    //             'nid_number' => 'required',
+    //             'nid_front_image' => 'required|image|mimes:jpg,png,webp,jpeg|max:2048',
+    //             'nid_back_image'  => 'required|image|mimes:jpg,png,webp,jpeg|max:2048',
+    //         ];
+    //     } elseif ($type === 'birth') {
+    //         $rules += [
+    //             'birth_number' => 'required',
+    //             'birth_image' => 'required|image|mimes:jpg,png,webp,jpeg|max:2048',
+    //         ];
+    //     } elseif ($type === 'passport') {
+    //         $rules += [
+    //             'passport_image' => 'required|image|mimes:jpg,png,webp,jpeg|max:2048',
+    //         ];
+    //     } elseif ($type === 'driving') {
+    //         $rules += [
+    //             'driving_front_image' => 'required|image|mimes:jpg,png,webp,jpeg|max:2048',
+    //             'driving_back_image' => 'required|image|mimes:jpg,png,webp,jpeg|max:2048',
+    //         ];
+    //     }
+    
+    //     $validator = Validator::make($request->all(), $rules);
+    
+    //     if ($validator->fails()) {
+    //         return response()->json(['errors' => $validator->errors()], 422);
+    //     }
+    
+    //     $member->update([
+    //         'country'       => $request->country,
+    //         'post_code'     => $request->post_code,
+    //         'city'          => $request->city,
+    //     ]);
+    
+    //     $data = [
+    //         'member_id' => $member->id,
+    //         'type' => $type,
+    //         'nid_number' => $request->nid_number,
+    //         'birth_number' => $request->birth_number,
+    //     ];
+    
+    //     $uploadPath = 'public/uploads/member_verify/';
+    //     $fields = [
+    //         'nid_front_image',
+    //         'nid_back_image',
+    //         'birth_image',
+    //         'identity_image',
+    //         'salfy_image',
+    //         'passport_image',
+    //         'driving_front_image',
+    //         'driving_back_image'
+    //     ];
+    
+    //     foreach ($fields as $field) {
+    //         if ($request->hasFile($field)) {
+    //             $image = $request->file($field);
+    //             $name = time().'-'.uniqid().'.webp';
+    //             $imageUrl = $uploadPath.$name;
+    
+    //             Image::make($image->getRealPath())
+    //                 ->encode('webp', 80)
+    //                 ->save($imageUrl);
+    
+    //             $data[$field] = str_replace('public/', '', $imageUrl);
+    //         }
+    //     }
+    
+    //     MemberVerify::create($data);
+    //     $member->verified = 0;
+    //     $member->save();
+    
+    //     return response()->json([
+    //         'message' => 'Verification submitted successfully!',
+    //         'data' => $data,
+    //         'member' => $member
+    //     ], 200);
+    // }
 
    
     
