@@ -18,6 +18,7 @@ use App\Http\Controllers\Admin\CreatePageController;
 use App\Http\Controllers\Admin\DepositController;
 use App\Http\Controllers\Admin\WithdrawController;
 use App\Http\Controllers\Admin\AdminPayHistoryController;
+use App\Http\Controllers\Admin\MiniAdController;
 use App\Http\Controllers\GcsTestController;
 use Illuminate\Support\Facades\Storage;
 use Google\Cloud\Storage\StorageClient;
@@ -34,32 +35,32 @@ Route::get('/cc', function () {
     return "Cleared!";
 });
 
-Route::get('/test-gcs-direct', function () {
-    try {
-        $keyFileData = json_decode(file_get_contents(base_path(env('GCS_KEY_FILE'))), true);
+// Route::get('/test-gcs-direct', function () {
+//     try {
+//         $keyFileData = json_decode(file_get_contents(base_path(env('GCS_KEY_FILE'))), true);
         
-        $storage = new StorageClient([
-            'projectId' => env('GCS_PROJECT_ID'),
-            'keyFile' => $keyFileData,
-        ]);
+//         $storage = new StorageClient([
+//             'projectId' => env('GCS_PROJECT_ID'),
+//             'keyFile' => $keyFileData,
+//         ]);
 
-        $bucket = $storage->bucket(env('GCS_BUCKET'));
+//         $bucket = $storage->bucket(env('GCS_BUCKET'));
         
-        // কোনো ACL ছাড়াই আপলোড
-        $object = $bucket->upload('Direct upload test content', [
-            'name' => 'direct-test-' . time() . '.txt'
-        ]);
+//         // কোনো ACL ছাড়াই আপলোড
+//         $object = $bucket->upload('Direct upload test content', [
+//             'name' => 'direct-test-' . time() . '.txt'
+//         ]);
 
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Uploaded directly using Google SDK!',
-            'url' => "https://storage.googleapis.com/" . env('GCS_BUCKET') . "/" . $object->name()
-        ]);
+//         return response()->json([
+//             'status' => 'success',
+//             'message' => 'Uploaded directly using Google SDK!',
+//             'url' => "https://storage.googleapis.com/" . env('GCS_BUCKET') . "/" . $object->name()
+//         ]);
 
-    } catch (\Exception $e) {
-        return response()->json(['error' => $e->getMessage()]);
-    }
-});
+//     } catch (\Exception $e) {
+//         return response()->json(['error' => $e->getMessage()]);
+//     }
+// });
 
 
 // Route::get('/controller', function () {
@@ -185,6 +186,16 @@ Route::group(['namespace' => 'Admin', 'middleware' => ['auth', 'lock', 'check_re
     Route::get('withdraw/manage', [WithdrawController::class,'index'])->name('withdraw.index');
     Route::get('withdraw/history', [WithdrawController::class,'history'])->name('withdraw.history');
     Route::post('withdraw/status', [WithdrawController::class,'status'])->name('withdraw.status');
+
+    // banner  route
+    Route::get('miniad/manage', [MiniAdController::class, 'index'])->name('miniads.index');
+    Route::get('miniad/create', [MiniAdController::class, 'create'])->name('miniads.create');
+    Route::post('miniad/save', [MiniAdController::class, 'store'])->name('miniads.store');
+    Route::get('miniad/{id}/edit', [MiniAdController::class, 'edit'])->name('miniads.edit');
+    Route::post('miniad/update', [MiniAdController::class, 'update'])->name('miniads.update');
+    Route::post('miniad/inactive', [MiniAdController::class, 'inactive'])->name('miniads.inactive');
+    Route::post('miniad/active', [MiniAdController::class, 'active'])->name('miniads.active');
+    Route::post('miniad/destroy', [MiniAdController::class, 'destroy'])->name('miniads.destroy');
 
     // Payment Charge Setting route
     Route::get('paymentcharges/manage', [PaymentChargeSettingController::class, 'index'])->name('paymentcharges.index');
