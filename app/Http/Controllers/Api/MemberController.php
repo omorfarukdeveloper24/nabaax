@@ -1676,12 +1676,27 @@ class MemberController extends Controller
                 // --- পুরনো ইমেজ বাকেট থেকে ডিলিট করা ---
                 if ($member->image) {
                     try {
-                        $oldPath = parse_url($member->image, PHP_URL_PATH);
-                        // URL থেকে শুধু পাথ অংশটুকু বের করা
-                        $relativeOldPath = ltrim($oldPath, '/' . $bucketName . '/');
-                        $oldObject = $bucket->object($relativeOldPath);
-                        if ($oldObject->exists()) {
-                            $oldObject->delete();
+                        // ১. পুরো URL থেকে শুধু পাথটি আলাদা করা
+                        $oldPath = parse_url($member->image, PHP_URL_PATH); // যেমন: /bucket-name/members/filename.webp
+                        
+                        // ২. বাকেট নেমটি পাথ থেকে সরিয়ে ফেলা
+                        // আমরা সরাসরি basename বা Str::after ব্যবহার করতে পারি আরও নিখুঁত হতে
+                        $searchString = '/' . $bucketName . '/';
+                        $relativeOldPath = "";
+
+                        if (strpos($oldPath, $searchString) !== false) {
+                            $relativeOldPath = explode($searchString, $oldPath)[1];
+                        } else {
+                            // যদি বাকেট নেম পাথে না থাকে, তবে স্লাশ ট্রিম করে ট্রাই করা
+                            $relativeOldPath = ltrim($oldPath, '/');
+                        }
+
+                        // ৩. অবজেক্টটি ধরে ডিলিট করা
+                        if (!empty($relativeOldPath)) {
+                            $oldObject = $bucket->object($relativeOldPath);
+                            if ($oldObject->exists()) {
+                                $oldObject->delete();
+                            }
                         }
                     } catch (\Exception $deleteError) {
                         \Log::warning("Old GCS image delete failed: " . $deleteError->getMessage());
