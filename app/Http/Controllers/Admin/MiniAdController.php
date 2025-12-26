@@ -173,24 +173,46 @@ class MiniAdController extends Controller
     {
         $delete_data = MiniAd::find($request->hidden_id);
         
-        // ডিলিট করার সময় বাকেট থেকেও ইমেজ ডিলিট করা
-        if ($delete_data && $delete_data->image) {
-            try {
-                $bucketName = config('filesystems.disks.gcs.bucket');
-                $bucket = $this->getGcsBucket();
-                $oldPath = parse_url($delete_data->image, PHP_URL_PATH);
-                $relativeOldPath = ltrim($oldPath, '/' . $bucketName . '/');
-                $oldObject = $bucket->object($relativeOldPath);
-                if ($oldObject->exists()) {
-                    $oldObject->delete();
+        if ($delete_data) {
+            // --- বাকেট থেকে ইমেজ ডিলিট করার লজিক ---
+            if ($delete_data->image) {
+                try {
+                    $bucketName = config('filesystems.disks.gcs.bucket');
+                    $bucket = $this->getGcsBucket();
+                    
+                    // ১. পুরো URL থেকে পাথ বের করা (যেমন: /bucket-name/miniads/image.webp)
+                    $oldPath = parse_url($delete_data->image, PHP_URL_PATH);
+                    
+                    // ২. বাকেট নাম এবং তার আগের অংশ সরিয়ে ফেলা
+                    $search = '/' . $bucketName . '/';
+                    $relativeOldPath = "";
+
+                    if (strpos($oldPath, $search) !== false) {
+                        // বাকেট নামের পরের অংশটুকু নেওয়া
+                        $relativeOldPath = explode($search, $oldPath)[1];
+                    } else {
+                        // যদি ফরম্যাট ভিন্ন হয়, তবে শুরুর স্লাশ ট্রিম করা
+                        $relativeOldPath = ltrim($oldPath, '/');
+                    }
+
+                    // ৩. অবজেক্ট চেক করে ডিলিট করা
+                    if (!empty($relativeOldPath)) {
+                        $oldObject = $bucket->object($relativeOldPath);
+                        if ($oldObject->exists()) {
+                            $oldObject->delete();
+                        }
+                    }
+                } catch (\Exception $e) {
+                    \Log::error("GCS Delete Error: " . $e->getMessage());
                 }
-            } catch (\Exception $e) {
-                \Log::error("GCS Delete Error: " . $e->getMessage());
             }
+
+            $delete_data->delete();
+            Toastr::success('Success', 'Data deleted successfully');
+        } else {
+            Toastr::error('Error', 'Data not found');
         }
 
-        $delete_data->delete();
-        Toastr::success('Success', 'Data deleted successfully');
         return redirect()->back();
     }
 
