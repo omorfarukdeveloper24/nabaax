@@ -1598,8 +1598,7 @@ class MemberController extends Controller
                 ], 404);
             }
 
-            // --- Validate input ---
-            // image max:20480 মানে ২০ এমবি পর্যন্ত আপলোড করতে পারবে
+            // --- ১. ভ্যালিডেশন (২০ এমবি পর্যন্ত অনুমতি দেওয়া হয়েছে) ---
             $validated = $request->validate([
                 'name'          => 'sometimes|string|max:255',
                 'email'         => 'sometimes|email|max:255|unique:members,email,' . $member->id,
@@ -1620,7 +1619,7 @@ class MemberController extends Controller
                 'image'         => 'sometimes|image|mimes:jpg,jpeg,png,webp|max:20480', 
             ]);
 
-            // ব্যাকআপের জন্য বর্তমান ডাটা রাখা হচ্ছে
+            // ব্যাকআপের জন্য বর্তমান ডাটা সংরক্ষণ
             $backupData = $member->only([
                 'name', 'email', 'phone', 'image', 'address', 'bio', 'location', 'gender',
                 'blood', 'religion', 'monthlyincome', 'profession', 'nationality', 'married',
@@ -1629,7 +1628,7 @@ class MemberController extends Controller
 
             $updatedFields = [];
 
-            // ছবি বাদে অন্য সব ফিল্ড আপডেট চেক করা
+            // টেক্সট ফিল্ডগুলো আপডেট করা
             foreach ($validated as $key => $value) {
                 if ($key !== "image" && $member->$key != $value) {
                     $member->$key = $value;
@@ -1637,72 +1636,73 @@ class MemberController extends Controller
                 }
             }
 
-            // ================= Profile Image Processing (Professional Way) =================
+            // ================= ২. প্রোফাইল ইমেজ প্রসেসিং ও বাকেট ম্যানেজমেন্ট =================
             if ($request->hasFile('image')) {
                 $image = $request->file('image');
                 
-                // ফাইলের নাম প্রফেশনাল করা (Time + Slug)
+                // ফাইলের নাম তৈরি
                 $originalName = pathinfo($image->getClientOriginalName(), PATHINFO_FILENAME);
                 $cleanName = time() . '-' . \Str::slug($originalName) . '.webp';
                 $fileName = 'members/' . $cleanName;
 
-                // Image Intervention ব্যবহার করে ইমেজ প্রসেসিং
-                $img = \Image::make($image->getRealPath());
-                
-                // মোবাইল বা ক্যামেরা রোটেশন ঠিক করা
-                $img->orientate();
-
-                /**
-                 * ইমেজ রিসাইজ এবং ক্রপিং:
-                 * fit(600, 600) ইমেজটিকে ঠিক ৬০০x৬০০ সাইজে নিয়ে আসবে। 
-                 * বড় ইমেজ ক্রপ হবে এবং ছোট ইমেজকে ডিস্টর্ট না করে রিসাইজ করবে।
-                 */
+                // ইমেজ রিসাইজ (৬০০x৬০০) ও অপ্টিমাইজেশন
+                $img = \Image::make($image->getRealPath())->orientate();
                 $img->fit(600, 600, function ($constraint) {
                     $constraint->upsize();
                 });
 
-                // প্রথমে ৭০% কোয়ালিটিতে WebP ফরম্যাটে এনকোড করা (ফাইল সাইজ কমানোর জন্য)
-                $encodedImage = $img->encode('webp', 70);
+                // WebP ফরম্যাটে এনকোড (প্রাথমিক কোয়ালিটি ৭৫%)
+                $encodedImage = $img->encode('webp', 75);
 
-                // যদি ফাইল সাইজ ৫০০kb এর বেশি থাকে, তবে কোয়ালিটি আরও কমিয়ে ৬০% করা
+                // যদি সাইজ ৫০০kb এর বেশি হয়, কোয়ালিটি আরও কমানো
                 if (strlen($encodedImage->getEncoded()) > 500 * 1024) {
                     $encodedImage = $img->encode('webp', 60);
                 }
 
-                // --- Google Cloud Storage (GCS) আপলোড লজিক ---
-                try {
-                    $keyFileData = config('filesystems.disks.gcs.key_file');
-                    if (!is_array($keyFileData)) {
-                        $keyFileData = json_decode(file_get_contents(base_path($keyFileData)), true);
+                // GCS কানেকশন সেটআপ
+                $keyFileData = config('filesystems.disks.gcs.key_file');
+                if (!is_array($keyFileData)) {
+                    $keyFileData = json_decode(file_get_contents(base_path($keyFileData)), true);
+                }
+                
+                $storage = new \Google\Cloud\Storage\StorageClient([
+                    'projectId' => config('filesystems.disks.gcs.project_id'),
+                    'keyFile' => $keyFileData,
+                ]);
+
+                $bucketName = config('filesystems.disks.gcs.bucket');
+                $bucket = $storage->bucket($bucketName);
+
+                // --- পুরনো ইমেজ বাকেট থেকে ডিলিট করা ---
+                if ($member->image) {
+                    try {
+                        $oldPath = parse_url($member->image, PHP_URL_PATH);
+                        // URL থেকে শুধু পাথ অংশটুকু বের করা
+                        $relativeOldPath = ltrim($oldPath, '/' . $bucketName . '/');
+                        $oldObject = $bucket->object($relativeOldPath);
+                        if ($oldObject->exists()) {
+                            $oldObject->delete();
+                        }
+                    } catch (\Exception $deleteError) {
+                        \Log::warning("Old GCS image delete failed: " . $deleteError->getMessage());
                     }
-                    
-                    $storage = new \Google\Cloud\Storage\StorageClient([
-                        'projectId' => config('filesystems.disks.gcs.project_id'),
-                        'keyFile' => $keyFileData,
-                    ]);
+                }
 
-                    $bucketName = config('filesystems.disks.gcs.bucket');
-                    $bucket = $storage->bucket($bucketName);
+                // --- নতুন ইমেজ আপলোড করা ---
+                $object = $bucket->upload($encodedImage->getEncoded(), [
+                    'name' => $fileName,
+                    'metadata' => [
+                        'contentType' => 'image/webp'
+                    ]
+                ]);
 
-                    // GCS এ আপলোড
-                    $object = $bucket->upload($encodedImage->getEncoded(), [
-                        'name' => $fileName,
-                        'metadata' => [
-                            'contentType' => 'image/webp'
-                        ]
-                    ]);
-
-                    if ($object) {
-                        $member->image = "https://storage.googleapis.com/" . $bucketName . "/" . $fileName;
-                        $updatedFields[] = 'image';
-                    }
-                } catch (\Exception $uploadError) {
-                    \Log::error("GCS Upload Error: " . $uploadError->getMessage());
-                    return response()->json(['status' => 'error', 'message' => 'Image upload failed.'], 500);
+                if ($object) {
+                    $member->image = "https://storage.googleapis.com/" . $bucketName . "/" . $fileName;
+                    $updatedFields[] = 'image';
                 }
             }
 
-            // --- পরিবর্তন হয়ে থাকলে ব্যাকআপ সেভ এবং মেম্বার আপডেট করা ---
+            // --- ৩. ব্যাকআপ সেভ এবং ডাটাবেস আপডেট ---
             if (!empty($updatedFields)) {
                 \App\Models\Memberbackup::create([
                     'member_id'     => $member->id,
@@ -1716,13 +1716,13 @@ class MemberController extends Controller
 
             return response()->json([
                 'status'         => 'success',
-                'message'        => 'Member updated successfully!',
+                'message'        => 'Profile updated successfully!',
                 'updated_fields' => $updatedFields,
                 'data'           => $member,
             ]);
 
         } catch (\Exception $e) {
-            \Log::error("Member Update Error: " . $e->getMessage());
+            \Log::error("Member Update Final Error: " . $e->getMessage());
             return response()->json([
                 'status'  => 'error',
                 'message' => 'Something went wrong: ' . $e->getMessage()
