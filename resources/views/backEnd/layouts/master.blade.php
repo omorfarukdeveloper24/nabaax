@@ -378,6 +378,27 @@
                             </a>
                         </li>
                         <!-- END PAYMENT History  NAV ITEM -->
+
+                        <li>
+                            <a href="#sidebar-miniad" data-bs-toggle="collapse">
+                                <i data-feather="user"></i>
+                                <span> Mini Ad  </span>
+                                <span class="menu-arrow"></span>
+                            </a>
+                            <div class="collapse" id="sidebar-miniad">
+                                <ul class="nav-second-level">
+                                    <li>
+                                        <a href="{{ route('miniads.create') }}"><i data-feather="minus"></i>
+                                            Create</a>
+                                    </li>
+                                    <li>
+                                        <a href="{{ route('miniads.index') }}"><i data-feather="minus"></i>
+                                            List</a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </li>
+                        <!-- nav items -->
                         
                         
                         
