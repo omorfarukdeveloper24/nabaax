@@ -28,7 +28,7 @@ class MiniAdController extends Controller
             'title'  => 'required|string|max:255',
             'link'   => 'required|max:255',
             'status' => 'required',
-            'image'  => 'required|image|mimes:jpg,jpeg,png,webp|max:5120',
+            'image'  => 'required|image|mimes:jpg,jpeg,png,webp|max:20120',
         ]);
 
         $data = [
@@ -100,17 +100,33 @@ class MiniAdController extends Controller
                 $bucketName = config('filesystems.disks.gcs.bucket');
                 $bucket = $this->getGcsBucket();
 
-                // --- পুরনো ইমেজ ডিলিট করা ---
+                // --- পুরনো ইমেজ ডিলিট করার শক্তিশালী লজিক ---
                 if ($update_data->image) {
                     try {
-                        $oldPath = parse_url($update_data->image, PHP_URL_PATH);
-                        $relativeOldPath = ltrim($oldPath, '/' . $bucketName . '/');
-                        $oldObject = $bucket->object($relativeOldPath);
-                        if ($oldObject->exists()) {
-                            $oldObject->delete();
+                        // URL থেকে পাথটি বের করা (যেমন: /nabaax-media-bucket-2/miniads/old.webp)
+                        $fullPath = parse_url($update_data->image, PHP_URL_PATH);
+                        
+                        /** * পাথের ভেতর থেকে বাকেট নাম এবং তার আগের অংশ সরিয়ে ফেলা 
+                         * যাতে শুধু 'miniads/old.webp' অংশটুকু থাকে
+                         */
+                        $search = '/' . $bucketName . '/';
+                        $relativeOldPath = "";
+
+                        if (strpos($fullPath, $search) !== false) {
+                            $relativeOldPath = explode($search, $fullPath)[1];
+                        } else {
+                            // যদি বাকেট নাম পাথে না থাকে, তবে শুরুর স্লাশ ফেলে ট্রাই করা
+                            $relativeOldPath = ltrim($fullPath, '/');
+                        }
+
+                        if (!empty($relativeOldPath)) {
+                            $oldObject = $bucket->object($relativeOldPath);
+                            if ($oldObject->exists()) {
+                                $oldObject->delete();
+                            }
                         }
                     } catch (\Exception $de) {
-                        \Log::warning("Old image delete failed: " . $de->getMessage());
+                        \Log::warning("GCS Delete Fail: " . $de->getMessage());
                     }
                 }
 
