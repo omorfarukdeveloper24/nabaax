@@ -317,9 +317,9 @@ class MemberController extends Controller
     private function generateReferrerCode() {
         $startLetters = Str::lower(Str::random(4));
         $now = now();
-        $dateTime = $now->format('YmdHisv'); 
-        $endLetters = Str::lower(Str::random(4));
-        return $startLetters . $dateTime . $endLetters;
+        $dateTime = $now->format('ymdHis'); 
+
+        return $startLetters . $dateTime;
     }
     
 
@@ -332,6 +332,7 @@ class MemberController extends Controller
             'phone'    => 'required|string|max:20|unique:members,phone',
             'username' => 'required|string|max:50|unique:members,username',
             'password' => 'required|string|min:6',
+            'partner_code' => 'nullable|exists:members,referrer_code',
         ]);
 
         if ($validator->fails()) {
@@ -354,12 +355,26 @@ class MemberController extends Controller
         
 
         $member = Member::create([
-            'name'        => $request->name,
-            'username'    => $request->username,
-            'phone'       => $request->phone,
-            'password'    => Hash::make($request->password),
-            'balance'     => 0,
-            'phoneverify' => rand(111111, 999999),
+            'name'          => $request->name,
+            'username'      => $request->username,
+            'phone'         => $request->phone,
+            'password'      => Hash::make($request->password),
+            'balance'       => 0,
+            'referrer_code' => $this->generateReferrerCode(),
+            'phoneverify'   => rand(111111, 999999),
+        ]);
+        
+        $referrerMember = Member::where('referrer_code', $request->partner_code)->first();
+
+        $member = Member::create([
+            'name'          => $request->name,
+            'username'      => $request->username,
+            'phone'         => $request->phone,
+            'password'      => Hash::make($request->password),
+            'balance'       => 0,
+            'referrer_code' => $this->generateReferrerCode(), 
+            'phoneverify'   => rand(111111, 999999),
+            'only_reffer'   => $referrerMember ? $referrerMember->id : null, 
         ]);
         
         
