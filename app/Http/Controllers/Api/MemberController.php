@@ -353,18 +353,9 @@ class MemberController extends Controller
             ]);
         }
         
-
-        $member = Member::create([
-            'name'          => $request->name,
-            'username'      => $request->username,
-            'phone'         => $request->phone,
-            'password'      => Hash::make($request->password),
-            'balance'       => 0,
-            'referrer_code' => $this->generateReferrerCode(),
-            'phoneverify'   => rand(111111, 999999),
-        ]);
         
         $referrerMember = Member::where('referrer_code', $request->partner_code)->first();
+        return $referrerMember;
 
         $member = Member::create([
             'name'          => $request->name,
