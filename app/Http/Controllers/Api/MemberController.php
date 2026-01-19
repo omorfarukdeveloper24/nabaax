@@ -174,7 +174,7 @@ class MemberController extends Controller
             ], 404);
         }
     
-        if ($auth_check->status == 0) {
+        if (intval($auth_check->status) === 0) {
             return response()->json([
                 "error" => "Account Pending",
                 "message" => "Your account is pending approval. Please wait Some Minute."
