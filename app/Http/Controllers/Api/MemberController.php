@@ -177,7 +177,7 @@ class MemberController extends Controller
         if ($auth_check->status == 0) {
             return response()->json([
                 "error" => "Account Pending",
-                "message" => "Your account is pending approval. Please wait."
+                "message" => "Your account is pending approval. Please wait Some Minute."
             ], 403);
         }
     
