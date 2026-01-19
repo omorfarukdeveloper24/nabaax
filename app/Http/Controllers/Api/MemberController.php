@@ -173,8 +173,10 @@ class MemberController extends Controller
                 'message' => 'Data not found, Enter valid information'
             ], 404);
         }
+
+        return $auth_check;
     
-        if (intval($auth_check->status) === 0) {
+        if ($auth_check->status == 0) {
             return response()->json([
                 "error" => "Account Pending",
                 "message" => "Your account is pending approval. Please wait Some Minute."
