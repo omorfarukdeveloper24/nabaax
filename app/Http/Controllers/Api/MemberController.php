@@ -1695,14 +1695,18 @@ class MemberController extends Controller
 
         $total_followers = Follow::where('following_id', $member->id)->count();
         $total_partners = Member::where('referrer_id', $member->id)->count();
+        $total_reffers = Member::where('only_reffer', $member->id)->count();
 
         $partner_goal = 10;
+        $reffer_goal = 100;
         $follower_goal = 1000;
 
         $partner_percentage = min(($total_partners / $partner_goal) * 100, 100);
+        $reffer_percentage = min(($total_reffers / $reffer_goal) * 100, 100);
         $follower_percentage = min(($total_followers / $follower_goal) * 100, 100);
 
         $partner_status  = ($total_partners >= $partner_goal) ? 'Complete' : 'Incomplete';
+        $reffer_status   = ($total_reffers >= $reffer_goal) ? 'Complete' : 'Incomplete';
         $follower_status = ($total_followers >= $follower_goal) ? 'Complete' : 'Incomplete';
 
         return response()->json([
@@ -1715,6 +1719,7 @@ class MemberController extends Controller
                 'stats' => [
                     'total_followers' => $total_followers,
                     'total_partners' => $total_partners,
+                    'total_reffers' => $total_reffers,
                 ],
                 'requirements' => [
                     'partner' => [
@@ -1728,6 +1733,12 @@ class MemberController extends Controller
                         'current' => $total_followers,
                         'goal' => $follower_goal,
                         'percentage' => round($follower_percentage, 2) . '%'
+                    ],
+                    'reffer' => [
+                        'status' => $reffer_status,
+                        'current' => $total_reffers,
+                        'goal' => $reffer_goal,
+                        'percentage' => round($reffer_percentage, 2) . '%'
                     ],
                 ]
             ]
