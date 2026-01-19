@@ -174,7 +174,6 @@ class MemberController extends Controller
             ], 404);
         }
 
-        return $auth_check;
     
         if ($auth_check->status == 0) {
             return response()->json([
