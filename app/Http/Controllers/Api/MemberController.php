@@ -355,6 +355,8 @@ class MemberController extends Controller
         
         
         $referrerMember = Member::where('referrer_code', $request->partner_code)->first();
+        $referrerMemberId = $referrerMember ? $referrerMember->id : null;
+        return $referrerMemberId;
         
 
         $member = Member::create([
@@ -365,7 +367,7 @@ class MemberController extends Controller
             'balance'       => 0,
             'referrer_code' => $this->generateReferrerCode(), 
             'phoneverify'   => rand(111111, 999999),
-            'only_reffer'   => $referrerMember ? $referrerMember->id : null, 
+            'only_reffer'   => $referrerMemberId, 
         ]);
         
         
