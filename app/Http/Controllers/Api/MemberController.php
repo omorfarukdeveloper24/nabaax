@@ -355,7 +355,7 @@ class MemberController extends Controller
         
         
         $referrerMember = Member::where('referrer_code', $request->partner_code)->first();
-        return $referrerMember;
+        
 
         $member = Member::create([
             'name'          => $request->name,
