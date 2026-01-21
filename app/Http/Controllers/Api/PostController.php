@@ -660,16 +660,30 @@ public function miniads(Request $request)
                 $response = $imageAnnotator->safeSearchDetection($content);
                 $safe = $response->getSafeSearchAnnotation();
 
-                // যদি Adult বা Racy কন্টেন্টের সম্ভাবনা "Likely" (4) বা "Very Likely" (5) হয়
+                // টেস্টিং এর জন্য এই অংশটি ব্যবহার করুন:
+                return response()->json([
+                    'status' => 'testing',
+                    'message' => 'Vision AI analysis results',
+                    'data' => [
+                        'adult' => $safe->getAdult(),     // এটি ১ থেকে ৫ এর মধ্যে মান দিবে
+                        'medical' => $safe->getMedical(),
+                        'spoof' => $safe->getSpoof(),
+                        'violence' => $safe->getViolence(),
+                        'racy' => $safe->getRacy(),       // এটি সেক্সি বা খোলামেলা কন্টেন্ট চেক করে
+                    ]
+                ]);
+
+                // আপনার আসল কন্ডিশন (যা পরে কাজ করবে)
                 if ($safe->getAdult() >= 4 || $safe->getRacy() >= 4) {
                     $imageAnnotator->close();
-                    return response()->json(['status' => 'failed', 'message' => '১৮+ বা আপত্তিজনক ফাইল আপলোড করা সম্ভব নয়।'], 403);
+                    return response()->json(['status' => 'failed', 'message' => '১৮+ কন্টেন্ট পাওয়া গেছে!'], 403);
                 }
             }
             $imageAnnotator->close();
         }
+        return "not Okk";
 
-        // ২. চেক সফল হলে পোস্ট ক্রিয়েট করা
+        // ২. চেক সফল হলে পোস্ট ক্রিয়েট করা
         $post = Post::create([
             'member_id' => $member->id,
             'content' => $request->content ?? null,
