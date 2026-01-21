@@ -19,6 +19,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
 use Google\Cloud\Storage\StorageClient;
+use Google\Cloud\Vision\V1\ImageAnnotatorClient;
 
 
 class PostController extends Controller
@@ -634,7 +635,9 @@ public function miniads(Request $request)
 
 
 
-    public function store(Request $request)
+
+
+   public function store(Request $request)
     {
         $request->validate([
             'content' => 'nullable|string',
@@ -645,7 +648,28 @@ public function miniads(Request $request)
         $member = Auth::guard("member")->user();
         if (!$member) return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
 
-        // ১. পোস্ট তৈরি
+        // ১. প্রথমেই ১৮+ কন্টেন্ট চেক (বড় লুপের আগে বা ভেতরে)
+        if ($request->hasFile('media')) {
+            $keyFileData = config('filesystems.disks.gcs.key_file');
+            if (!is_array($keyFileData)) $keyFileData = json_decode(file_get_contents(base_path($keyFileData)), true);
+            
+            $imageAnnotator = new ImageAnnotatorClient(['keyFile' => $keyFileData]);
+
+            foreach ($request->file('media') as $file) {
+                $content = file_get_contents($file->getRealPath());
+                $response = $imageAnnotator->safeSearchDetection($content);
+                $safe = $response->getSafeSearchAnnotation();
+
+                // যদি Adult বা Racy কন্টেন্টের সম্ভাবনা "Likely" (4) বা "Very Likely" (5) হয়
+                if ($safe->getAdult() >= 4 || $safe->getRacy() >= 4) {
+                    $imageAnnotator->close();
+                    return response()->json(['status' => 'failed', 'message' => '১৮+ বা আপত্তিজনক ফাইল আপলোড করা সম্ভব নয়।'], 403);
+                }
+            }
+            $imageAnnotator->close();
+        }
+
+        // ২. চেক সফল হলে পোস্ট ক্রিয়েট করা
         $post = Post::create([
             'member_id' => $member->id,
             'content' => $request->content ?? null,
@@ -655,9 +679,9 @@ public function miniads(Request $request)
             'scheduled_at' => $request->scheduled_at,
         ]);
 
+        // ৩. এরপর আপনার স্টোরেজ আপলোড লজিক (যা আগে ছিল)
         if ($request->hasFile('media')) {
             try {
-                // GCS কনফিগারেশন
                 $keyFileData = config('filesystems.disks.gcs.key_file');
                 if (!is_array($keyFileData)) $keyFileData = json_decode(file_get_contents(base_path($keyFileData)), true);
                 
@@ -669,17 +693,14 @@ public function miniads(Request $request)
                     $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
                     $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
 
-                    // --- ইমেজ প্রসেসিং (১২০০পিএক্স এবং ৫০০ কেবি লিমিট) ---
                     if (in_array($extension, $imageExtensions)) {
                         $img = Image::make($file->getRealPath());
                         
-                        // রেজুলেশন ঠিক রেখে ১২০০ পিক্সেল চওড়া করা
                         $img->resize(1200, null, function ($constraint) {
                             $constraint->aspectRatio();
                             $constraint->upsize();
                         });
 
-                        // কোয়ালিটি কমিয়ে ৫০০ কেবি এর নিচে আনা
                         $quality = 85; 
                         $encoded = $img->encode('webp', $quality);
                         
@@ -700,11 +721,10 @@ public function miniads(Request $request)
                             'path' => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $fileName,
                         ]);
 
-                    // --- ভিডিও প্রসেসিং (সরাসরি আপলোড) ---
+                  
                     } elseif (in_array($extension, $videoExtensions)) {
                         $fileName = 'posts/videos/' . time() . '-' . uniqid() . '.' . $extension;
                         
-                        // ভিডিও কোনো পরিবর্তন ছাড়াই সরাসরি আপলোড হচ্ছে
                         $bucket->upload(fopen($file->getRealPath(), 'r'), [
                             'name' => $fileName,
                             'metadata' => ['contentType' => $file->getMimeType()]
@@ -728,6 +748,127 @@ public function miniads(Request $request)
             'post' => $post->load('media')
         ]);
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+
+
+
+//    This is our with out 18 + code start
+    // public function store(Request $request)
+    // {
+    //     $request->validate([
+    //         'content' => 'nullable|string',
+    //         'visibility' => 'required',
+    //         'media.*' => 'nullable|file',
+    //     ]);
+
+    //     $member = Auth::guard("member")->user();
+    //     if (!$member) return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
+
+    //     $post = Post::create([
+    //         'member_id' => $member->id,
+    //         'content' => $request->content ?? null,
+    //         'boost_status' => $request->boost_status ?? 0,
+    //         'visibility' => $request->visibility,
+    //         'is_pinned' => $request->is_pinned ?? false,
+    //         'scheduled_at' => $request->scheduled_at,
+    //     ]);
+
+    //     if ($request->hasFile('media')) {
+    //         try {
+    //             $keyFileData = config('filesystems.disks.gcs.key_file');
+    //             if (!is_array($keyFileData)) $keyFileData = json_decode(file_get_contents(base_path($keyFileData)), true);
+                
+    //             $storage = new StorageClient(['projectId' => config('filesystems.disks.gcs.project_id'), 'keyFile' => $keyFileData]);
+    //             $bucket = $storage->bucket(config('filesystems.disks.gcs.bucket'));
+
+    //             foreach ($request->file('media') as $file) {
+    //                 $extension = strtolower($file->getClientOriginalExtension());
+    //                 $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+    //                 $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
+
+    //                 if (in_array($extension, $imageExtensions)) {
+    //                     $img = Image::make($file->getRealPath());
+                        
+    //                     $img->resize(1200, null, function ($constraint) {
+    //                         $constraint->aspectRatio();
+    //                         $constraint->upsize();
+    //                     });
+
+    //                     $quality = 85; 
+    //                     $encoded = $img->encode('webp', $quality);
+                        
+    //                     while (strlen($encoded) / 1024 > 500 && $quality > 10) {
+    //                         $quality -= 5;
+    //                         $encoded = $img->encode('webp', $quality);
+    //                     }
+
+    //                     $fileName = 'posts/images/' . time() . '-' . uniqid() . '.webp';
+    //                     $bucket->upload($encoded, [
+    //                         'name' => $fileName, 
+    //                         'metadata' => ['contentType' => 'image/webp']
+    //                     ]);
+
+    //                     Post_media::create([
+    //                         'post_id' => $post->id,
+    //                         'media_type' => 'image',
+    //                         'path' => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $fileName,
+    //                     ]);
+
+                  
+    //                 } elseif (in_array($extension, $videoExtensions)) {
+    //                     $fileName = 'posts/videos/' . time() . '-' . uniqid() . '.' . $extension;
+                        
+    //                     $bucket->upload(fopen($file->getRealPath(), 'r'), [
+    //                         'name' => $fileName,
+    //                         'metadata' => ['contentType' => $file->getMimeType()]
+    //                     ]);
+
+    //                     Post_media::create([
+    //                         'post_id' => $post->id,
+    //                         'media_type' => 'video',
+    //                         'path' => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $fileName,
+    //                     ]);
+    //                 }
+    //             }
+    //         } catch (\Exception $e) {
+    //             \Log::error("Media Upload Error: " . $e->getMessage());
+    //         }
+    //     }
+
+    //     return response()->json([
+    //         'status' => 'success', 
+    //         'message' => 'Post created successfully!', 
+    //         'post' => $post->load('media')
+    //     ]);
+    // }
+
+    // This is our with out 18 + code end
 
     
     
