@@ -639,20 +639,22 @@ public function miniads(Request $request)
 
     public function store(Request $request)
     {
+        // ১. ভ্যালিডেশন
         $request->validate([
             'content' => 'nullable|string',
             'visibility' => 'required',
-            'media.*' => 'nullable|file|max:51200',
+            'media.*' => 'nullable|file|max:51200', // ৫২ এমবি ম্যাক্স
         ]);
 
         $member = Auth::guard("member")->user();
         if (!$member) return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
 
+        // ক্রেডেনশিয়াল এবং এক্সটেনশন সেটআপ
         $keyFileData = config('filesystems.disks.gcs.key_file');
         $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
         $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
 
-        // ১. ১৮+ কন্টেন্ট চেক
+        // ২. ১৮+ কন্টেন্ট চেক (শুধুমাত্র ইমেজের জন্য)
         if ($request->hasFile('media')) {
             $imageAnnotator = new \Google\Cloud\Vision\V1\ImageAnnotatorClient([
                 'credentials' => $keyFileData,
@@ -667,8 +669,9 @@ public function miniads(Request $request)
                         $response = $imageAnnotator->safeSearchDetection($content);
                         $safe = $response->getSafeSearchAnnotation();
 
+                        // যদি Adult বা Racy কন্টেন্ট ৪ বা ৫ হয় (Likely/Very Likely)
                         if ($safe->getAdult() >= 4 || $safe->getRacy() >= 4) {
-                            return response()->json(['status' => 'failed', 'message' => '১৮+ কন্টেন্ট পাওয়া গেছে!'], 403);
+                            return response()->json(['status' => 'failed', 'message' => 'আপনার ছবিতে আপত্তিজনক কন্টেন্ট পাওয়া গেছে!'], 403);
                         }
                     }
                 }
@@ -677,7 +680,7 @@ public function miniads(Request $request)
             }
         }
 
-        // ২. পোস্ট তৈরি
+        // ৩. ডাটাবেসে পোস্ট তৈরি
         $post = Post::create([
             'member_id' => $member->id,
             'content' => $request->content,
@@ -687,7 +690,7 @@ public function miniads(Request $request)
             'scheduled_at' => $request->scheduled_at,
         ]);
 
-        // ৩. মিডিয়া আপলোড ও ডাটাবেসে সেভ
+        // ৪. মিডিয়া আপলোড প্রসেস (বাকেট এবং ডাটাবেস)
         if ($request->hasFile('media')) {
             try {
                 $storage = new \Google\Cloud\Storage\StorageClient([
@@ -698,52 +701,64 @@ public function miniads(Request $request)
 
                 foreach ($request->file('media') as $file) {
                     $extension = strtolower($file->getClientOriginalExtension());
-                    $fileName = time() . '-' . uniqid();
+                    $fileNameBase = time() . '-' . uniqid();
 
                     if (in_array($extension, $imageExtensions)) {
-                        // ইমেজ কনভার্ট
+                        // ইমেজ রিসাইজ ও এনকোড (আপনার আগের লজিক অনুযায়ী)
                         $img = \Intervention\Image\Facades\Image::make($file->getRealPath())->resize(1200, null, function ($constraint) {
                             $constraint->aspectRatio();
                             $constraint->upsize();
-                        })->encode('webp', 80);
+                        });
 
-                        $path = "posts/images/{$fileName}.webp";
-                        $bucket->upload((string)$img, [
-                            'name' => $path,
+                        $quality = 85;
+                        $encoded = $img->encode('webp', $quality);
+
+                        // ৫০০ কেবির বেশি হলে কোয়ালিটি কমানো
+                        while (strlen($encoded) / 1024 > 500 && $quality > 10) {
+                            $quality -= 5;
+                            $encoded = $img->encode('webp', $quality);
+                        }
+
+                        $fileName = "posts/images/{$fileNameBase}.webp";
+                        
+                        // বাকেটে আপলোড
+                        $bucket->upload((string)$encoded, [
+                            'name' => $fileName,
                             'metadata' => ['contentType' => 'image/webp']
                         ]);
 
-                        // ডাটাবেসে সেভ (সরাসরি এখানেই লিখছি যাতে ভুল না হয়)
+                        // মিডিয়া টেবিলে ডাটা সেভ
                         Post_media::create([
                             'post_id' => $post->id,
                             'media_type' => 'image',
-                            'path' => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $path,
+                            'path' => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $fileName,
                         ]);
 
                     } elseif (in_array($extension, $videoExtensions)) {
                         // ভিডিও আপলোড
-                        $path = "posts/videos/{$fileName}.{$extension}";
+                        $fileName = "posts/videos/{$fileNameBase}.{$extension}";
+                        
                         $bucket->upload(fopen($file->getRealPath(), 'r'), [
-                            'name' => $path,
+                            'name' => $fileName,
                             'metadata' => ['contentType' => $file->getMimeType()]
                         ]);
 
                         Post_media::create([
                             'post_id' => $post->id,
                             'media_type' => 'video',
-                            'path' => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $path,
+                            'path' => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $fileName,
                         ]);
                     }
                 }
             } catch (\Exception $e) {
-                \Log::error("Upload failed: " . $e->getMessage());
+                \Log::error("Media Upload Error: " . $e->getMessage());
             }
         }
 
         return response()->json([
             'status' => 'success',
             'message' => 'Post created successfully!',
-            'post' => $post->load('media') // মিডিয়া সহ লোড হবে
+            'post' => $post->load('media')
         ]);
     }
 
