@@ -651,11 +651,12 @@ public function miniads(Request $request)
         // ১. প্রথমেই ১৮+ কন্টেন্ট চেক (বড় লুপের আগে বা ভেতরে)
         if ($request->hasFile('media')) {
             $keyFileData = config('filesystems.disks.gcs.key_file');
-            if (!is_array($keyFileData)) $keyFileData = json_decode(file_get_contents(base_path($keyFileData)), true);
+
+            // ২. যেহেতু filesystems.php-তে অলরেডি json_decode করা আছে, 
+            // তাই এখানে নতুন করে json_decode বা file_get_contents করার প্রয়োজন নেই।
             
             $imageAnnotator = new ImageAnnotatorClient([
-                'keyFile' => $keyFileData,
-                // এই স্কোপটি যোগ করলে গুগল আপনার সব সার্ভিস পারমিশনকে একটি টোকেনের অধীনে নিয়ে আসবে
+                'credentials' => $keyFileData, // 'keyFile' এর বদলে 'credentials' ব্যবহার করুন যেহেতু এটি একটি অ্যারে
                 'scopes' => ['https://www.googleapis.com/auth/cloud-platform']
             ]);
 
