@@ -637,71 +637,54 @@ public function miniads(Request $request)
 
 
 
-   public function store(Request $request)
+    public function store(Request $request)
     {
+        // ১. ভ্যালিডেশন
         $request->validate([
             'content' => 'nullable|string',
             'visibility' => 'required',
-            'media.*' => 'nullable|file',
+            'media.*' => 'nullable|file|max:51200', // ৫০ এমবি লিমিট
         ]);
 
         $member = Auth::guard("member")->user();
         if (!$member) return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
 
-        // ১. প্রথমেই ১৮+ কন্টেন্ট চেক (বড় লুপের আগে বা ভেতরে)
-        if ($request->hasFile('media')) {
-            $keyFileData = config('filesystems.disks.gcs.key_file');
+        $keyFileData = config('filesystems.disks.gcs.key_file');
+        $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+        $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
 
+        // ২. ১৮+ কন্টেন্ট চেক (শুধুমাত্র ইমেজের জন্য)
+        if ($request->hasFile('media')) {
             $imageAnnotator = new ImageAnnotatorClient([
-                'credentials' => $keyFileData, 
+                'credentials' => $keyFileData,
                 'scopes' => ['https://www.googleapis.com/auth/cloud-platform']
             ]);
 
-            foreach ($request->file('media') as $file) {
-                $content = file_get_contents($file->getRealPath());
-                $response = $imageAnnotator->safeSearchDetection($content);
-                $safe = $response->getSafeSearchAnnotation();
+            try {
+                foreach ($request->file('media') as $file) {
+                    $extension = strtolower($file->getClientOriginalExtension());
 
-                // ১ থেকে ৫ পর্যন্ত মানগুলোকে মানুষের বোঝার উপযোগী টেক্সটে রূপান্তর
-                $likelihoodName = [
-                    0 => 'UNKNOWN', 
-                    1 => 'VERY_UNLIKELY (নিরাপদ)', 
-                    2 => 'UNLIKELY (সম্ভবত নিরাপদ)', 
-                    3 => 'POSSIBLE (সন্দেহজনক)', 
-                    4 => 'LIKELY (আপত্তিজনক হতে পারে)', 
-                    5 => 'VERY_LIKELY (নিশ্চিত আপত্তিজনক)'
-                ];
+                    if (in_array($extension, $imageExtensions)) {
+                        $content = file_get_contents($file->getRealPath());
+                        $response = $imageAnnotator->safeSearchDetection($content);
+                        $safe = $response->getSafeSearchAnnotation();
 
-                // ফলাফল বিশ্লেষণ
-                $adultScore = $safe->getAdult();
-                $racyScore = $safe->getRacy();
-                $isSafe = ($adultScore < 4 && $racyScore < 4);
-
-                // সরাসরি রিটার্ন দিয়ে ফলাফল চেক করা
-                return response()->json([
-                    'status' => 'testing',
-                    'overall_result' => $isSafe ? '✅ এই ছবিটি আপলোড করা যাবে' : '❌ এটি ১৮+ বা আপত্তিজনক ছবি',
-                    'image_analysis' => [
-                        'adult_content' => $likelihoodName[$adultScore],
-                        'suggestive_racy' => $likelihoodName[$racyScore],
-                        'violence' => $likelihoodName[$safe->getViolence()],
-                        'medical' => $likelihoodName[$safe->getMedical()],
-                    ],
-                    'raw_data' => [
-                        'adult_level' => $adultScore,
-                        'racy_level' => $racyScore
-                    ],
-                    'file_info' => [
-                        'name' => $file->getClientOriginalName(),
-                        'type' => $file->getClientMimeType()
-                    ]
-                ]);
+                        // যদি Adult বা Racy কন্টেন্ট Likely (4) বা Very Likely (5) হয়
+                        if ($safe->getAdult() >= 4 || $safe->getRacy() >= 4) {
+                            $imageAnnotator->close();
+                            return response()->json([
+                                'status' => 'failed', 
+                                'message' => 'আপনার আপলোড করা ছবিতে আপত্তিজনক কন্টেন্ট পাওয়া গেছে।'
+                            ], 403);
+                        }
+                    }
+                }
+            } finally {
+                $imageAnnotator->close();
             }
-            $imageAnnotator->close();
         }
-        return "not Okk";
 
-        // ২. চেক সফল হলে পোস্ট ক্রিয়েট করা
+        // ৩. পোস্ট ক্রিয়েট করা
         $post = Post::create([
             'member_id' => $member->id,
             'content' => $request->content ?? null,
@@ -711,73 +694,67 @@ public function miniads(Request $request)
             'scheduled_at' => $request->scheduled_at,
         ]);
 
-        // ৩. এরপর আপনার স্টোরেজ আপলোড লজিক (যা আগে ছিল)
+        // ৪. মিডিয়া আপলোড প্রসেস
         if ($request->hasFile('media')) {
             try {
-                $keyFileData = config('filesystems.disks.gcs.key_file');
-                if (!is_array($keyFileData)) $keyFileData = json_decode(file_get_contents(base_path($keyFileData)), true);
-                
-                $storage = new StorageClient(['projectId' => config('filesystems.disks.gcs.project_id'), 'keyFile' => $keyFileData]);
+                $storage = new StorageClient([
+                    'projectId' => config('filesystems.disks.gcs.project_id'), 
+                    'credentials' => $keyFileData
+                ]);
                 $bucket = $storage->bucket(config('filesystems.disks.gcs.bucket'));
 
                 foreach ($request->file('media') as $file) {
                     $extension = strtolower($file->getClientOriginalExtension());
-                    $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
-                    $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
+                    $fileName = time() . '-' . uniqid();
 
                     if (in_array($extension, $imageExtensions)) {
-                        $img = Image::make($file->getRealPath());
-                        
-                        $img->resize(1200, null, function ($constraint) {
+                        // ইমেজ প্রসেসিং ও ওয়েবপি কনভার্ট
+                        $img = Image::make($file->getRealPath())->resize(1200, null, function ($constraint) {
                             $constraint->aspectRatio();
                             $constraint->upsize();
                         });
 
-                        $quality = 85; 
-                        $encoded = $img->encode('webp', $quality);
+                        $encoded = $img->encode('webp', 85);
+                        $fullPath = 'posts/images/' . $fileName . '.webp';
                         
-                        while (strlen($encoded) / 1024 > 500 && $quality > 10) {
-                            $quality -= 5;
-                            $encoded = $img->encode('webp', $quality);
-                        }
-
-                        $fileName = 'posts/images/' . time() . '-' . uniqid() . '.webp';
                         $bucket->upload($encoded, [
-                            'name' => $fileName, 
+                            'name' => $fullPath,
                             'metadata' => ['contentType' => 'image/webp']
                         ]);
 
-                        Post_media::create([
-                            'post_id' => $post->id,
-                            'media_type' => 'image',
-                            'path' => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $fileName,
-                        ]);
+                        $this->saveMediaRecord($post->id, 'image', $fullPath);
 
-                  
                     } elseif (in_array($extension, $videoExtensions)) {
-                        $fileName = 'posts/videos/' . time() . '-' . uniqid() . '.' . $extension;
+                        // ভিডিও আপলোড
+                        $fullPath = 'posts/videos/' . $fileName . '.' . $extension;
                         
                         $bucket->upload(fopen($file->getRealPath(), 'r'), [
-                            'name' => $fileName,
+                            'name' => $fullPath,
                             'metadata' => ['contentType' => $file->getMimeType()]
                         ]);
 
-                        Post_media::create([
-                            'post_id' => $post->id,
-                            'media_type' => 'video',
-                            'path' => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $fileName,
-                        ]);
+                        $this->saveMediaRecord($post->id, 'video', $fullPath);
                     }
                 }
             } catch (\Exception $e) {
-                \Log::error("Media Upload Error: " . $e->getMessage());
+                \Log::error("GCS Upload Error: " . $e->getMessage());
             }
         }
 
         return response()->json([
-            'status' => 'success', 
-            'message' => 'Post created successfully!', 
+            'status' => 'success',
+            'message' => 'Post created successfully!',
             'post' => $post->load('media')
+        ]);
+    }
+
+    // মিডিয়া রেকর্ড সেভ করার জন্য একটি হেল্পার মেথড
+    private function saveMediaRecord($postId, $type, $path)
+    {
+        Post_media::create([
+            'post_id' => $postId,
+            'media_type' => $type,
+            'path' => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $path,
         ]);
     }
 
