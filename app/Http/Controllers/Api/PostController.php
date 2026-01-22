@@ -653,7 +653,11 @@ public function miniads(Request $request)
             $keyFileData = config('filesystems.disks.gcs.key_file');
             if (!is_array($keyFileData)) $keyFileData = json_decode(file_get_contents(base_path($keyFileData)), true);
             
-            $imageAnnotator = new ImageAnnotatorClient(['keyFile' => $keyFileData]);
+            $imageAnnotator = new ImageAnnotatorClient([
+                'keyFile' => $keyFileData,
+                // এই স্কোপটি যোগ করলে গুগল আপনার সব সার্ভিস পারমিশনকে একটি টোকেনের অধীনে নিয়ে আসবে
+                'scopes' => ['https://www.googleapis.com/auth/cloud-platform']
+            ]);
 
             foreach ($request->file('media') as $file) {
                 $content = file_get_contents($file->getRealPath());
