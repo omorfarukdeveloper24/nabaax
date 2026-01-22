@@ -792,6 +792,8 @@ public function miniads(Request $request)
         ]);
     }
 
+    
+
 
 
 
