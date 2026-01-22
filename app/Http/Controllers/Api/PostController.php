@@ -652,11 +652,8 @@ public function miniads(Request $request)
         if ($request->hasFile('media')) {
             $keyFileData = config('filesystems.disks.gcs.key_file');
 
-            // ২. যেহেতু filesystems.php-তে অলরেডি json_decode করা আছে, 
-            // তাই এখানে নতুন করে json_decode বা file_get_contents করার প্রয়োজন নেই।
-            
             $imageAnnotator = new ImageAnnotatorClient([
-                'credentials' => $keyFileData, // 'keyFile' এর বদলে 'credentials' ব্যবহার করুন যেহেতু এটি একটি অ্যারে
+                'credentials' => $keyFileData, 
                 'scopes' => ['https://www.googleapis.com/auth/cloud-platform']
             ]);
 
@@ -665,24 +662,40 @@ public function miniads(Request $request)
                 $response = $imageAnnotator->safeSearchDetection($content);
                 $safe = $response->getSafeSearchAnnotation();
 
-                // টেস্টিং এর জন্য এই অংশটি ব্যবহার করুন:
+                // ১ থেকে ৫ পর্যন্ত মানগুলোকে মানুষের বোঝার উপযোগী টেক্সটে রূপান্তর
+                $likelihoodName = [
+                    0 => 'UNKNOWN', 
+                    1 => 'VERY_UNLIKELY (নিরাপদ)', 
+                    2 => 'UNLIKELY (সম্ভবত নিরাপদ)', 
+                    3 => 'POSSIBLE (সন্দেহজনক)', 
+                    4 => 'LIKELY (আপত্তিজনক হতে পারে)', 
+                    5 => 'VERY_LIKELY (নিশ্চিত আপত্তিজনক)'
+                ];
+
+                // ফলাফল বিশ্লেষণ
+                $adultScore = $safe->getAdult();
+                $racyScore = $safe->getRacy();
+                $isSafe = ($adultScore < 4 && $racyScore < 4);
+
+                // সরাসরি রিটার্ন দিয়ে ফলাফল চেক করা
                 return response()->json([
                     'status' => 'testing',
-                    'message' => 'Vision AI analysis results',
-                    'data' => [
-                        'adult' => $safe->getAdult(),     // এটি ১ থেকে ৫ এর মধ্যে মান দিবে
-                        'medical' => $safe->getMedical(),
-                        'spoof' => $safe->getSpoof(),
-                        'violence' => $safe->getViolence(),
-                        'racy' => $safe->getRacy(),       // এটি সেক্সি বা খোলামেলা কন্টেন্ট চেক করে
+                    'overall_result' => $isSafe ? '✅ এই ছবিটি আপলোড করা যাবে' : '❌ এটি ১৮+ বা আপত্তিজনক ছবি',
+                    'image_analysis' => [
+                        'adult_content' => $likelihoodName[$adultScore],
+                        'suggestive_racy' => $likelihoodName[$racyScore],
+                        'violence' => $likelihoodName[$safe->getViolence()],
+                        'medical' => $likelihoodName[$safe->getMedical()],
+                    ],
+                    'raw_data' => [
+                        'adult_level' => $adultScore,
+                        'racy_level' => $racyScore
+                    ],
+                    'file_info' => [
+                        'name' => $file->getClientOriginalName(),
+                        'type' => $file->getClientMimeType()
                     ]
                 ]);
-
-                // আপনার আসল কন্ডিশন (যা পরে কাজ করবে)
-                if ($safe->getAdult() >= 4 || $safe->getRacy() >= 4) {
-                    $imageAnnotator->close();
-                    return response()->json(['status' => 'failed', 'message' => '১৮+ কন্টেন্ট পাওয়া গেছে!'], 403);
-                }
             }
             $imageAnnotator->close();
         }
