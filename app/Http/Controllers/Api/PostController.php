@@ -643,21 +643,22 @@ public function miniads(Request $request)
         $request->validate([
             'content' => 'nullable|string',
             'visibility' => 'required',
-            'media.*' => 'nullable|file|max:51200', // ৫২ এমবি ম্যাক্স
+            'media.*' => 'nullable|file|max:51200',
         ]);
 
         $member = Auth::guard("member")->user();
         if (!$member) return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
 
-        // ক্রেডেনশিয়াল এবং এক্সটেনশন সেটআপ
+        // ক্রেডেনশিয়াল লোড (সরাসরি অ্যারে হিসেবে)
         $keyFileData = config('filesystems.disks.gcs.key_file');
         $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
         $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
 
-        // ২. ১৮+ কন্টেন্ট চেক (শুধুমাত্র ইমেজের জন্য)
+        // ২. ১৮+ কন্টেন্ট চেক (Vision AI)
         if ($request->hasFile('media')) {
+            // এখানে স্কোপ নির্দিষ্ট করে দেওয়া হয়েছে শুধুমাত্র Vision এর জন্য
             $imageAnnotator = new \Google\Cloud\Vision\V1\ImageAnnotatorClient([
-                'credentials' => $keyFileData,
+                'credentials' => $imageAnnotatorCredentials = $keyFileData,
                 'scopes' => ['https://www.googleapis.com/auth/cloud-platform']
             ]);
 
@@ -669,12 +670,14 @@ public function miniads(Request $request)
                         $response = $imageAnnotator->safeSearchDetection($content);
                         $safe = $response->getSafeSearchAnnotation();
 
-                        // যদি Adult বা Racy কন্টেন্ট ৪ বা ৫ হয় (Likely/Very Likely)
                         if ($safe->getAdult() >= 4 || $safe->getRacy() >= 4) {
-                            return response()->json(['status' => 'failed', 'message' => 'আপনার ছবিতে আপত্তিজনক কন্টেন্ট পাওয়া গেছে!'], 403);
+                            $imageAnnotator->close();
+                            return response()->json(['status' => 'failed', 'message' => 'আপত্তিজনক কন্টেন্ট পাওয়া গেছে!'], 403);
                         }
                     }
                 }
+            } catch (\Exception $e) {
+                \Log::error("Vision AI Error: " . $e->getMessage());
             } finally {
                 $imageAnnotator->close();
             }
@@ -693,11 +696,12 @@ public function miniads(Request $request)
         // ৪. মিডিয়া আপলোড প্রসেস (বাকেট এবং ডাটাবেস)
         if ($request->hasFile('media')) {
             try {
-                // স্টোরেজ ক্লায়েন্ট (এখান থেকে scopes সরিয়ে দেওয়া হয়েছে)
+                // স্টোরেজ ক্লায়েন্ট - এখানে 'keyFile' ব্যবহার করুন এবং scopes এড়িয়ে চলুন
                 $storage = new \Google\Cloud\Storage\StorageClient([
                     'projectId' => config('filesystems.disks.gcs.project_id'),
-                    'credentials' => $keyFileData 
+                    'keyFile'    => $keyFileData, // credentials এর বদলে keyFile সরাসরি দিন
                 ]);
+                
                 $bucket = $storage->bucket(config('filesystems.disks.gcs.bucket'));
 
                 foreach ($request->file('media') as $file) {
@@ -705,33 +709,22 @@ public function miniads(Request $request)
                     $fileNameBase = time() . '-' . uniqid();
 
                     if (in_array($extension, $imageExtensions)) {
-                        // ইমেজ রিসাইজ ও এনকোড
                         $img = \Intervention\Image\Facades\Image::make($file->getRealPath())->resize(1200, null, function ($constraint) {
                             $constraint->aspectRatio();
                             $constraint->upsize();
                         });
 
-                        $quality = 85;
-                        $encoded = $img->encode('webp', $quality);
-
-                        while (strlen($encoded) / 1024 > 500 && $quality > 10) {
-                            $quality -= 5;
-                            $encoded = $img->encode('webp', $quality);
-                        }
-
+                        $encoded = (string) $img->encode('webp', 85);
                         $fileName = "posts/images/{$fileNameBase}.webp";
                         
-                        // বাকেটে আপলোড (স্ট্রিং কাস্টিং নিশ্চিত করা হয়েছে)
-                        $bucket->upload((string)$encoded, [
+                        $bucket->upload($encoded, [
                             'name' => $fileName,
                             'metadata' => ['contentType' => 'image/webp']
                         ]);
 
-                        // ডাটাবেসে সেভ (হেল্পার মেথড ব্যবহার করে)
                         $this->saveMediaRecord($post->id, 'image', $fileName);
 
                     } elseif (in_array($extension, $videoExtensions)) {
-                        // ভিডিও আপলোড
                         $fileName = "posts/videos/{$fileNameBase}.{$extension}";
                         
                         $bucket->upload(fopen($file->getRealPath(), 'r'), [
@@ -744,6 +737,7 @@ public function miniads(Request $request)
                 }
             } catch (\Exception $e) {
                 \Log::error("Media Upload Error: " . $e->getMessage());
+                // এরর আসলে পোস্ট ডিলিট হবে না, শুধু মিডিয়া আপলোড হবে না
             }
         }
 
