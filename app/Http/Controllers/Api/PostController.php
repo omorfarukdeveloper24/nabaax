@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
 use Google\Cloud\Storage\StorageClient;
 use Google\Cloud\Vision\V1\ImageAnnotatorClient;
+use Google\Cloud\VideoIntelligence\V1\VideoIntelligenceServiceClient;
 
 
 class PostController extends Controller
@@ -809,21 +810,13 @@ public function miniads(Request $request)
         $member = Auth::guard("member")->user();
         if (!$member) return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
 
-        // ক্রেডেনশিয়াল এবং এক্সটেনশন সেটআপ
         $keyFileData = config('filesystems.disks.gcs.key_file');
         $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
         $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
 
-        // ২. কন্টেন্ট ফিল্টারিং (Image & Video)
+        // ২. ইমেজ ফিল্টারিং (ভিডিও এখন সরাসরি আপলোড হবে, চেক হবে ব্যাকগ্রাউন্ডে)
         if ($request->hasFile('media')) {
-            
-            // ইমেজ এবং ভিডিও ক্লায়েন্ট ইনিশিয়ালাইজ
             $imageAnnotator = new \Google\Cloud\Vision\V1\ImageAnnotatorClient([
-                'credentials' => $keyFileData,
-                'scopes' => ['https://www.googleapis.com/auth/cloud-platform']
-            ]);
-
-            $videoClient = new \Google\Cloud\VideoIntelligence\V1\VideoIntelligenceServiceClient([
                 'credentials' => $keyFileData
             ]);
 
@@ -831,50 +824,18 @@ public function miniads(Request $request)
                 foreach ($request->file('media') as $file) {
                     $extension = strtolower($file->getClientOriginalExtension());
                     
-                    // --- ইমেজ ফিল্টারিং ---
                     if (in_array($extension, $imageExtensions)) {
                         $content = file_get_contents($file->getRealPath());
                         $response = $imageAnnotator->safeSearchDetection($content);
                         $safe = $response->getSafeSearchAnnotation();
 
                         if ($safe->getAdult() >= 4 || $safe->getRacy() >= 4) {
-                            return response()->json(['status' => 'failed', 'message' => 'ছবিতে আপত্তিজনক কন্টেন্ট পাওয়া গেছে!'], 403);
-                        }
-                    } 
-                    
-                    // --- ভিডিও ফিল্টারিং ---
-                    elseif (in_array($extension, $videoExtensions)) {
-                        $inputContent = file_get_contents($file->getRealPath());
-                        $features = [\Google\Cloud\VideoIntelligence\V1\Feature::EXPLICIT_CONTENT_DETECTION];
-                        
-                        // ভিডিও অ্যানালাইসিস শুরু
-                        $operation = $videoClient->annotateVideo([
-                            'inputContent' => $inputContent,
-                            'features' => $features,
-                        ]);
-
-                        // অ্যানালাইসিস শেষ হওয়া পর্যন্ত অপেক্ষা করবে
-                        $operation->pollUntilComplete();
-
-                        if ($operation->operationSucceeded()) {
-                            $results = $operation->getResult()->getAnnotationResults()[0];
-                            $explicitAnnotation = $results->getExplicitAnnotation();
-
-                            foreach ($explicitAnnotation->getFrames() as $frame) {
-                                $likelihood = $frame->getPornographyLikelihood();
-                                // ৪ = Likely, ৫ = Very Likely (পর্নোগ্রাফি বা আপত্তিজনক কিছু থাকলে)
-                                if ($likelihood >= 4) {
-                                    return response()->json(['status' => 'failed', 'message' => 'ভিডিওতে আপত্তিজনক কন্টেন্ট পাওয়া গেছে!'], 403);
-                                }
-                            }
+                            return response()->json(['status' => 'failed', 'message' => 'ছবিতে আপত্তিজনক কন্টেন্ট পাওয়া গেছে!'], 403);
                         }
                     }
                 }
-            } catch (\Exception $e) {
-                \Log::error("Intelligence API Error: " . $e->getMessage());
             } finally {
                 $imageAnnotator->close();
-                $videoClient->close();
             }
         }
 
@@ -903,7 +864,7 @@ public function miniads(Request $request)
                     $fileNameBase = time() . '-' . uniqid();
 
                     if (in_array($extension, $imageExtensions)) {
-                        // ইমেজ প্রসেসিং
+                        // ইমেজ প্রসেসিং ও আপলোড
                         $img = \Intervention\Image\Facades\Image::make($file->getRealPath())->resize(1200, null, function ($constraint) {
                             $constraint->aspectRatio();
                             $constraint->upsize();
@@ -920,7 +881,7 @@ public function miniads(Request $request)
                         $this->saveMediaRecord($post->id, 'image', $fileName);
 
                     } elseif (in_array($extension, $videoExtensions)) {
-                        
+                        // ভিডিও আপলোড সরাসরি GCS এ
                         $fileName = "posts/videos/{$fileNameBase}.{$extension}";
                         
                         $bucket->upload(fopen($file->getRealPath(), 'r'), [
@@ -929,6 +890,9 @@ public function miniads(Request $request)
                         ]);
 
                         $this->saveMediaRecord($post->id, 'video', $fileName);
+
+                        // ব্যাকগ্রাউন্ড জব কল করা (এটি সাথে সাথে ভিডিও চেক শুরু করবে)
+                        \App\Jobs\ProcessVideoSafetyCheck::dispatch($post->id, $fileName);
                     }
                 }
             } catch (\Exception $e) {
@@ -938,7 +902,7 @@ public function miniads(Request $request)
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Post created successfully!',
+            'message' => 'পোস্টটি সফলভাবে আপলোড হয়েছে। ভিডিওটি রিভিউ করা হচ্ছে।',
             'post' => $post->load('media')
         ]);
     }

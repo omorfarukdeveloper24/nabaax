@@ -22,6 +22,7 @@ use App\Http\Controllers\Admin\MiniAdController;
 use App\Http\Controllers\GcsTestController;
 use Illuminate\Support\Facades\Storage;
 use Google\Cloud\Storage\StorageClient;
+use Google\Cloud\VideoIntelligence\V1\VideoIntelligenceServiceClient;
 
 
 Auth::routes();
@@ -33,6 +34,11 @@ Route::get('/cc', function () {
     Artisan::call('view:clear');
     Artisan::call('migrate');
     return "Cleared!";
+});
+
+Route::get('/video-test', function () {
+    $client = new VideoIntelligenceServiceClient();
+    return 'Google Video API Ready!';
 });
 
 // Route::get('/test-gcs-direct', function () {
@@ -68,10 +74,10 @@ Route::get('/cc', function () {
 //     return "Controller Created";
 // });
 
-Route::get('/migrate', function () {
-    Artisan::call('migrate');
-    return "Migrate Done!";
-});
+// Route::get('/migrate', function () {
+//     Artisan::call('migrate');
+//     return "Migrate Done!";
+// });
 
 // Route::get('/model', function () {
 //     Artisan::call('make:model Notification -m');
