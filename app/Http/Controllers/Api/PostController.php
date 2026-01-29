@@ -814,23 +814,19 @@ public function miniads(Request $request)
         $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
         $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
 
-        // ২. ইমেজ ফিল্টারিং (ভিডিও এখন সরাসরি আপলোড হবে, চেক হবে ব্যাকগ্রাউন্ডে)
+        // ২. ইমেজ প্রি-ফিল্টারিং (ইমেজ আপত্তিজনক হলে পোস্টই হবে না)
         if ($request->hasFile('media')) {
-            $imageAnnotator = new \Google\Cloud\Vision\V1\ImageAnnotatorClient([
-                'credentials' => $keyFileData
-            ]);
-
+            $imageAnnotator = new \Google\Cloud\Vision\V1\ImageAnnotatorClient(['credentials' => $keyFileData]);
             try {
                 foreach ($request->file('media') as $file) {
                     $extension = strtolower($file->getClientOriginalExtension());
-                    
                     if (in_array($extension, $imageExtensions)) {
                         $content = file_get_contents($file->getRealPath());
                         $response = $imageAnnotator->safeSearchDetection($content);
                         $safe = $response->getSafeSearchAnnotation();
 
                         if ($safe->getAdult() >= 4 || $safe->getRacy() >= 4) {
-                            return response()->json(['status' => 'failed', 'message' => 'ছবিতে আপত্তিজনক কন্টেন্ট পাওয়া গেছে!'], 403);
+                            return response()->json(['status' => 'failed', 'message' => 'ছবিতে আপত্তিজনক কন্টেন্ট পাওয়া গেছে!'], 403);
                         }
                     }
                 }
@@ -839,7 +835,18 @@ public function miniads(Request $request)
             }
         }
 
-        // ৩. ডাটাবেসে পোস্ট তৈরি
+        // ৩. ভিডিও আছে কি না চেক করা
+        $hasVideo = false;
+        if ($request->hasFile('media')) {
+            foreach ($request->file('media') as $file) {
+                if (in_array(strtolower($file->getClientOriginalExtension()), $videoExtensions)) {
+                    $hasVideo = true;
+                    break;
+                }
+            }
+        }
+
+        // ৪. ডাটাবেসে পোস্ট তৈরি (ভিডিও থাকলে স্ট্যাটাস হবে pending)
         $post = \App\Models\Post::create([
             'member_id' => $member->id,
             'content' => $request->content,
@@ -847,16 +854,16 @@ public function miniads(Request $request)
             'visibility' => $request->visibility,
             'is_pinned' => $request->is_pinned ?? false,
             'scheduled_at' => $request->scheduled_at,
+            'status' => $hasVideo ? 'pending' : 'active', 
         ]);
 
-        // ৪. মিডিয়া আপলোড প্রসেস (GCS এবং ডাটাবেস)
+        // ৫. মিডিয়া আপলোড প্রসেস
         if ($request->hasFile('media')) {
             try {
                 $storage = new \Google\Cloud\Storage\StorageClient([
                     'projectId' => config('filesystems.disks.gcs.project_id'),
                     'keyFile'    => $keyFileData, 
                 ]);
-                
                 $bucket = $storage->bucket(config('filesystems.disks.gcs.bucket'));
 
                 foreach ($request->file('media') as $file) {
@@ -864,34 +871,25 @@ public function miniads(Request $request)
                     $fileNameBase = time() . '-' . uniqid();
 
                     if (in_array($extension, $imageExtensions)) {
-                        // ইমেজ প্রসেসিং ও আপলোড
                         $img = \Intervention\Image\Facades\Image::make($file->getRealPath())->resize(1200, null, function ($constraint) {
-                            $constraint->aspectRatio();
-                            $constraint->upsize();
+                            $constraint->aspectRatio(); $constraint->upsize();
                         });
-
-                        $encoded = (string) $img->encode('webp', 85);
                         $fileName = "posts/images/{$fileNameBase}.webp";
-                        
-                        $bucket->upload($encoded, [
+                        $bucket->upload((string)$img->encode('webp', 85), [
                             'name' => $fileName,
                             'metadata' => ['contentType' => 'image/webp']
                         ]);
-
                         $this->saveMediaRecord($post->id, 'image', $fileName);
 
                     } elseif (in_array($extension, $videoExtensions)) {
-                        // ভিডিও আপলোড সরাসরি GCS এ
                         $fileName = "posts/videos/{$fileNameBase}.{$extension}";
-                        
                         $bucket->upload(fopen($file->getRealPath(), 'r'), [
                             'name' => $fileName,
                             'metadata' => ['contentType' => $file->getMimeType()]
                         ]);
-
                         $this->saveMediaRecord($post->id, 'video', $fileName);
 
-                        // ব্যাকগ্রাউন্ড জব কল করা (এটি সাথে সাথে ভিডিও চেক শুরু করবে)
+                        // ব্যাকগ্রাউন্ড জব কল করা
                         \App\Jobs\ProcessVideoSafetyCheck::dispatch($post->id, $fileName);
                     }
                 }
@@ -902,10 +900,15 @@ public function miniads(Request $request)
 
         return response()->json([
             'status' => 'success',
-            'message' => 'পোস্টটি সফলভাবে আপলোড হয়েছে। ভিডিওটি রিভিউ করা হচ্ছে।',
+            'message' => $hasVideo ? 'পোস্টটি সফলভাবে আপলোড হয়েছে। ভিডিওটি রিভিউ করা হচ্ছে, ৫ মিনিটের মধ্যে পাবলিশ হবে।' : 'পোস্টটি সফলভাবে পাবলিশ হয়েছে।',
             'post' => $post->load('media')
         ]);
     }
+
+
+
+
+    
 
     private function saveMediaRecord($postId, $type, $path)
     {

@@ -29,32 +29,47 @@ class ProcessVideoSafetyCheck implements ShouldQueue
         $keyFileData = config('filesystems.disks.gcs.key_file');
         $videoClient = new VideoIntelligenceServiceClient(['credentials' => $keyFileData]);
 
-        // GCS এর Path (e.g., gs://bucket-name/posts/videos/abc.mp4)
         $gcsUri = 'gs://' . config('filesystems.disks.gcs.bucket') . '/' . $this->videoPath;
 
-        $operation = $videoClient->annotateVideo([
-            'inputUri' => $gcsUri,
-            'features' => [Feature::EXPLICIT_CONTENT_DETECTION],
-        ]);
+        try {
+            $operation = $videoClient->annotateVideo([
+                'inputUri' => $gcsUri,
+                'features' => [Feature::EXPLICIT_CONTENT_DETECTION],
+            ]);
 
-        $operation->pollUntilComplete();
+            $operation->pollUntilComplete();
 
-        if ($operation->operationSucceeded()) {
-            $results = $operation->getResult()->getAnnotationResults()[0];
-            $explicitAnnotation = $results->getExplicitAnnotation();
+            if ($operation->operationSucceeded()) {
+                $results = $operation->getResult()->getAnnotationResults()[0];
+                $explicitAnnotation = $results->getExplicitAnnotation();
+                $isSafe = true;
 
-            foreach ($explicitAnnotation->getFrames() as $frame) {
-                if ($frame->getPornographyLikelihood() >= 4) {
-                    // যদি ১৮+ কন্টেন্ট পাওয়া যায়, পোস্ট ডিলিট বা হাইড করবেন
-                    $post = Post::find($this->postId);
-                    if($post) {
-                        // আপনার লজিক অনুযায়ী একশন নিন (যেমন: ডিলিট করা)
-                        $post->delete(); 
+                if ($explicitAnnotation) {
+                    foreach ($explicitAnnotation->getFrames() as $frame) {
+                        // Likelihood 4 = Likely, 5 = Very Likely (Adult Content)
+                        if ($frame->getPornographyLikelihood() >= 4) {
+                            $isSafe = false;
+                            break;
+                        }
                     }
-                    break;
+                }
+
+                $post = Post::find($this->postId);
+                if ($post) {
+                    if ($isSafe) {
+                        // কন্টেন্ট সেফ হলে স্ট্যাটাস Active করে দিন
+                        $post->update(['status' => 'active']);
+                    } else {
+                        // ১৮+ কন্টেন্ট থাকলে পোস্ট ডিলিট
+                        $post->delete(); 
+                        // ঐচ্ছিক: ইউজারকে নোটিফিকেশন পাঠানো যে তার পোস্ট কেন ডিলিট হয়েছে
+                    }
                 }
             }
+        } catch (\Exception $e) {
+            \Log::error("Video Intelligence Error: " . $e->getMessage());
+        } finally {
+            $videoClient->close();
         }
-        $videoClient->close();
     }
 }
