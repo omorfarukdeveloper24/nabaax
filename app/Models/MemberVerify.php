@@ -18,5 +18,7 @@ class MemberVerify extends Model
         'passport_image',
         'driving_front_image',
         'driving_back_image',
+        'identity_image',
+        'salfy_image',
     ];
 }
