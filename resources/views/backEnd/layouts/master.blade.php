@@ -296,22 +296,22 @@
                                 <ul class="nav-second-level">
                         
                                     <li>
-                                        <a href="{{ route('verifymember.index', ['status' => 'pending']) }}"
-                                           class="{{ request('status') == 'pending' ? 'active' : '' }}">
+                                        <a href="{{ route('verifymember.index', ['verified' => '0']) }}"
+                                           class="{{ request('verified') == '0' ? 'active' : '' }}">
                                             <i data-feather="minus"></i> Pending
                                         </a>
                                     </li>
                         
                                     <li>
-                                        <a href="{{ route('verifymember.index', ['status' => 'approved']) }}"
-                                           class="{{ request('status') == 'approved' ? 'active' : '' }}">
+                                        <a href="{{ route('verifymember.index', ['verified' => '1']) }}"
+                                           class="{{ request('verified') == '1' ? 'active' : '' }}">
                                             <i data-feather="minus"></i> Successful
                                         </a>
                                     </li>
                         
                                     <li>
-                                        <a href="{{ route('verifymember.index', ['status' => 'rejected']) }}"
-                                           class="{{ request('status') == 'rejected' ? 'active' : '' }}">
+                                        <a href="{{ route('verifymember.index', ['verified' => '2']) }}"
+                                           class="{{ request('verified') == '2' ? 'active' : '' }}">
                                             <i data-feather="minus"></i> Rejected
                                         </a>
                                     </li>

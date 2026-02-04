@@ -44,10 +44,10 @@
                                 </td>
                                 <td>{{ $value->phone }}</td>
                                 <td>
-                                    @if($value->status == 1)
+                                    @if($value->status == 'active')
                                         <span class="badge bg-soft-success text-success">Active</span>
                                     @else
-                                        <span class="badge bg-soft-danger text-danger">Inactive/Pending</span>
+                                        <span class="badge bg-soft-danger text-danger">Pending</span>
                                     @endif
                                 </td>
                                 <td>

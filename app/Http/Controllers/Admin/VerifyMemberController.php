@@ -16,11 +16,11 @@ class VerifyMemberController extends Controller
 {
     public function index(Request $request)
     {
-        $status = $request->status; // pending, approved, inactive
+        $status = $request->verified; // pending, approved, inactive
         
         $data = Member::query()
             ->when($status !== null, function ($query) use ($status) {
-                return $query->where('status', $status);
+                return $query->where('verified', $status);
             })
             ->latest()
             ->paginate(30);
