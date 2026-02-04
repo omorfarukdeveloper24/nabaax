@@ -280,6 +280,48 @@
                         <!--</li> -->
                         
                         <!-- nav items -->
+
+                         <li>
+                            <a href="#sidebar-verifymember" 
+                               data-bs-toggle="collapse"
+                               class="{{ request()->routeIs('verifymember.index') ? 'active' : '' }}">
+                                <i data-feather="trending-down"></i>
+                                <span> Verify Member </span>
+                                <span class="menu-arrow"></span>
+                            </a>
+                        
+                            <div class="collapse {{ request()->routeIs('verifymember.index') ? 'show' : '' }}" 
+                                 id="sidebar-verifymember">
+                                 
+                                <ul class="nav-second-level">
+                        
+                                    <li>
+                                        <a href="{{ route('verifymember.index', ['status' => 'pending']) }}"
+                                           class="{{ request('status') == 'pending' ? 'active' : '' }}">
+                                            <i data-feather="minus"></i> Pending
+                                        </a>
+                                    </li>
+                        
+                                    <li>
+                                        <a href="{{ route('verifymember.index', ['status' => 'approved']) }}"
+                                           class="{{ request('status') == 'approved' ? 'active' : '' }}">
+                                            <i data-feather="minus"></i> Successful
+                                        </a>
+                                    </li>
+                        
+                                    <li>
+                                        <a href="{{ route('verifymember.index', ['status' => 'rejected']) }}"
+                                           class="{{ request('status') == 'rejected' ? 'active' : '' }}">
+                                            <i data-feather="minus"></i> Rejected
+                                        </a>
+                                    </li>
+                        
+                                </ul>
+                            </div>
+                        </li>
+                        <!-- END VERIFY MEMBER NAV ITEM -->
+
+
                         
                         <li>
                             <a href="#sidebar-deposit" 

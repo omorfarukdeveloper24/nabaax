@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Frontend\CustomerController;
 use App\Http\Controllers\Admin\CreatePageController;
 use App\Http\Controllers\Admin\DepositController;
+use App\Http\Controllers\Admin\VerifyMemberController;
 use App\Http\Controllers\Admin\WithdrawController;
 use App\Http\Controllers\Admin\AdminPayHistoryController;
 use App\Http\Controllers\Admin\MiniAdController;
@@ -182,6 +183,14 @@ Route::group(['namespace' => 'Admin', 'middleware' => ['auth', 'lock', 'check_re
     Route::post('permissions/update', [PermissionController::class, 'update'])->name('permissions.update');
     Route::post('permissions/destroy', [PermissionController::class, 'destroy'])->name('permissions.destroy');
 
+
+    // verifymember code route
+    Route::controller(VerifyMemberController::class)->group(function () {
+        Route::get('verifymember/manage', 'index')->name('verifymember.index');
+        Route::get('verifymember/show/{id}', 'show')->name('verifymember.show'); 
+        Route::post('verifymember/status', 'status')->name('verifymember.status'); 
+        Route::delete('verifymember/destroy/{id}', 'destroy')->name('verifymember.destroy'); 
+    });
 
     // deposit code route
     Route::get('deposit/manage', [DepositController::class,'index'])->name('deposit.index');
