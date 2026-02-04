@@ -184,13 +184,10 @@ Route::group(['namespace' => 'Admin', 'middleware' => ['auth', 'lock', 'check_re
     Route::post('permissions/destroy', [PermissionController::class, 'destroy'])->name('permissions.destroy');
 
 
-    // verifymember code route
-    Route::controller(VerifyMemberController::class)->group(function () {
-        Route::get('verifymember/manage', 'index')->name('verifymember.index');
-        Route::get('verifymember/show/{id}', 'show')->name('verifymember.show'); 
-        Route::post('verifymember/status', 'status')->name('verifymember.status'); 
-        Route::delete('verifymember/destroy/{id}', 'destroy')->name('verifymember.destroy'); 
-    });
+    Route::get('verifymember/manage', [VerifyMemberController::class, 'index'])->name('verifymember.index');
+    Route::get('verifymember/show/{id}', [VerifyMemberController::class, 'show'])->name('verifymember.show');
+    Route::post('verifymember/status', [VerifyMemberController::class, 'status'])->name('verifymember.status');
+    Route::delete('verifymember/destroy/{id}', [VerifyMemberController::class, 'destroy'])->name('verifymember.destroy');
 
     // deposit code route
     Route::get('deposit/manage', [DepositController::class,'index'])->name('deposit.index');
