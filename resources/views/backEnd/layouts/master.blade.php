@@ -285,7 +285,7 @@
                             <a href="#sidebar-verifymember" 
                                data-bs-toggle="collapse"
                                class="{{ request()->routeIs('verifymember.index') ? 'active' : '' }}">
-                                <i data-feather="trending-down"></i>
+                                <i data-feather="award"></i>
                                 <span> Verify Member </span>
                                 <span class="menu-arrow"></span>
                             </a>
@@ -298,21 +298,21 @@
                                     <li>
                                         <a href="{{ route('verifymember.index', ['verified' => '0']) }}"
                                            class="{{ request('verified') == '0' ? 'active' : '' }}">
-                                            <i data-feather="minus"></i> Pending
+                                            <i data-feather="minus"></i> Pending Member
                                         </a>
                                     </li>
                         
                                     <li>
                                         <a href="{{ route('verifymember.index', ['verified' => '1']) }}"
                                            class="{{ request('verified') == '1' ? 'active' : '' }}">
-                                            <i data-feather="minus"></i> Successful
+                                            <i data-feather="minus"></i> Successful Member
                                         </a>
                                     </li>
                         
                                     <li>
-                                        <a href="{{ route('verifymember.index', ['verified' => '2']) }}"
-                                           class="{{ request('verified') == '2' ? 'active' : '' }}">
-                                            <i data-feather="minus"></i> Rejected
+                                        <a href="{{ route('verifymember.index', ['verified' => '3']) }}"
+                                           class="{{ request('verified') == '3' ? 'active' : '' }}">
+                                            <i data-feather="minus"></i> Block Member
                                         </a>
                                     </li>
                         

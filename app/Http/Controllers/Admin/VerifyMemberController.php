@@ -28,14 +28,46 @@ class VerifyMemberController extends Controller
         return view('backEnd.member.index', compact('data', 'status'));
     }
 
+    // public function show($id)
+    // {
+    //     $details = Member::leftJoin('member_verifies', function ($join) {
+    //             $join->on('members.id', '=', 'member_verifies.member_id')
+    //                 ->whereRaw('member_verifies.id IN (select MAX(id) from member_verifies group by member_id)');
+    //         })
+    //         ->select(
+    //             'members.*', 
+    //             'member_verifies.nid_number as verify_nid', 
+    //             'member_verifies.birth_number', 
+    //             'member_verifies.type', 
+    //             'member_verifies.nid_front_image', 
+    //             'member_verifies.nid_back_image', 
+    //             'member_verifies.birth_image', 
+    //             'member_verifies.identity_image', 
+    //             'member_verifies.salfy_image', 
+    //             'member_verifies.passport_image', 
+    //             'member_verifies.driving_front_image', 
+    //             'member_verifies.driving_back_image'
+    //         )
+    //         ->where('members.id', $id)
+    //         ->firstOrFail();
+
+    //     return view('backEnd.member.show', compact('details'));
+    // }
+
     public function show($id)
     {
         $details = Member::leftJoin('member_verifies', function ($join) {
                 $join->on('members.id', '=', 'member_verifies.member_id')
                     ->whereRaw('member_verifies.id IN (select MAX(id) from member_verifies group by member_id)');
             })
+            // ডিস্ট্রিক্ট টেবিলের সাথে জয়েন
+            ->leftJoin('districts', 'members.district', '=', 'districts.id')
+            // উপজেলা টেবিলের সাথে জয়েন
+            ->leftJoin('upazilas', 'members.upazila', '=', 'upazilas.id')
             ->select(
                 'members.*', 
+                'districts.name as district_name', // ডিস্ট্রিক্টের নাম
+                'upazilas.name as upazila_name',   // উপজেলার নাম
                 'member_verifies.nid_number as verify_nid', 
                 'member_verifies.birth_number', 
                 'member_verifies.type', 

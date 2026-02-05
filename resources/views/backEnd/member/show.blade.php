@@ -20,7 +20,7 @@
         <div class="col-12">
             <div class="card border-0 shadow-sm rounded-4">
                 <div class="card-body p-3 d-flex flex-wrap justify-content-center align-items-center gap-3">
-                    <span class="text-muted fw-medium me-2"><i class="fe-settings me-1"></i> Quick Actions:</span>
+                   
                     
                     <form action="{{ route('verifymember.status') }}" method="POST" class="d-inline">
                         @csrf
@@ -156,14 +156,14 @@
                                     <div class="p-3 bg-light rounded-3 text-center border">
                                         <i class="fe-map text-primary font-20 mb-2 d-block"></i>
                                         <label class="text-muted small fw-bold text-uppercase d-block">District</label>
-                                        <span class="h6">{{ $details->district }}</span>
+                                        <span class="h6">{{ $details->district_name ?? 'Not Found' }}</span>
                                     </div>
                                 </div>
                                 <div class="col-md-4">
                                     <div class="p-3 bg-light rounded-3 text-center border">
                                         <i class="fe-navigation text-primary font-20 mb-2 d-block"></i>
                                         <label class="text-muted small fw-bold text-uppercase d-block">Upazila</label>
-                                        <span class="h6">{{ $details->upazila }}</span>
+                                        <span class="h6">{{ $details->upazila_name ?? 'Not Found' }}</span>
                                     </div>
                                 </div>
                                 <div class="col-md-4">
@@ -270,12 +270,14 @@
     }
     
     .premium-nav .nav-link { color: #6c757d; font-weight: 500; }
-    .premium-nav .nav-link.active { 
-        background-color: #fff !important; 
-        color: #3bafda !important; 
+    .premium-nav .nav-link.active {
+        background-color: #6658dd !important;
+        color: #ffffff !important;
         box-shadow: 0 2px 6px rgba(0,0,0,0.08);
     }
-    
+    ul.nav.nav-pills.nav-justified.bg-light.p-1.rounded-pill.mb-4.premium-nav {
+        background: #f0f0f0;
+    }
     .document-card { transition: all 0.3s ease; }
     .document-card:hover { transform: scale(1.03); border-color: #3bafda !important; }
 
