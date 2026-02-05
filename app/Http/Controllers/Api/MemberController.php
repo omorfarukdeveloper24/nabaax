@@ -1385,6 +1385,7 @@ class MemberController extends Controller
             MemberVerify::create($data);
             
             $member->verified = 0; // ভেরিফিকেশন পেন্ডিং
+            $member->submit = 0; // রিভিউ প্রক্রিয়া শুরু
             $member->save();
 
             return response()->json([

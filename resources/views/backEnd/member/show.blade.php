@@ -173,11 +173,11 @@
 
                             <div class="row mt-3">
                                 @php
-                                    // দেখার সুবিধার জন্য ইমেজ কলামগুলোর একটি অ্যারে
                                     $images = [
                                         'NID Front' => $details->nid_front_image,
                                         'NID Back' => $details->nid_back_image,
                                         'Birth Image' => $details->birth_image,
+                                        'Identity Image' => $details->identity_image, // এটি যুক্ত করুন
                                         'Selfie' => $details->salfy_image,
                                         'Passport' => $details->passport_image,
                                         'Driving Front' => $details->driving_front_image,
@@ -189,8 +189,10 @@
                                     @if($path)
                                         <div class="col-md-4 mb-3">
                                             <p class="fw-bold mb-1">{{ $label }}</p>
-                                            <a href="{{ asset($path) }}" target="_blank">
-                                                <img src="{{ asset($path) }}" class="img-fluid rounded border" style="max-height: 200px; width: 100%; object-fit: cover;">
+                                            <a href="{{ $path }}" target="_blank">
+                                                <img src="{{ $path }}" class="img-fluid rounded border" 
+                                                    style="max-height: 200px; width: 100%; object-fit: cover;"
+                                                    onerror="this.onerror=null;this.src='{{ asset('public/backEnd/assets/images/users/user-1.jpg') }}';">
                                             </a>
                                         </div>
                                     @endif
