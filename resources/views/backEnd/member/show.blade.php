@@ -147,32 +147,42 @@
                                 </div>
                                 @endforeach
                             </div>
-
                         </div>
 
                         <div class="tab-pane fade" id="address" role="tabpanel">
                             <h5 class="header-title mb-4 text-primary">Location Information</h5>
-                            <div class="row g-4">
-                                <div class="col-md-6 border-bottom pb-2">
-                                    <label class="text-muted small fw-bold text-uppercase mb-1 d-block">District</label>
-                                    <p class="h6 mb-0">{{ $details->district }}</p>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <div class="p-3 bg-light rounded-3 text-center border">
+                                        <i class="fe-map text-primary font-20 mb-2 d-block"></i>
+                                        <label class="text-muted small fw-bold text-uppercase d-block">District</label>
+                                        <span class="h6">{{ $details->district }}</span>
+                                    </div>
                                 </div>
-                                <div class="col-md-6 border-bottom pb-2">
-                                    <label class="text-muted small fw-bold text-uppercase mb-1 d-block">Upazila</label>
-                                    <p class="h6 mb-0">{{ $details->upazila }}</p>
+                                <div class="col-md-4">
+                                    <div class="p-3 bg-light rounded-3 text-center border">
+                                        <i class="fe-navigation text-primary font-20 mb-2 d-block"></i>
+                                        <label class="text-muted small fw-bold text-uppercase d-block">Upazila</label>
+                                        <span class="h6">{{ $details->upazila }}</span>
+                                    </div>
                                 </div>
-                                <div class="col-md-6 border-bottom pb-2">
-                                    <label class="text-muted small fw-bold text-uppercase mb-1 d-block">Post Code</label>
-                                    <p class="h6 mb-0">{{ $details->post_code }}</p>
+                                <div class="col-md-4">
+                                    <div class="p-3 bg-light rounded-3 text-center border">
+                                        <i class="fe-mail text-primary font-20 mb-2 d-block"></i>
+                                        <label class="text-muted small fw-bold text-uppercase d-block">Post Code</label>
+                                        <span class="h6">{{ $details->post_code }}</span>
+                                    </div>
                                 </div>
-                                <div class="col-md-12 border-bottom pb-2">
-                                    <label class="text-muted small fw-bold text-uppercase mb-1 d-block">Full Address</label>
-                                    <p class="h6 mb-0">{{ $details->address }}</p>
+                                <div class="col-12 mt-3">
+                                    <div class="p-4 border rounded-3 shadow-sm" style="background: #f8faff; border-left: 4px solid #3bafda !important;">
+                                        <label class="text-muted small fw-bold text-uppercase d-block mb-1"><i class="fe-home me-1"></i> Full Address</label>
+                                        <p class="h5 mb-0 text-dark" style="line-height: 1.6;">{{ $details->address }}</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="tab-pane fade" id="referral" role="tabpanel">
+                        <div class="tab-pane fade" id="wallet" role="tabpanel">
                             <h5 class="header-title mb-4 text-primary">Financial Summary</h5>
                             <div class="row g-3">
                                 <div class="col-md-4">
@@ -231,12 +241,9 @@
                                             <div class="p-2 bg-light border-bottom text-center">
                                                 <small class="fw-bold text-uppercase">{{ $name }}</small>
                                             </div>
-                                            <a href="{{ $url }}" target="_blank" class="image-popup">
-                                                <img src="{{ $url }}" class="img-fluid" style="height: 160px; width: 100%; object-fit: cover;">
+                                            <a href="{{ asset($url) }}" target="_blank" class="image-popup">
+                                                <img src="{{ asset($url) }}" class="img-fluid" style="height: 160px; width: 100%; object-fit: cover;">
                                             </a>
-                                            <!-- <div class="p-2 text-center">
-                                                <a href="{{ $url }}" download class="btn btn-sm btn-link text-primary p-0"><i class="fe-download me-1"></i>Download</a>
-                                            </div> -->
                                         </div>
                                     </div>
                                     @endif
@@ -252,7 +259,7 @@
 
 <style>
     /* Premium Styling */
-    .rounded-4 { border-radius: 1rem !important; }
+    .rounded-4 { border-radius: 1.2rem !important; }
     .hover-lift { transition: all 0.2s ease; }
     .hover-lift:hover { transform: translateY(-3px); box-shadow: 0 8px 15px rgba(0,0,0,0.1) !important; }
     
@@ -262,8 +269,8 @@
         border-radius: 8px; font-size: 16px;
     }
     
-    .custom-nav .nav-link { color: #6c757d; font-weight: 500; }
-    .custom-nav .nav-link.active { 
+    .premium-nav .nav-link { color: #6c757d; font-weight: 500; }
+    .premium-nav .nav-link.active { 
         background-color: #fff !important; 
         color: #3bafda !important; 
         box-shadow: 0 2px 6px rgba(0,0,0,0.08);
@@ -271,52 +278,15 @@
     
     .document-card { transition: all 0.3s ease; }
     .document-card:hover { transform: scale(1.03); border-color: #3bafda !important; }
-    
-    
 
-
-    
-    @keyframes gradientBG {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
-    }
-
-    /* 3rd Point: Wallet Premium Gradients */
     .gradient-card.bg-green { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
     .gradient-card.bg-blue { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); }
     .gradient-card.bg-purple { background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); }
     .gradient-card { transition: transform 0.3s; cursor: pointer; }
     .gradient-card:hover { transform: translateY(-5px); }
 
-    /* Other Improvements */
-    .info-box-premium { background: #f8f9fa; border: 1px solid #eef2f7; }
-    .icon-shape { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
-    .rounded-4 { border-radius: 1.2rem !important; }
-    .hover-lift { transition: all 0.3s; }
-    .hover-lift:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; }
-    
-    /* Doc Viewer Styling */
-    .doc-container { position: relative; }
-    .doc-overlay {
-        position: absolute; top: 0; left: 0; width: 100%; height: 160px;
-        background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center;
-        opacity: 0; transition: 0.3s; z-index: 2;
-    }
-    .doc-container:hover .doc-overlay { opacity: 1; }
-    .profile-img-glow { box-shadow: 0 0 20px rgba(0,0,0,0.15); }
     .header-title { border-left: 5px solid #3bafda; padding-left: 15px; font-weight: 800; }
     .transition-all { transition: all 0.3s ease; }
     .hover-shadow-sm:hover { box-shadow: 0 5px 15px rgba(0,0,0,0.05); border-color: #3bafda !important; }
-    
-    .pulse-animation { animation: pulse 2s infinite; }
-    @keyframes pulse {
-        0% { box-shadow: 0 0 0 0 rgba(24, 210, 110, 0.7); }
-        70% { box-shadow: 0 0 0 10px rgba(24, 210, 110, 0); }
-        100% { box-shadow: 0 0 0 0 rgba(24, 210, 110, 0); }
-    }
-
-
-
 </style>
 @endsection
