@@ -35,14 +35,22 @@ class VerifyMemberController extends Controller
         return view('backEnd.member.show', compact('details'));
     }
 
-    // মেম্বার স্ট্যাটাস পরিবর্তন (Reject/Approve)
     public function status(Request $request)
     {
         $member = Member::findOrFail($request->hidden_id);
-        $member->status = $request->status;
+        
+        // বাটন থেকে আসা ভ্যালু সেট করা
+        $member->verified = $request->verified;
+        $member->submit   = $request->submit;
+        
         $member->save();
 
-        Toastr::success('Member status updated to ' . $request->status);
+        $status_msg = "Updated";
+        if($request->verified == 1) $status_msg = "Verified Successfully";
+        if($request->verified == 0) $status_msg = "Rejected";
+        if($request->verified == 3) $status_msg = "Blocked";
+
+        Toastr::success('Member status ' . $status_msg);
         return redirect()->back();
     }
 

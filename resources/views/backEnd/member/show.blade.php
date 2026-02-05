@@ -1,87 +1,155 @@
 @extends('backEnd.layouts.master')
-@section('title', 'Member Details - ' . $details->name)
+@section('title', 'Member Profile - ' . $details->name)
 
 @section('content')
 <div class="container-fluid">
     <div class="row">
         <div class="col-12">
-            <div class="page-title-box">
-                <h4 class="page-title">Member Profile: {{ $details->name }}</h4>
+            <div class="page-title-box d-flex align-items-center justify-content-between">
+                <h4 class="page-title">Member Details</h4>
+                <a href="{{ route('verifymember.index') }}" class="btn btn-secondary btn-sm"><i class="fe-arrow-left"></i> Back to List</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card border-primary">
+                <div class="card-body d-flex flex-wrap justify-content-center gap-2">
+                    <form action="{{ route('verifymember.status') }}" method="POST">
+                        @csrf
+                        <input type="hidden" name="hidden_id" value="{{ $details->id }}">
+                        <input type="hidden" name="verified" value="1">
+                        <input type="hidden" name="submit" value="1">
+                        <button type="submit" class="btn btn-success px-4"><i class="fe-check-circle me-1"></i> Verify Member</button>
+                    </form>
+
+                    <form action="{{ route('verifymember.status') }}" method="POST">
+                        @csrf
+                        <input type="hidden" name="hidden_id" value="{{ $details->id }}">
+                        <input type="hidden" name="verified" value="0"> <input type="hidden" name="submit" value="0">
+                        <button type="submit" class="btn btn-warning px-4 text-white"><i class="fe-x-circle me-1"></i> Reject Member</button>
+                    </form>
+
+                    <form action="{{ route('verifymember.status') }}" method="POST">
+                        @csrf
+                        <input type="hidden" name="hidden_id" value="{{ $details->id }}">
+                        <input type="hidden" name="verified" value="3">
+                        <input type="hidden" name="submit" value="1">
+                        <button type="submit" class="btn btn-danger px-4"><i class="fe-slash me-1"></i> Block Member</button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
 
     <div class="row">
-        <div class="col-lg-4">
+        <div class="col-xl-4 col-lg-5">
             <div class="card text-center">
                 <div class="card-body">
-                    <img src="{{ asset($details->image ?? 'public/backEnd/assets/images/users/user-1.jpg') }}" 
-                         class="rounded-circle avatar-xl img-thumbnail" alt="profile-image">
+                    <div class="position-relative d-inline-block">
+                        <img src="{{ asset($details->image ?? 'public/backEnd/assets/images/users/user-1.jpg') }}" 
+                             class="rounded-circle avatar-xl img-thumbnail" alt="profile">
+                        @if($details->verified == 1)
+                            <span class="position-absolute bottom-0 end-0 badge rounded-pill bg-success"><i class="fe-check"></i></span>
+                        @endif
+                    </div>
 
-                    <h4 class="mb-0">{{ $details->name }}</h4>
-                    <p class="text-muted">@ {{$details->username}}</p>
+                    <h4 class="mb-1 mt-2">{{ $details->name }}</h4>
+                    <p class="text-muted font-14">@ {{$details->username}}</p>
 
                     <div class="text-start mt-3">
-                        <p class="text-muted mb-2 font-13"><strong>Full Name :</strong> <span class="ms-2">{{ $details->name }}</span></p>
-                        <p class="text-muted mb-2 font-13"><strong>Mobile :</strong><span class="ms-2">{{ $details->phone }}</span></p>
-                        <p class="text-muted mb-2 font-13"><strong>Email :</strong> <span class="ms-2">{{ $details->email }}</span></p>
-                        <p class="text-muted mb-1 font-13"><strong>Location :</strong> <span class="ms-2">{{ $details->address }}, {{ $details->city }}</span></p>
+                        <p class="text-muted mb-2 font-13"><strong>Phone:</strong> <span class="ms-2">{{ $details->phone }}</span></p>
+                        <p class="text-muted mb-2 font-13"><strong>Email:</strong> <span class="ms-2">{{ $details->email }}</span></p>
+                        <p class="text-muted mb-1 font-13"><strong>Join Date:</strong> <span class="ms-2">{{ $details->created_at->format('d M, Y') }}</span></p>
                     </div>
-                    
+
                     <div class="mt-3">
-                        @if($details->status == 1)
-                            <span class="badge bg-success">Active Member</span>
+                        @if($details->verified == 1)
+                            <span class="badge bg-soft-success text-success p-2 px-3">Verified Member</span>
+                        @elseif($details->verified == 3)
+                            <span class="badge bg-soft-danger text-danger p-2 px-3">Blocked Account</span>
                         @else
-                            <span class="badge bg-danger">Inactive/Pending</span>
+                            <span class="badge bg-soft-warning text-warning p-2 px-3">Pending/Rejected</span>
                         @endif
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-lg-8">
+        <div class="col-xl-8 col-lg-7">
             <div class="card">
                 <div class="card-body">
-                    <h5 class="mb-3 text-uppercase bg-light p-2"><i class="mdi mdi-account-circle me-1"></i> Personal Information</h5>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <table class="table table-borderless">
-                                <tr><th>NID Number</th><td>: {{ $details->nid_number ?? 'N/A' }}</td></tr>
-                                <tr><th>Blood Group</th><td>: {{ $details->blood ?? 'N/A' }}</td></tr>
-                                <tr><th>Gender</th><td>: {{ $details->gender }}</td></tr>
-                                <tr><th>Religion</th><td>: {{ $details->religion }}</td></tr>
-                            </table>
-                        </div>
-                        <div class="col-md-6">
-                            <table class="table table-borderless">
-                                <tr><th>Profession</th><td>: {{ $details->profession }}</td></tr>
-                                <tr><th>Monthly Income</th><td>: {{ $details->monthlyincome }}</td></tr>
-                                <tr><th>Nationality</th><td>: {{ $details->nationality }}</td></tr>
-                                <tr><th>Marital Status</th><td>: {{ $details->married }}</td></tr>
-                            </table>
-                        </div>
-                    </div>
+                    <ul class="nav nav-pills nav-fill bg-light p-1 rounded-pill mb-3" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link active rounded-pill" id="personal-tab" data-bs-toggle="tab" href="#personal" role="tab">Personal Info</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link rounded-pill" id="address-tab" data-bs-toggle="tab" href="#address" role="tab">Address & Contact</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link rounded-pill" id="referral-tab" data-bs-toggle="tab" href="#referral" role="tab">Referral & Wallet</a>
+                        </li>
+                    </ul>
 
-                    <h5 class="mb-3 text-uppercase bg-light p-2"><i class="mdi mdi-office-building me-1"></i> Address & Referral</h5>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <p><strong>District:</strong> {{ $details->district }}</p>
-                            <p><strong>Upazila:</strong> {{ $details->upazila }}</p>
-                            <p><strong>Post Code:</strong> {{ $details->post_code }}</p>
+                    <div class="tab-content">
+                        <div class="tab-pane show active" id="personal" role="tabpanel">
+                            <h5 class="mb-3 text-uppercase"><i class="mdi mdi-account-circle me-1"></i> Personal Detail</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p class="mb-1 fw-bold">NID Number</p>
+                                    <p class="text-muted">{{ $details->nid_number ?? 'Not Provided' }}</p>
+                                    <p class="mb-1 fw-bold">Blood Group</p>
+                                    <p class="text-muted">{{ $details->blood ?? 'N/A' }}</p>
+                                    <p class="mb-1 fw-bold">Gender</p>
+                                    <p class="text-muted">{{ $details->gender }}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p class="mb-1 fw-bold">Profession</p>
+                                    <p class="text-muted">{{ $details->profession }}</p>
+                                    <p class="mb-1 fw-bold">Monthly Income</p>
+                                    <p class="text-muted">{{ $details->monthlyincome }}</p>
+                                    <p class="mb-1 fw-bold">Marital Status</p>
+                                    <p class="text-muted">{{ $details->married }}</p>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <p><strong>Referrer ID:</strong> {{ $details->referrer_id }}</p>
-                            <p><strong>Referrer Code:</strong> {{ $details->referrer_code }}</p>
-                            <p><strong>Wallet Balance:</strong> <span class="text-success fw-bold">{{ $details->balance }} BDT</span></p>
-                        </div>
-                    </div>
 
-                    <div class="mt-4">
-                        <a href="{{ route('verifymember.index') }}" class="btn btn-secondary">Back to List</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+                        <div class="tab-pane" id="address" role="tabpanel">
+                            <h5 class="mb-3 text-uppercase"><i class="mdi mdi-map-marker me-1"></i> Location Info</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p class="mb-1 fw-bold">District</p>
+                                    <p class="text-muted">{{ $details->district }}</p>
+                                    <p class="mb-1 fw-bold">Upazila</p>
+                                    <p class="text-muted">{{ $details->upazila }}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p class="mb-1 fw-bold">Post Code</p>
+                                    <p class="text-muted">{{ $details->post_code }}</p>
+                                    <p class="mb-1 fw-bold">Full Address</p>
+                                    <p class="text-muted">{{ $details->address }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tab-pane" id="referral" role="tabpanel">
+                            <h5 class="mb-3 text-uppercase"><i class="mdi mdi-wallet me-1"></i> Earnings & Referral</h5>
+                            <div class="row text-center">
+                                <div class="col-md-4 border-end">
+                                    <h4 class="text-success">{{ $details->balance }} BDT</h4>
+                                    <p class="text-muted mb-0">Current Balance</p>
+                                </div>
+                                <div class="col-md-4 border-end">
+                                    <h4 class="text-primary">{{ $details->referrer_id }}</h4>
+                                    <p class="text-muted mb-0">Referrer ID</p>
+                                </div>
+                                <div class="col-md-4">
+                                    <h4 class="text-info">{{ $details->referrer_code }}</h4>
+                                    <p class="text-muted mb-0">Referrer Code</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div> </div> </div> </div> </div>
 </div>
 @endsection
