@@ -117,6 +117,7 @@ class CommentController extends Controller
         $replies = Comment::select('id', 'post_id', 'member_id', 'parent_id', 'content', 'updated_at')
             ->where('parent_id', $parentId)
             ->with('member:id,name,username,image')
+            ->withCount('replies')
             ->oldest() 
             ->get();
 

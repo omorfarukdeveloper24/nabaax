@@ -47,7 +47,7 @@ class VerifyMemberController extends Controller
 
         $status_msg = "Updated";
         if($request->verified == 1) $status_msg = "Verified Successfully";
-        if($request->verified == 0) $status_msg = "Rejected";
+        if($request->verified == '') $status_msg = "Rejected";
         if($request->verified == 3) $status_msg = "Blocked";
 
         Toastr::success('Member status ' . $status_msg);
