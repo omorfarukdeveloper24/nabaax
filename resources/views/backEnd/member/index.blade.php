@@ -56,7 +56,7 @@
                                     <div class="button-list">
                                         <a href="{{ route('verifymember.show', $value->id) }}" class="btn btn-xs btn-blue" title="View Profile"><i class="fe-eye"></i></a>
 
-                                        <form method="post" action="{{ route('verifymember.status') }}" class="d-inline">
+                                        <!-- <form method="post" action="{{ route('verifymember.status') }}" class="d-inline">
                                             @csrf
                                             <input type="hidden" value="{{ $value->id }}" name="hidden_id">
                                             <input type="hidden" value="{{ $value->status == 1 ? 0 : 1 }}" name="status">
@@ -69,7 +69,7 @@
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="btn btn-xs btn-danger delete-confirm" title="Delete Member"><i class="fe-trash-2"></i></button>
-                                        </form>
+                                        </form> -->
                                     </div>
                                 </td>
                             </tr>
