@@ -27,8 +27,8 @@
                         <input type="hidden" name="hidden_id" value="{{ $details->id }}">
                         <input type="hidden" name="verified" value="1">
                         <input type="hidden" name="submit" value="1">
-                        <button type="submit" class="btn btn-success rounded-pill px-4 shadow-sm hover-lift">
-                            <i class="fe-check-circle me-1"></i> Verify Member
+                        <button type="submit" class="btn btn-success rounded-pill px-4 shadow hover-lift border-0" style="background: linear-gradient(135deg, #1D976C 0%, #93F9B9 100%);">
+                             <i class="fe-check-circle me-1"></i> Approve
                         </button>
                     </form>
 
@@ -37,8 +37,8 @@
                         <input type="hidden" name="hidden_id" value="{{ $details->id }}">
                         <input type="hidden" name="verified" value="0">
                         <input type="hidden" name="submit" value="0">
-                        <button type="submit" class="btn btn-warning text-white rounded-pill px-4 shadow-sm hover-lift">
-                            <i class="fe-x-circle me-1"></i> Reject Member
+                        <button type="submit" class="btn btn-warning text-white rounded-pill px-4 shadow hover-lift border-0" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                            <i class="fe-x-circle me-1"></i> Reject
                         </button>
                     </form>
 
@@ -47,8 +47,8 @@
                         <input type="hidden" name="hidden_id" value="{{ $details->id }}">
                         <input type="hidden" name="verified" value="3">
                         <input type="hidden" name="submit" value="1">
-                        <button type="submit" class="btn btn-danger rounded-pill px-4 shadow-sm hover-lift">
-                            <i class="fe-slash me-1"></i> Block Member
+                        <button type="submit" class="btn btn-danger rounded-pill px-4 shadow hover-lift border-0" style="background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);">
+                            <i class="fe-slash me-1"></i> Block
                         </button>
                     </form>
                 </div>
@@ -115,50 +115,39 @@
         <div class="col-xl-8 col-lg-7">
             <div class="card border-0 shadow-sm rounded-4">
                 <div class="card-body">
-                    <ul class="nav nav-pills nav-justified bg-light p-1 rounded-pill mb-4 custom-nav" role="tablist">
-                        <li class="nav-item">
-                            <a class="nav-link active rounded-pill py-2" data-bs-toggle="tab" href="#personal" role="tab">
-                                <i class="fe-user me-1"></i> Personal
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link rounded-pill py-2" data-bs-toggle="tab" href="#address" role="tab">
-                                <i class="fe-map-pin me-1"></i> Address
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link rounded-pill py-2" data-bs-toggle="tab" href="#referral" role="tab">
-                                <i class="fe-wallet me-1"></i> Wallet
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link rounded-pill py-2" data-bs-toggle="tab" href="#verify-docs" role="tab">
-                                <i class="fe-file-text me-1"></i> Documents
-                            </a>
-                        </li>
+                    <ul class="nav nav-pills nav-justified bg-light p-1 rounded-pill mb-4 premium-nav" role="tablist">
+                        <li class="nav-item"><a class="nav-link active rounded-pill" data-bs-toggle="tab" href="#personal"><i class="fe-user me-1"></i> Personal</a></li>
+                        <li class="nav-item"><a class="nav-link rounded-pill" data-bs-toggle="tab" href="#address"><i class="fe-map-pin me-1"></i> Address</a></li>
+                        <li class="nav-item"><a class="nav-link rounded-pill" data-bs-toggle="tab" href="#wallet"><i class="fe-wallet me-1"></i> Wallet</a></li>
+                        <li class="nav-item"><a class="nav-link rounded-pill" data-bs-toggle="tab" href="#verify-docs"><i class="fe-file-text me-1"></i> Documents</a></li>
                     </ul>
 
                     <div class="tab-content pt-2">
                         <div class="tab-pane fade show active" id="personal" role="tabpanel">
                             <h5 class="header-title mb-4 text-primary">Personal Details</h5>
-                            <div class="row g-4">
+                            <div class="row g-3">
                                 @php 
-                                    $personalInfo = [
-                                        'NID Number' => $details->nid_number ?? 'Not Provided',
-                                        'Blood Group' => $details->blood ?? 'N/A',
-                                        'Gender' => $details->gender,
-                                        'Profession' => $details->profession,
-                                        'Monthly Income' => $details->monthlyincome,
-                                        'Marital Status' => $details->married
+                                    $personalData = [
+                                        ['label' => 'Blood Group', 'value' => $details->blood ?? 'N/A', 'icon' => 'fe-droplet'],
+                                        ['label' => 'Gender', 'value' => $details->gender, 'icon' => 'fe-user'],
+                                        ['label' => 'Profession', 'value' => $details->profession, 'icon' => 'fe-briefcase'],
+                                        ['label' => 'Monthly Income', 'value' => $details->monthlyincome, 'icon' => 'fe-trending-up'],
+                                        ['label' => 'Marital Status', 'value' => $details->married, 'icon' => 'fe-heart']
                                     ];
                                 @endphp
-                                @foreach($personalInfo as $label => $value)
-                                <div class="col-md-6 col-sm-6 border-bottom pb-2">
-                                    <label class="text-muted small fw-bold text-uppercase mb-1 d-block">{{ $label }}</label>
-                                    <p class="h6 mb-0 text-dark">{{ $value }}</p>
+                                @foreach($personalData as $item)
+                                <div class="col-md-6">
+                                    <div class="d-flex align-items-center p-3 border rounded-3 hover-shadow-sm transition-all">
+                                        <i class="{{ $item['icon'] }} text-primary me-3 font-20"></i>
+                                        <div>
+                                            <label class="text-muted small fw-bold text-uppercase mb-0 d-block">{{ $item['label'] }}</label>
+                                            <p class="h6 mb-0">{{ $item['value'] }}</p>
+                                        </div>
+                                    </div>
                                 </div>
                                 @endforeach
                             </div>
+
                         </div>
 
                         <div class="tab-pane fade" id="address" role="tabpanel">
@@ -185,23 +174,26 @@
 
                         <div class="tab-pane fade" id="referral" role="tabpanel">
                             <h5 class="header-title mb-4 text-primary">Financial Summary</h5>
-                            <div class="row">
+                            <div class="row g-3">
                                 <div class="col-md-4">
-                                    <div class="card border shadow-none rounded-3 text-center p-3">
-                                        <h3 class="text-success fw-bold">{{ $details->balance }}</h3>
-                                        <p class="text-muted mb-0">Current BDT</p>
+                                    <div class="gradient-card bg-green p-4 rounded-4 shadow-sm text-white">
+                                        <i class="fe-database font-24 mb-2 d-block"></i>
+                                        <h3 class="fw-bold text-white mb-0">{{ $details->balance }}</h3>
+                                        <p class="mb-0 opacity-75">Current Balance (BDT)</p>
                                     </div>
                                 </div>
                                 <div class="col-md-4">
-                                    <div class="card border shadow-none rounded-3 text-center p-3">
-                                        <h3 class="text-primary fw-bold">{{ $details->referrer_id }}</h3>
-                                        <p class="text-muted mb-0">Referrer ID</p>
+                                    <div class="gradient-card bg-blue p-4 rounded-4 shadow-sm text-white">
+                                        <i class="fe-users font-24 mb-2 d-block"></i>
+                                        <h3 class="fw-bold text-white mb-0">{{ $details->referrer_id }}</h3>
+                                        <p class="mb-0 opacity-75">Referrer ID</p>
                                     </div>
                                 </div>
                                 <div class="col-md-4">
-                                    <div class="card border shadow-none rounded-3 text-center p-3">
-                                        <h3 class="text-info fw-bold">{{ $details->referrer_code }}</h3>
-                                        <p class="text-muted mb-0">Referrer Code</p>
+                                    <div class="gradient-card bg-purple p-4 rounded-4 shadow-sm text-white">
+                                        <i class="fe-gift font-24 mb-2 d-block"></i>
+                                        <h3 class="fw-bold text-white mb-0">{{ $details->referrer_code }}</h3>
+                                        <p class="mb-0 opacity-75">Referrer Code</p>
                                     </div>
                                 </div>
                             </div>
@@ -280,12 +272,51 @@
     .document-card { transition: all 0.3s ease; }
     .document-card:hover { transform: scale(1.03); border-color: #3bafda !important; }
     
-    .bg-soft-success { background: rgba(24, 210, 110, 0.15); }
-    .bg-soft-warning { background: rgba(246, 187, 66, 0.15); }
-    .bg-soft-danger { background: rgba(255, 91, 91, 0.15); }
-    .bg-soft-secondary { background: rgba(108, 117, 125, 0.1); }
     
-    .avatar-xxl { border: 5px solid #fff; }
-    .header-title { font-size: 1.1rem; font-weight: 700; border-left: 4px solid #3bafda; padding-left: 10px; }
+
+
+    
+    @keyframes gradientBG {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+
+    /* 3rd Point: Wallet Premium Gradients */
+    .gradient-card.bg-green { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+    .gradient-card.bg-blue { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); }
+    .gradient-card.bg-purple { background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%); }
+    .gradient-card { transition: transform 0.3s; cursor: pointer; }
+    .gradient-card:hover { transform: translateY(-5px); }
+
+    /* Other Improvements */
+    .info-box-premium { background: #f8f9fa; border: 1px solid #eef2f7; }
+    .icon-shape { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .rounded-4 { border-radius: 1.2rem !important; }
+    .hover-lift { transition: all 0.3s; }
+    .hover-lift:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; }
+    
+    /* Doc Viewer Styling */
+    .doc-container { position: relative; }
+    .doc-overlay {
+        position: absolute; top: 0; left: 0; width: 100%; height: 160px;
+        background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center;
+        opacity: 0; transition: 0.3s; z-index: 2;
+    }
+    .doc-container:hover .doc-overlay { opacity: 1; }
+    .profile-img-glow { box-shadow: 0 0 20px rgba(0,0,0,0.15); }
+    .header-title { border-left: 5px solid #3bafda; padding-left: 15px; font-weight: 800; }
+    .transition-all { transition: all 0.3s ease; }
+    .hover-shadow-sm:hover { box-shadow: 0 5px 15px rgba(0,0,0,0.05); border-color: #3bafda !important; }
+    
+    .pulse-animation { animation: pulse 2s infinite; }
+    @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(24, 210, 110, 0.7); }
+        70% { box-shadow: 0 0 0 10px rgba(24, 210, 110, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(24, 210, 110, 0); }
+    }
+
+
+
 </style>
 @endsection
