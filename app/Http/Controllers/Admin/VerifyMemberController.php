@@ -35,20 +35,50 @@ class VerifyMemberController extends Controller
         return view('backEnd.member.show', compact('details'));
     }
 
+    // public function status(Request $request)
+    // {
+    //     $member = Member::findOrFail($request->hidden_id);
+        
+    //     // বাটন থেকে আসা ভ্যালু সেট করা
+    //     $member->verified = $request->verified;
+    //     $member->submit   = $request->submit;
+        
+    //     $member->save();
+
+    //     $status_msg = "Updated";
+    //     if($request->verified == 1) $status_msg = "Verified Successfully";
+    //     if($request->verified == 'NULL') $status_msg = "Rejected";
+    //     if($request->verified == 3) $status_msg = "Blocked";
+
+    //     Toastr::success('Member status ' . $status_msg);
+    //     return redirect()->back();
+    // }
+
     public function status(Request $request)
     {
         $member = Member::findOrFail($request->hidden_id);
         
-        // বাটন থেকে আসা ভ্যালু সেট করা
-        $member->verified = $request->verified;
-        $member->submit   = $request->submit;
+        // রিজেক্ট করা হলে (যদি বাটন থেকে verified এর মান ০ বা খালি আসে)
+        if ($request->verified == '0' || $request->verified == '') {
+            $member->verified = null; // ডেটাবেজে NULL সেভ হবে
+            $member->submit   = 0;    // সাবমিট ০ হবে যাতে সে আবার অ্যাপ্লাই করতে পারে
+            $status_msg = "Rejected";
+        } 
+        else {
+            // ভেরিফাই (১) অথবা ব্লক (৩) এর জন্য
+            $member->verified = $request->verified;
+            $member->submit   = $request->submit;
+
+            if($request->verified == 1) {
+                $status_msg = "Verified Successfully";
+            } elseif($request->verified == 3) {
+                $status_msg = "Blocked";
+            } else {
+                $status_msg = "Updated";
+            }
+        }
         
         $member->save();
-
-        $status_msg = "Updated";
-        if($request->verified == 1) $status_msg = "Verified Successfully";
-        if($request->verified == '') $status_msg = "Rejected";
-        if($request->verified == 3) $status_msg = "Blocked";
 
         Toastr::success('Member status ' . $status_msg);
         return redirect()->back();
