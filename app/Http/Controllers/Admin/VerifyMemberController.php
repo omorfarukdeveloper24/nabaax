@@ -50,7 +50,6 @@ class VerifyMemberController extends Controller
             )
             ->where('members.id', $id)
             ->firstOrFail();
-            return $details;
 
         return view('backEnd.member.show', compact('details'));
     }
