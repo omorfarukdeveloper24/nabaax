@@ -1,5 +1,16 @@
 @extends('backEnd.layouts.master')
 @section('title', 'Member Profile - ' . $details->name)
+<style>
+    /* Premium Extra CSS */
+    .avatar-sm { height: 35px; width: 35px; display: flex; align-items: center; justify-content: center; }
+    .bg-soft-primary { background-color: rgba(102, 126, 234, 0.1); }
+    .bg-soft-info { background-color: rgba(59, 175, 218, 0.1); }
+    .bg-soft-warning { background-color: rgba(246, 187, 66, 0.1); }
+    .bg-soft-success { background-color: rgba(24, 210, 110, 0.1); }
+    .bg-soft-danger { background-color: rgba(255, 91, 91, 0.1); }
+    .profile-card { transition: transform 0.3s ease; }
+    .profile-card:hover { transform: translateY(-5px); }
+</style>
 
 @section('content')
 <div class="container-fluid">
@@ -45,33 +56,76 @@
 
     <div class="row">
         <div class="col-xl-4 col-lg-5">
-            <div class="card text-center">
-                <div class="card-body">
-                    <div class="position-relative d-inline-block">
-                        <img src="{{ asset($details->image ?? 'public/backEnd/assets/images/users/user-1.jpg') }}" 
-                             class="rounded-circle avatar-xl img-thumbnail" alt="profile">
-                        @if($details->verified == 1)
-                            <span class="position-absolute bottom-0 end-0 badge rounded-pill bg-success"><i class="fe-check"></i></span>
-                        @endif
+            <div class="card profile-card border-0 shadow-sm overflow-hidden">
+                <div class="profile-header-bg" style="height: 100px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>
+                
+                <div class="card-body pt-0">
+                    <div class="text-center mt-n5">
+                        <div class="position-relative d-inline-block mt-n4">
+                            <img src="{{ asset($details->image ?? 'public/backEnd/assets/images/users/user-1.jpg') }}" 
+                                class="rounded-circle avatar-xl img-thumbnail shadow-sm border-4 border-white" 
+                                alt="profile" 
+                                style="width: 120px; height: 120px; object-fit: cover; margin-top: -60px;">
+                            
+                            @if($details->verified == 1)
+                                <span class="position-absolute translate-middle p-1 bg-success border border-2 border-white rounded-circle" 
+                                    style="bottom: 10%; right: 10%; width: 20px; height: 20px;" 
+                                    title="Verified">
+                                    <i class="fe-check text-white" style="font-size: 10px; display: block; margin-top: -2px;"></i>
+                                </span>
+                            @endif
+                        </div>
+
+                        <h4 class="mb-1 mt-3 fw-bold text-dark">{{ $details->name }}</h4>
+                        <p class="text-muted mb-3 font-14"><i class="fe-at-sign me-1"></i>{{$details->username}}</p>
+
+                        <div class="mb-4">
+                            @if($details->verified == 1)
+                                <span class="badge rounded-pill bg-soft-success text-success px-3 py-2">
+                                    <i class="fe-shield me-1"></i> Verified Member
+                                </span>
+                            @elseif($details->verified == 3)
+                                <span class="badge rounded-pill bg-soft-danger text-danger px-3 py-2">
+                                    <i class="fe-slash me-1"></i> Blocked Account
+                                </span>
+                            @else
+                                <span class="badge rounded-pill bg-soft-warning text-warning px-3 py-2">
+                                    <i class="fe-clock me-1"></i> Pending/Rejected
+                                </span>
+                            @endif
+                        </div>
                     </div>
 
-                    <h4 class="mb-1 mt-2">{{ $details->name }}</h4>
-                    <p class="text-muted font-14">@ {{$details->username}}</p>
+                    <div class="profile-info-list border-top pt-3">
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="avatar-sm bg-soft-primary rounded-circle me-3">
+                                <i class="fe-phone text-primary"></i>
+                            </div>
+                            <div>
+                                <p class="text-muted mb-0 font-12">Phone</p>
+                                <h6 class="mb-0">{{ $details->phone }}</h6>
+                            </div>
+                        </div>
 
-                    <div class="text-start mt-3">
-                        <p class="text-muted mb-2 font-13"><strong>Phone:</strong> <span class="ms-2">{{ $details->phone }}</span></p>
-                        <p class="text-muted mb-2 font-13"><strong>Email:</strong> <span class="ms-2">{{ $details->email }}</span></p>
-                        <p class="text-muted mb-1 font-13"><strong>Join Date:</strong> <span class="ms-2">{{ $details->created_at->format('d M, Y') }}</span></p>
-                    </div>
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="avatar-sm bg-soft-info rounded-circle me-3">
+                                <i class="fe-mail text-info"></i>
+                            </div>
+                            <div>
+                                <p class="text-muted mb-0 font-12">Email Address</p>
+                                <h6 class="mb-0" style="word-break: break-all;">{{ $details->email }}</h6>
+                            </div>
+                        </div>
 
-                    <div class="mt-3">
-                        @if($details->verified == 1)
-                            <span class="badge bg-soft-success text-success p-2 px-3">Verified Member</span>
-                        @elseif($details->verified == 3)
-                            <span class="badge bg-soft-danger text-danger p-2 px-3">Blocked Account</span>
-                        @else
-                            <span class="badge bg-soft-warning text-warning p-2 px-3">Pending/Rejected</span>
-                        @endif
+                        <div class="d-flex align-items-center mb-0">
+                            <div class="avatar-sm bg-soft-warning rounded-circle me-3">
+                                <i class="fe-calendar text-warning"></i>
+                            </div>
+                            <div>
+                                <p class="text-muted mb-0 font-12">Member Since</p>
+                                <h6 class="mb-0">{{ $details->created_at->format('d M, Y') }}</h6>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
