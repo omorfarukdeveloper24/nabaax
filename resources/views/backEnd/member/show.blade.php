@@ -90,6 +90,9 @@
                         <li class="nav-item">
                             <a class="nav-link rounded-pill" id="referral-tab" data-bs-toggle="tab" href="#referral" role="tab">Referral & Wallet</a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link rounded-pill" id="verify-docs-tab" data-bs-toggle="tab" href="#verify-docs" role="tab">Verify Documents</a>
+                        </li>
                     </ul>
 
                     <div class="tab-content">
@@ -150,6 +153,52 @@
                                 </div>
                             </div>
                         </div>
+
+                        <div class="tab-pane" id="verify-docs" role="tabpanel">
+                            <h5 class="mb-3 text-uppercase"><i class="mdi mdi-file-document me-1"></i> Submitted Documents</h5>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <table class="table table-bordered">
+                                        <tr>
+                                            <th>Identity Type</th>
+                                            <td><span class="badge bg-info">{{ strtoupper($details->type ?? 'None') }}</span></td>
+                                        </tr>
+                                        <tr>
+                                            <th>NID / Birth Number</th>
+                                            <td>{{ $details->verify_nid ?? ($details->birth_number ?? 'Not Provided') }}</td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="row mt-3">
+                                @php
+                                    // দেখার সুবিধার জন্য ইমেজ কলামগুলোর একটি অ্যারে
+                                    $images = [
+                                        'NID Front' => $details->nid_front_image,
+                                        'NID Back' => $details->nid_back_image,
+                                        'Birth Image' => $details->birth_image,
+                                        'Selfie' => $details->salfy_image,
+                                        'Passport' => $details->passport_image,
+                                        'Driving Front' => $details->driving_front_image,
+                                        'Driving Back' => $details->driving_back_image
+                                    ];
+                                @endphp
+
+                                @foreach($images as $label => $path)
+                                    @if($path)
+                                        <div class="col-md-4 mb-3">
+                                            <p class="fw-bold mb-1">{{ $label }}</p>
+                                            <a href="{{ asset($path) }}" target="_blank">
+                                                <img src="{{ asset($path) }}" class="img-fluid rounded border" style="max-height: 200px; width: 100%; object-fit: cover;">
+                                            </a>
+                                        </div>
+                                    @endif
+                                @endforeach
+                            </div>
+                        </div>
+
+
                     </div> </div> </div> </div> </div>
 </div>
 @endsection
