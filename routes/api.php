@@ -152,7 +152,8 @@ Route::group(['namespace' => 'Api','prefix'=>'v1','middleware' => 'api'], functi
     });
 
     Route::prefix('comment')->middleware('member')->group(function () {
-        Route::get('/list', [CommentController::class, 'list']);      
+        Route::get('/list', [CommentController::class, 'list']); 
+        Route::get('/replies', [CommentController::class, 'getReplies']);     
         Route::post('/store', [CommentController::class, 'store']);   
         Route::get('/details/{id}', [CommentController::class, 'details']);   
         Route::post('/update/{id}', [CommentController::class, 'update']); 

@@ -23,6 +23,7 @@ class CommentController extends Controller
     // public function list(Request $request)
     // {
     //     $member = Auth::guard('member')->user();
+    
     //     if (!$member) {
     //         return response()->json([
     //             'status' => 'failed',
@@ -30,62 +31,38 @@ class CommentController extends Controller
     //         ], 401);
     //     }
     
-    //     $comments = Comment::where('post_id', $request->id)
-    //         ->whereNull('parent_id')
-    //         ->with(['member', 'replies'])
-    //         ->latest()
-    //         ->paginate(50);
+    //     if (!Post::where('id', $request->id)->exists()) {
+    //         return response()->json([
+    //             'status' => 'failed',
+    //             'message' => 'Post not found',
+    //         ], 404);
+    //     }
+        
+        
+        
+        
+    //     $comments = Comment::select('id', 'post_id', 'member_id', 'parent_id', 'content', 'updated_at')
+    //     ->where('post_id', $request->id)
+    //     ->whereNull('parent_id')
+    //     ->with([
+    //         'member:id,name,username,image',
+    //         'replies' => function ($query) {
+    //             $query->select('id', 'post_id', 'member_id', 'parent_id', 'content', 'updated_at')
+    //                   ->with('member:id,name,username,image');
+    //         }
+    //     ])
+    //     ->latest()
+    //     ->paginate(50);
+        
+        
+        
+        
     
     //     return response()->json([
     //         'status' => 'success',
     //         'data'   => $comments,
-    //     ]);
+    //     ], 200);
     // }
-    
-    
-    public function list(Request $request)
-    {
-        $member = Auth::guard('member')->user();
-    
-        if (!$member) {
-            return response()->json([
-                'status' => 'failed',
-                'message' => 'Unauthorized user',
-            ], 401);
-        }
-    
-        if (!Post::where('id', $request->id)->exists()) {
-            return response()->json([
-                'status' => 'failed',
-                'message' => 'Post not found',
-            ], 404);
-        }
-        
-        
-        
-        
-        $comments = Comment::select('id', 'post_id', 'member_id', 'parent_id', 'content', 'updated_at')
-        ->where('post_id', $request->id)
-        ->whereNull('parent_id')
-        ->with([
-            'member:id,name,username,image',
-            'replies' => function ($query) {
-                $query->select('id', 'post_id', 'member_id', 'parent_id', 'content', 'updated_at')
-                      ->with('member:id,name,username,image');
-            }
-        ])
-        ->latest()
-        ->paginate(50);
-        
-        
-        
-        
-    
-        return response()->json([
-            'status' => 'success',
-            'data'   => $comments,
-        ], 200);
-    }
     
     
     // public function list()
@@ -93,6 +70,61 @@ class CommentController extends Controller
     //     $comments = Comment::with(['post', 'member', 'parent'])->latest()->get();
     //     return response()->json($comments);
     // }
+
+
+    public function list(Request $request)
+    {
+        $member = Auth::guard('member')->user();
+
+        if (!$member) {
+            return response()->json([
+                'status' => 'failed',
+                'message' => 'Unauthorized user',
+            ], 401);
+        }
+
+        if (!Post::where('id', $request->id)->exists()) {
+            return response()->json([
+                'status' => 'failed',
+                'message' => 'Post not found',
+            ], 404);
+        }
+
+        
+        $comments = Comment::select('id', 'post_id', 'member_id', 'parent_id', 'content', 'updated_at')
+            ->where('post_id', $request->id)
+            ->whereNull('parent_id') 
+            ->with('member:id,name,username,image') 
+            ->withCount('replies') 
+            ->latest()
+            ->paginate(50);
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => $comments,
+        ], 200);
+    }
+
+    public function getReplies(Request $request)
+    {
+        
+        $parentId = $request->parent_id;
+
+        if (!$parentId) {
+            return response()->json(['status' => 'failed', 'message' => 'Parent ID is required'], 400);
+        }
+
+        $replies = Comment::select('id', 'post_id', 'member_id', 'parent_id', 'content', 'updated_at')
+            ->where('parent_id', $parentId)
+            ->with('member:id,name,username,image')
+            ->oldest() 
+            ->get();
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => $replies,
+        ], 200);
+    }
 
     public function store(Request $request)
     {
