@@ -1315,7 +1315,6 @@ class MemberController extends Controller
             // মেম্বার বেসিক ডাটা আপডেট
             $member->update([
                 'country'   => $request->country,
-                'post_code' => $request->post_code,
                 'city'      => $request->city,
             ]);
 
