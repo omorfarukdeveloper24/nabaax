@@ -27,49 +27,72 @@ class ProcessVideoSafetyCheck implements ShouldQueue
     public function handle()
     {
         $keyFileData = config('filesystems.disks.gcs.key_file');
-        $videoClient = new VideoIntelligenceServiceClient(['credentials' => $keyFileData]);
+        $storage = new \Google\Cloud\Storage\StorageClient([
+            'projectId' => config('filesystems.disks.gcs.project_id'),
+            'keyFile'    => $keyFileData,
+        ]);
+        $bucket = $storage->bucket(config('filesystems.disks.gcs.bucket'));
 
-        $gcsUri = 'gs://' . config('filesystems.disks.gcs.bucket') . '/' . $this->videoPath;
-
+        $fileName = "posts/videos/" . basename($this->videoPath);
+        
         try {
+            // ১. আগে ভিডিওটি GCS-এ আপলোড করুন
+            $bucket->upload(fopen($this->videoPath, 'r'), [
+                'name' => $fileName,
+            ]);
+
+            // ২. ভিডিও ইন্টেলিজেন্স চেক
+            $videoClient = new \Google\Cloud\VideoIntelligence\V1\VideoIntelligenceServiceClient(['credentials' => $keyFileData]);
+            $gcsUri = 'gs://' . config('filesystems.disks.gcs.bucket') . '/' . $fileName;
+
             $operation = $videoClient->annotateVideo([
                 'inputUri' => $gcsUri,
-                'features' => [Feature::EXPLICIT_CONTENT_DETECTION],
+                'features' => [\Google\Cloud\VideoIntelligence\V1\Feature::EXPLICIT_CONTENT_DETECTION],
             ]);
 
             $operation->pollUntilComplete();
+            $isSafe = true;
 
             if ($operation->operationSucceeded()) {
                 $results = $operation->getResult()->getAnnotationResults()[0];
                 $explicitAnnotation = $results->getExplicitAnnotation();
-                $isSafe = true;
 
                 if ($explicitAnnotation) {
                     foreach ($explicitAnnotation->getFrames() as $frame) {
-                        // Likelihood 4 = Likely, 5 = Very Likely (Adult Content)
                         if ($frame->getPornographyLikelihood() >= 4) {
-                            $isSafe = false;
-                            break;
+                            $isSafe = false; break;
                         }
                     }
                 }
+            }
 
-                $post = Post::find($this->postId);
-                if ($post) {
-                    if ($isSafe) {
-                        // কন্টেন্ট সেফ হলে স্ট্যাটাস Active করে দিন
-                        $post->update(['status' => 'active']);
-                    } else {
-                        // ১৮+ কন্টেন্ট থাকলে পোস্ট ডিলিট
-                        $post->delete(); 
-                        // ঐচ্ছিক: ইউজারকে নোটিফিকেশন পাঠানো যে তার পোস্ট কেন ডিলিট হয়েছে
-                    }
+            $post = Post::find($this->postId);
+            if ($post) {
+                if ($isSafe) {
+                    // সব ঠিক থাকলে মিডিয়া রেকর্ড সেভ এবং স্ট্যাটাস Active
+                    $mediaPath = "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $fileName;
+                    \App\Models\Post_media::create([
+                        'post_id' => $post->id,
+                        'media_type' => 'video',
+                        'path' => $mediaPath,
+                    ]);
+                    $post->update(['status' => 'active']);
+                } else {
+                    // ১৮+ হলে পোস্ট ডিলিট এবং GCS থেকে ফাইল ডিলিট
+                    $bucket->object($fileName)->delete();
+                    $post->delete(); 
                 }
             }
-        } catch (\Exception $e) {
-            \Log::error("Video Intelligence Error: " . $e->getMessage());
-        } finally {
+            
             $videoClient->close();
+
+        } catch (\Exception $e) {
+            \Log::error("Video Job Error: " . $e->getMessage());
+        } finally {
+            // টেম্পোরারি ফাইল ডিলিট করা
+            if (file_exists($this->videoPath)) {
+                unlink($this->videoPath);
+            }
         }
     }
 }

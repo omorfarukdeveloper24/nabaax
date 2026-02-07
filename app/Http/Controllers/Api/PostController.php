@@ -798,127 +798,207 @@ public function miniads(Request $request)
 
 
     // THIS IS OUR VIDEO 18 + CODE START===========================================================================
-    public function store(Request $request)
-    {
-        // ১. ভ্যালিডেশন
-        $request->validate([
-            'content' => 'nullable|string',
-            'visibility' => 'required',
-            'media.*' => 'nullable|file|max:51200', // ৫২ এমবি ম্যাক্স
-        ]);
+    // public function store(Request $request)
+    // {
+    //     // ১. ভ্যালিডেশন
+    //     $request->validate([
+    //         'content' => 'nullable|string',
+    //         'visibility' => 'required',
+    //         'media.*' => 'nullable|file|max:51200', // ৫২ এমবি ম্যাক্স
+    //     ]);
 
-        $member = Auth::guard("member")->user();
-        if (!$member) return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
+    //     $member = Auth::guard("member")->user();
+    //     if (!$member) return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
 
-        $keyFileData = config('filesystems.disks.gcs.key_file');
-        $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
-        $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
+    //     $keyFileData = config('filesystems.disks.gcs.key_file');
+    //     $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+    //     $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
 
-        // ২. ইমেজ প্রি-ফিল্টারিং (ইমেজ আপত্তিজনক হলে পোস্টই হবে না)
-        if ($request->hasFile('media')) {
-            $imageAnnotator = new \Google\Cloud\Vision\V1\ImageAnnotatorClient(['credentials' => $keyFileData]);
-            try {
-                foreach ($request->file('media') as $file) {
-                    $extension = strtolower($file->getClientOriginalExtension());
-                    if (in_array($extension, $imageExtensions)) {
-                        $content = file_get_contents($file->getRealPath());
-                        $response = $imageAnnotator->safeSearchDetection($content);
-                        $safe = $response->getSafeSearchAnnotation();
+    //     // ২. ইমেজ প্রি-ফিল্টারিং (ইমেজ আপত্তিজনক হলে পোস্টই হবে না)
+    //     if ($request->hasFile('media')) {
+    //         $imageAnnotator = new \Google\Cloud\Vision\V1\ImageAnnotatorClient(['credentials' => $keyFileData]);
+    //         try {
+    //             foreach ($request->file('media') as $file) {
+    //                 $extension = strtolower($file->getClientOriginalExtension());
+    //                 if (in_array($extension, $imageExtensions)) {
+    //                     $content = file_get_contents($file->getRealPath());
+    //                     $response = $imageAnnotator->safeSearchDetection($content);
+    //                     $safe = $response->getSafeSearchAnnotation();
 
-                        if ($safe->getAdult() >= 4 || $safe->getRacy() >= 4) {
-                            return response()->json(['status' => 'failed', 'message' => 'ছবিতে আপত্তিজনক কন্টেন্ট পাওয়া গেছে!'], 403);
-                        }
-                    }
-                }
-            } finally {
-                $imageAnnotator->close();
-            }
-        }
+    //                     if ($safe->getAdult() >= 4 || $safe->getRacy() >= 4) {
+    //                         return response()->json(['status' => 'failed', 'message' => 'ছবিতে আপত্তিজনক কন্টেন্ট পাওয়া গেছে!'], 403);
+    //                     }
+    //                 }
+    //             }
+    //         } finally {
+    //             $imageAnnotator->close();
+    //         }
+    //     }
 
-        // ৩. ভিডিও আছে কি না চেক করা
-        $hasVideo = false;
-        if ($request->hasFile('media')) {
-            foreach ($request->file('media') as $file) {
-                if (in_array(strtolower($file->getClientOriginalExtension()), $videoExtensions)) {
-                    $hasVideo = true;
-                    break;
-                }
-            }
-        }
+    //     // ৩. ভিডিও আছে কি না চেক করা
+    //     $hasVideo = false;
+    //     if ($request->hasFile('media')) {
+    //         foreach ($request->file('media') as $file) {
+    //             if (in_array(strtolower($file->getClientOriginalExtension()), $videoExtensions)) {
+    //                 $hasVideo = true;
+    //                 break;
+    //             }
+    //         }
+    //     }
 
-        // ৪. ডাটাবেসে পোস্ট তৈরি (ভিডিও থাকলে স্ট্যাটাস হবে pending)
-        $post = \App\Models\Post::create([
-            'member_id' => $member->id,
-            'content' => $request->content,
-            'boost_status' => $request->boost_status ?? 0,
-            'visibility' => $request->visibility,
-            'is_pinned' => $request->is_pinned ?? false,
-            'scheduled_at' => $request->scheduled_at,
-            'status' => $hasVideo ? 'pending' : 'active', 
-        ]);
+    //     // ৪. ডাটাবেসে পোস্ট তৈরি (ভিডিও থাকলে স্ট্যাটাস হবে pending)
+    //     $post = \App\Models\Post::create([
+    //         'member_id' => $member->id,
+    //         'content' => $request->content,
+    //         'boost_status' => $request->boost_status ?? 0,
+    //         'visibility' => $request->visibility,
+    //         'is_pinned' => $request->is_pinned ?? false,
+    //         'scheduled_at' => $request->scheduled_at,
+    //         'status' => $hasVideo ? 'pending' : 'active', 
+    //     ]);
 
-        // ৫. মিডিয়া আপলোড প্রসেস
-        if ($request->hasFile('media')) {
-            try {
-                $storage = new \Google\Cloud\Storage\StorageClient([
-                    'projectId' => config('filesystems.disks.gcs.project_id'),
-                    'keyFile'    => $keyFileData, 
-                ]);
-                $bucket = $storage->bucket(config('filesystems.disks.gcs.bucket'));
+    //     // ৫. মিডিয়া আপলোড প্রসেস
+    //     if ($request->hasFile('media')) {
+    //         try {
+    //             $storage = new \Google\Cloud\Storage\StorageClient([
+    //                 'projectId' => config('filesystems.disks.gcs.project_id'),
+    //                 'keyFile'    => $keyFileData, 
+    //             ]);
+    //             $bucket = $storage->bucket(config('filesystems.disks.gcs.bucket'));
 
-                foreach ($request->file('media') as $file) {
-                    $extension = strtolower($file->getClientOriginalExtension());
-                    $fileNameBase = time() . '-' . uniqid();
+    //             foreach ($request->file('media') as $file) {
+    //                 $extension = strtolower($file->getClientOriginalExtension());
+    //                 $fileNameBase = time() . '-' . uniqid();
 
-                    if (in_array($extension, $imageExtensions)) {
-                        $img = \Intervention\Image\Facades\Image::make($file->getRealPath())->resize(1200, null, function ($constraint) {
-                            $constraint->aspectRatio(); $constraint->upsize();
-                        });
-                        $fileName = "posts/images/{$fileNameBase}.webp";
-                        $bucket->upload((string)$img->encode('webp', 85), [
-                            'name' => $fileName,
-                            'metadata' => ['contentType' => 'image/webp']
-                        ]);
-                        $this->saveMediaRecord($post->id, 'image', $fileName);
+    //                 if (in_array($extension, $imageExtensions)) {
+    //                     $img = \Intervention\Image\Facades\Image::make($file->getRealPath())->resize(1200, null, function ($constraint) {
+    //                         $constraint->aspectRatio(); $constraint->upsize();
+    //                     });
+    //                     $fileName = "posts/images/{$fileNameBase}.webp";
+    //                     $bucket->upload((string)$img->encode('webp', 85), [
+    //                         'name' => $fileName,
+    //                         'metadata' => ['contentType' => 'image/webp']
+    //                     ]);
+    //                     $this->saveMediaRecord($post->id, 'image', $fileName);
 
-                    } elseif (in_array($extension, $videoExtensions)) {
-                        $fileName = "posts/videos/{$fileNameBase}.{$extension}";
-                        $bucket->upload(fopen($file->getRealPath(), 'r'), [
-                            'name' => $fileName,
-                            'metadata' => ['contentType' => $file->getMimeType()]
-                        ]);
-                        $this->saveMediaRecord($post->id, 'video', $fileName);
+    //                 } elseif (in_array($extension, $videoExtensions)) {
+    //                     $fileName = "posts/videos/{$fileNameBase}.{$extension}";
+    //                     $bucket->upload(fopen($file->getRealPath(), 'r'), [
+    //                         'name' => $fileName,
+    //                         'metadata' => ['contentType' => $file->getMimeType()]
+    //                     ]);
+    //                     $this->saveMediaRecord($post->id, 'video', $fileName);
 
-                        // ব্যাকগ্রাউন্ড জব কল করা
-                        \App\Jobs\ProcessVideoSafetyCheck::dispatch($post->id, $fileName);
-                    }
-                }
-            } catch (\Exception $e) {
-                \Log::error("Media Upload Error: " . $e->getMessage());
-            }
-        }
+    //                     // ব্যাকগ্রাউন্ড জব কল করা
+    //                     \App\Jobs\ProcessVideoSafetyCheck::dispatch($post->id, $fileName);
+    //                 }
+    //             }
+    //         } catch (\Exception $e) {
+    //             \Log::error("Media Upload Error: " . $e->getMessage());
+    //         }
+    //     }
 
-        return response()->json([
-            'status' => 'success',
-            'message' => $hasVideo ? 'পোস্টটি সফলভাবে আপলোড হয়েছে। ভিডিওটি রিভিউ করা হচ্ছে, ৫ মিনিটের মধ্যে পাবলিশ হবে।' : 'পোস্টটি সফলভাবে পাবলিশ হয়েছে।',
-            'post' => $post->load('media')
-        ]);
-    }
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'message' => $hasVideo ? 'পোস্টটি সফলভাবে আপলোড হয়েছে। ভিডিওটি রিভিউ করা হচ্ছে, ৫ মিনিটের মধ্যে পাবলিশ হবে।' : 'পোস্টটি সফলভাবে পাবলিশ হয়েছে।',
+    //         'post' => $post->load('media')
+    //     ]);
+    // }
 
 
 
 
     
 
-    private function saveMediaRecord($postId, $type, $path)
-    {
-        \App\Models\Post_media::create([
-            'post_id' => $postId,
-            'media_type' => $type,
-            'path' => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $path,
-        ]);
-    }
+    // private function saveMediaRecord($postId, $type, $path)
+    // {
+    //     \App\Models\Post_media::create([
+    //         'post_id' => $postId,
+    //         'media_type' => $type,
+    //         'path' => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $path,
+    //     ]);
+    // }
+
     // THIS IS OUR VIDEO 18 + CODE END===========================================================================
+
+
+
+
+// This our 18+ backgorund job code start ///////////////
+
+public function store(Request $request)
+{
+    $request->validate([
+        'content' => 'nullable|string',
+        'visibility' => 'required',
+        'media.*' => 'nullable|file|max:51200',
+    ]);
+
+    $member = Auth::guard("member")->user();
+    if (!$member) return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
+
+    $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+    $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
+
+    // ইমেজ সেফটি চেক (এটি দ্রুত হয় তাই সিঙ্ক্রোনাস রাখা যায়)
+    if ($request->hasFile('media')) {
+        $imageAnnotator = new \Google\Cloud\Vision\V1\ImageAnnotatorClient(['credentials' => config('filesystems.disks.gcs.key_file')]);
+        foreach ($request->file('media') as $file) {
+            if (in_array(strtolower($file->getClientOriginalExtension()), $imageExtensions)) {
+                $response = $imageAnnotator->safeSearchDetection(file_get_contents($file->getRealPath()));
+                $safe = $response->getSafeSearchAnnotation();
+                if ($safe->getAdult() >= 4 || $safe->getRacy() >= 4) {
+                    $imageAnnotator->close();
+                    return response()->json(['status' => 'failed', 'message' => 'ছবিতে আপত্তিজনক কন্টেন্ট পাওয়া গেছে!'], 403);
+                }
+            }
+        }
+        $imageAnnotator->close();
+    }
+
+    $hasVideo = false;
+    foreach ($request->file('media') ?? [] as $file) {
+        if (in_array(strtolower($file->getClientOriginalExtension()), $videoExtensions)) {
+            $hasVideo = true; break;
+        }
+    }
+
+    // পোস্ট তৈরি (ভিডিও থাকলে pending/0 স্ট্যাটাস)
+    $post = \App\Models\Post::create([
+        'member_id' => $member->id,
+        'content' => $request->content,
+        'visibility' => $request->visibility,
+        'status' => $hasVideo ? 'pending' : 'active', 
+    ]);
+
+    if ($request->hasFile('media')) {
+        foreach ($request->file('media') as $file) {
+            $extension = strtolower($file->getClientOriginalExtension());
+            $fileNameBase = time() . '-' . uniqid();
+
+            if (in_array($extension, $imageExtensions)) {
+                // ইমেজ প্রসেসিং ও আপলোড আগের মতোই রাখতে পারেন (অথবা জবে পাঠাতে পারেন)
+                $this->uploadImage($post, $file, $fileNameBase);
+            } elseif (in_array($extension, $videoExtensions)) {
+                // ভিডিওটি টেম্পোরারি স্টোরেজে সেভ করুন যেন জব ফাইলটি খুঁজে পায়
+                $tempPath = $file->storeAs('temp_videos', $fileNameBase . '.' . $extension, 'local');
+                
+                // ভিডিও আপলোড এবং সেফটি চেকের জন্য জব কল
+                \App\Jobs\ProcessVideoSafetyCheck::dispatch($post->id, storage_path('app/' . $tempPath), $extension);
+            }
+        }
+    }
+
+    return response()->json([
+        'status' => 'success',
+        'message' => $hasVideo ? 'আপনার ভিডিওটি আপলোড হচ্ছে...' : 'পোস্টটি সফলভাবে পাবলিশ হয়েছে।',
+        'post' => $post->load('media')
+    ]);
+}
+
+// This our 18+ backgorund job code End ///////////////
+
+
 
 
 
