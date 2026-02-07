@@ -1280,7 +1280,6 @@ class MemberController extends Controller
             $rules = [
                 'type'      => 'required|in:nid,birth,passport,driving',
                 'country'   => 'required',
-                'post_code' => 'required',
                 'city'      => 'required',
             ];
 
