@@ -926,6 +926,81 @@ public function miniads(Request $request)
 
 // This our 18+ backgorund job code start ///////////////
 
+// public function store(Request $request)
+// {
+//     $request->validate([
+//         'content' => 'nullable|string',
+//         'visibility' => 'required',
+//         'media.*' => 'nullable|file|max:51200',
+//     ]);
+
+//     $member = Auth::guard("member")->user();
+//     if (!$member) return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
+
+//     $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+//     $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
+
+//     // ইমেজ সেফটি চেক (এটি দ্রুত হয় তাই সিঙ্ক্রোনাস রাখা যায়)
+//     if ($request->hasFile('media')) {
+//         $imageAnnotator = new \Google\Cloud\Vision\V1\ImageAnnotatorClient(['credentials' => config('filesystems.disks.gcs.key_file')]);
+//         foreach ($request->file('media') as $file) {
+//             if (in_array(strtolower($file->getClientOriginalExtension()), $imageExtensions)) {
+//                 $response = $imageAnnotator->safeSearchDetection(file_get_contents($file->getRealPath()));
+//                 $safe = $response->getSafeSearchAnnotation();
+//                 if ($safe->getAdult() >= 4 || $safe->getRacy() >= 4) {
+//                     $imageAnnotator->close();
+//                     return response()->json(['status' => 'failed', 'message' => 'ছবিতে আপত্তিজনক কন্টেন্ট পাওয়া গেছে!'], 403);
+//                 }
+//             }
+//         }
+//         $imageAnnotator->close();
+//     }
+
+//     $hasVideo = false;
+//     foreach ($request->file('media') ?? [] as $file) {
+//         if (in_array(strtolower($file->getClientOriginalExtension()), $videoExtensions)) {
+//             $hasVideo = true; break;
+//         }
+//     }
+
+//     // পোস্ট তৈরি (ভিডিও থাকলে pending/0 স্ট্যাটাস)
+//     $post = \App\Models\Post::create([
+//         'member_id' => $member->id,
+//         'content' => $request->content,
+//         'visibility' => $request->visibility,
+//         'status' => $hasVideo ? 'pending' : 'active', 
+//     ]);
+
+//     if ($request->hasFile('media')) {
+//         foreach ($request->file('media') as $file) {
+//             $extension = strtolower($file->getClientOriginalExtension());
+//             $fileNameBase = time() . '-' . uniqid();
+
+//             if (in_array($extension, $imageExtensions)) {
+//                 // ইমেজ প্রসেসিং ও আপলোড আগের মতোই রাখতে পারেন (অথবা জবে পাঠাতে পারেন)
+//                 $this->uploadImage($post, $file, $fileNameBase);
+//             } elseif (in_array($extension, $videoExtensions)) {
+//                 // ভিডিওটি টেম্পোরারি স্টোরেজে সেভ করুন যেন জব ফাইলটি খুঁজে পায়
+//                 $tempPath = $file->storeAs('temp_videos', $fileNameBase . '.' . $extension, 'local');
+                
+//                 // ভিডিও আপলোড এবং সেফটি চেকের জন্য জব কল
+//                 \App\Jobs\ProcessVideoSafetyCheck::dispatch($post->id, storage_path('app/' . $tempPath), $extension);
+//             }
+//         }
+//     }
+
+//     return response()->json([
+//         'status' => 'success',
+//         'message' => $hasVideo ? 'আপনার ভিডিওটি আপলোড হচ্ছে...' : 'পোস্টটি সফলভাবে পাবলিশ হয়েছে।',
+//         'post' => $post->load('media')
+//     ]);
+// }
+
+// This our 18+ backgorund job code End ///////////////
+
+
+
+// This is our 18+ image and video content filter code start////////////////////////////////////////////////////////////
 public function store(Request $request)
 {
     $request->validate([
@@ -940,35 +1015,12 @@ public function store(Request $request)
     $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
     $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
 
-    // ইমেজ সেফটি চেক (এটি দ্রুত হয় তাই সিঙ্ক্রোনাস রাখা যায়)
-    if ($request->hasFile('media')) {
-        $imageAnnotator = new \Google\Cloud\Vision\V1\ImageAnnotatorClient(['credentials' => config('filesystems.disks.gcs.key_file')]);
-        foreach ($request->file('media') as $file) {
-            if (in_array(strtolower($file->getClientOriginalExtension()), $imageExtensions)) {
-                $response = $imageAnnotator->safeSearchDetection(file_get_contents($file->getRealPath()));
-                $safe = $response->getSafeSearchAnnotation();
-                if ($safe->getAdult() >= 4 || $safe->getRacy() >= 4) {
-                    $imageAnnotator->close();
-                    return response()->json(['status' => 'failed', 'message' => 'ছবিতে আপত্তিজনক কন্টেন্ট পাওয়া গেছে!'], 403);
-                }
-            }
-        }
-        $imageAnnotator->close();
-    }
-
-    $hasVideo = false;
-    foreach ($request->file('media') ?? [] as $file) {
-        if (in_array(strtolower($file->getClientOriginalExtension()), $videoExtensions)) {
-            $hasVideo = true; break;
-        }
-    }
-
-    // পোস্ট তৈরি (ভিডিও থাকলে pending/0 স্ট্যাটাস)
+    // পোস্ট তৈরি (সব মিডিয়াই এখন ব্যাকগ্রাউন্ডে প্রসেস হবে)
     $post = \App\Models\Post::create([
         'member_id' => $member->id,
         'content' => $request->content,
         'visibility' => $request->visibility,
-        'status' => $hasVideo ? 'pending' : 'active', 
+        'status' => 'pending', // প্রসেসিং শেষ না হওয়া পর্যন্ত পেন্ডিং
     ]);
 
     if ($request->hasFile('media')) {
@@ -977,26 +1029,28 @@ public function store(Request $request)
             $fileNameBase = time() . '-' . uniqid();
 
             if (in_array($extension, $imageExtensions)) {
-                // ইমেজ প্রসেসিং ও আপলোড আগের মতোই রাখতে পারেন (অথবা জবে পাঠাতে পারেন)
-                $this->uploadImage($post, $file, $fileNameBase);
-            } elseif (in_array($extension, $videoExtensions)) {
-                // ভিডিওটি টেম্পোরারি স্টোরেজে সেভ করুন যেন জব ফাইলটি খুঁজে পায়
+                // ইমেজের জন্য টেম্পোরারি সেভ ও জব
+                $tempPath = $file->storeAs('temp_images', $fileNameBase . '.' . $extension, 'local');
+                \App\Jobs\ProcessImageUpload::dispatch($post->id, storage_path('app/' . $tempPath), $fileNameBase);
+            } 
+            elseif (in_array($extension, $videoExtensions)) {
+                // ভিডিওর জন্য টেম্পোরারি সেভ ও জব
                 $tempPath = $file->storeAs('temp_videos', $fileNameBase . '.' . $extension, 'local');
-                
-                // ভিডিও আপলোড এবং সেফটি চেকের জন্য জব কল
                 \App\Jobs\ProcessVideoSafetyCheck::dispatch($post->id, storage_path('app/' . $tempPath), $extension);
             }
         }
+    } else {
+        // যদি কোনো মিডিয়া না থাকে, পোস্ট সাথে সাথে একটিভ হবে
+        $post->update(['status' => 'active']);
     }
 
     return response()->json([
         'status' => 'success',
-        'message' => $hasVideo ? 'আপনার ভিডিওটি আপলোড হচ্ছে...' : 'পোস্টটি সফলভাবে পাবলিশ হয়েছে।',
+        'message' => 'আপনার পোস্টটি প্রসেস হচ্ছে এবং কিছুক্ষণের মধ্যে পাবলিশ হবে।',
         'post' => $post->load('media')
     ]);
 }
-
-// This our 18+ backgorund job code End ///////////////
+// This is our 18+ image and video content filter code end////////////////////////////////////////////////////////////
 
 
 
