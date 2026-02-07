@@ -1616,35 +1616,154 @@ public function store(Request $request)
     
     
     
-    public function update(Request $request)
+    // public function update(Request $request)
+    // {
+    //     return "ok";
+    //     $member = Auth::guard("member")->user();
+    
+    //     if (!$member) {
+    //         return response()->json([
+    //             'status' => 'failed',
+    //             'message' => 'Unauthorized user'
+    //         ], 401);
+    //     }
+    
+    //     $post = Post::where('id', $id)->where('member_id', $member->id)->first();
+    
+    //     if (!$post) {
+    //         return response()->json([
+    //             'status' => 'failed',
+    //             'message' => 'Post not found or not authorized'
+    //         ], 404);
+    //     }
+    
+    //     $request->validate([
+    //         'content' => 'nullable|string',
+    //         'visibility' => 'nullable|in:public,private,friends', 
+    //         'scheduled_at' => 'nullable|date',
+    //         'boost_status' => 'nullable|in:0,1',
+    //         'media.*' => 'nullable|file|max:10240', 
+    //     ]);
+    
+    //     $post->update([
+    //         'content' => $request->content ?? $post->content,
+    //         'visibility' => $request->visibility ?? $post->visibility,
+    //         'is_pinned' => $request->is_pinned ?? $post->is_pinned,
+    //         'scheduled_at' => $request->scheduled_at ?? $post->scheduled_at,
+    //         'boost_status' => $request->boost_status ?? $post->boost_status,
+    //     ]);
+    
+    //     if ($request->remove_old_media && $request->remove_old_media == true) {
+    //         foreach ($post->media as $oldMedia) {
+    //             $filePath = public_path(str_replace('public/', '', $oldMedia->path));
+    //             if (file_exists($filePath)) {
+    //                 unlink($filePath);
+    //             }
+    //             $oldMedia->delete();
+    //         }
+    //     }
+    
+    //     if ($request->hasFile('media')) {
+    //         $uploadImagePath = public_path('uploads/post/images/');
+    //         $uploadVideoPath = public_path('uploads/post/videos/');
+    
+    //         if (!file_exists($uploadImagePath)) mkdir($uploadImagePath, 0777, true);
+    //         if (!file_exists($uploadVideoPath)) mkdir($uploadVideoPath, 0777, true);
+    
+    //         foreach ($request->file('media') as $file) {
+    //             $extension = strtolower($file->getClientOriginalExtension());
+    //             $name = time() . '-' . strtolower(preg_replace('/\s+/', '-', $file->getClientOriginalName()));
+    
+    //             $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+    //             $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
+    
+                
+    //             if (in_array($extension, $imageExtensions)) {
+    //                 $name = preg_replace('"\.(jpg|jpeg|png|webp)$"', '.webp', $name);
+    //                 $imageUrl = $uploadImagePath . $name;
+    
+    //                 $targetWidth = 600;
+    //                 $img = Image::make($file->getRealPath());
+    //                 $img->resize($targetWidth, null, function ($constraint) {
+    //                     $constraint->aspectRatio();
+    //                     $constraint->upsize();
+    //                 });
+    
+    //                 $quality = 90;
+    //                 do {
+    //                     $tempPath = $uploadImagePath . 'temp_' . $name;
+    //                     $img->encode('webp', $quality)->save($tempPath);
+    //                     $size = filesize($tempPath) / 1024 / 1024;
+    //                     $quality -= 5;
+    //                 } while ($size > 2 && $quality >= 10);
+    
+    //                 rename($tempPath, $imageUrl);
+    
+    //                 Post_media::create([
+    //                     'post_id' => $post->id,
+    //                     'media_type' => 'image',
+    //                     'path' => 'public/uploads/post/images/' . $name,
+    //                 ]);
+    //             }
+    
+                
+    //             elseif (in_array($extension, $videoExtensions)) {
+    //                 $videoUrl = $uploadVideoPath . $name;
+    //                 $file->move($uploadVideoPath, $name);
+    
+    //                 Post_media::create([
+    //                     'post_id' => $post->id,
+    //                     'media_type' => 'video',
+    //                     'path' => 'public/uploads/post/videos/' . $name,
+    //                 ]);
+    //             }
+    //         }
+    //     }
+    
+       
+    //     if ($request->boost_status == 1) {
+    //         PostBoost::updateOrCreate(
+    //             ['post_id' => $post->id],
+    //             [
+    //                 'member_id'   => $member->id,
+    //                 'age_from'    => $request->age_from,
+    //                 'age_to'      => $request->age_to,
+    //                 'start_date'  => Carbon::now(),
+    //                 'end_date'    => $request->end_date ? Carbon::parse($request->end_date)->format('Y-m-d') : null,
+    //                 'gender'      => $request->gender,
+    //                 'location'    => $request->location,
+    //                 'profession'  => $request->profession,
+    //                 'income_range'=> $request->income_range,
+    //             ]
+    //         );
+    //     }
+    
+    //     $post->load(['boost', 'media']);
+    
+    //     return response()->json([
+    //         'status'  => 'success',
+    //         'message' => 'Post updated successfully!',
+    //         'post'    => $post,
+    //     ]);
+    // }
+
+
+
+    public function update(Request $request, $id) 
     {
-        return "ok";
         $member = Auth::guard("member")->user();
-    
-        if (!$member) {
-            return response()->json([
-                'status' => 'failed',
-                'message' => 'Unauthorized user'
-            ], 401);
-        }
-    
-        $post = Post::where('id', $id)->where('member_id', $member->id)->first();
-    
-        if (!$post) {
-            return response()->json([
-                'status' => 'failed',
-                'message' => 'Post not found or not authorized'
-            ], 404);
-        }
-    
+        if (!$member) return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
+
+        $post = \App\Models\Post::where('id', $id)->where('member_id', $member->id)->first();
+        if (!$post) return response()->json(['status' => 'failed', 'message' => 'Post not found'], 404);
+
         $request->validate([
             'content' => 'nullable|string',
-            'visibility' => 'nullable|in:public,private,friends', 
-            'scheduled_at' => 'nullable|date',
-            'boost_status' => 'nullable|in:0,1',
-            'media.*' => 'nullable|file|max:10240', 
+            'visibility' => 'nullable|in:public,private,friends',
+            'media.*' => 'nullable|file|max:51200',
         ]);
-    
+
+        // ১. টেক্সট ডাটা আপডেট
         $post->update([
             'content' => $request->content ?? $post->content,
             'visibility' => $request->visibility ?? $post->visibility,
@@ -1652,84 +1771,60 @@ public function store(Request $request)
             'scheduled_at' => $request->scheduled_at ?? $post->scheduled_at,
             'boost_status' => $request->boost_status ?? $post->boost_status,
         ]);
-    
-        if ($request->remove_old_media && $request->remove_old_media == true) {
+
+        // ২. পুরনো মিডিয়া ডিলিট (GCS থেকে)
+        if ($request->remove_old_media == true) {
+            $storage = new \Google\Cloud\Storage\StorageClient([
+                'projectId' => config('filesystems.disks.gcs.project_id'),
+                'keyFile'    => config('filesystems.disks.gcs.key_file'),
+            ]);
+            $bucket = $storage->bucket(config('filesystems.disks.gcs.bucket'));
+
             foreach ($post->media as $oldMedia) {
-                $filePath = public_path(str_replace('public/', '', $oldMedia->path));
-                if (file_exists($filePath)) {
-                    unlink($filePath);
+                // ডাটাবেস পাথ থেকে GCS অবজেক্ট নেম বের করা
+                // উদাহরণ: https://storage.googleapis.com/bucket/posts/images/abc.webp -> posts/images/abc.webp
+                $pathParts = explode(config('filesystems.disks.gcs.bucket') . '/', $oldMedia->path);
+                $objectName = end($pathParts);
+
+                $object = $bucket->object($objectName);
+                if ($object->exists()) {
+                    $object->delete();
                 }
                 $oldMedia->delete();
             }
         }
-    
+
+        // ৩. নতুন মিডিয়া হ্যান্ডেল করা (ব্যাকগ্রাউন্ড জবে পাঠানো)
+        $hasNewMedia = false;
         if ($request->hasFile('media')) {
-            $uploadImagePath = public_path('uploads/post/images/');
-            $uploadVideoPath = public_path('uploads/post/videos/');
-    
-            if (!file_exists($uploadImagePath)) mkdir($uploadImagePath, 0777, true);
-            if (!file_exists($uploadVideoPath)) mkdir($uploadVideoPath, 0777, true);
-    
+            $hasNewMedia = true;
+            $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+            $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
+
             foreach ($request->file('media') as $file) {
                 $extension = strtolower($file->getClientOriginalExtension());
-                $name = time() . '-' . strtolower(preg_replace('/\s+/', '-', $file->getClientOriginalName()));
-    
-                $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
-                $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
-    
-                
+                $fileNameBase = time() . '-' . uniqid();
+
                 if (in_array($extension, $imageExtensions)) {
-                    $name = preg_replace('"\.(jpg|jpeg|png|webp)$"', '.webp', $name);
-                    $imageUrl = $uploadImagePath . $name;
-    
-                    $targetWidth = 600;
-                    $img = Image::make($file->getRealPath());
-                    $img->resize($targetWidth, null, function ($constraint) {
-                        $constraint->aspectRatio();
-                        $constraint->upsize();
-                    });
-    
-                    $quality = 90;
-                    do {
-                        $tempPath = $uploadImagePath . 'temp_' . $name;
-                        $img->encode('webp', $quality)->save($tempPath);
-                        $size = filesize($tempPath) / 1024 / 1024;
-                        $quality -= 5;
-                    } while ($size > 2 && $quality >= 10);
-    
-                    rename($tempPath, $imageUrl);
-    
-                    Post_media::create([
-                        'post_id' => $post->id,
-                        'media_type' => 'image',
-                        'path' => 'public/uploads/post/images/' . $name,
-                    ]);
-                }
-    
-                
-                elseif (in_array($extension, $videoExtensions)) {
-                    $videoUrl = $uploadVideoPath . $name;
-                    $file->move($uploadVideoPath, $name);
-    
-                    Post_media::create([
-                        'post_id' => $post->id,
-                        'media_type' => 'video',
-                        'path' => 'public/uploads/post/videos/' . $name,
-                    ]);
+                    $tempPath = $file->storeAs('temp_images', $fileNameBase . '.' . $extension, 'local');
+                    \App\Jobs\ProcessImageUpload::dispatch($post->id, storage_path('app/' . $tempPath), $fileNameBase);
+                } elseif (in_array($extension, $videoExtensions)) {
+                    $tempPath = $file->storeAs('temp_videos', $fileNameBase . '.' . $extension, 'local');
+                    \App\Jobs\ProcessVideoSafetyCheck::dispatch($post->id, storage_path('app/' . $tempPath), $extension);
                 }
             }
         }
-    
-       
+
+        // বুস্ট আপডেট
         if ($request->boost_status == 1) {
-            PostBoost::updateOrCreate(
+            \App\Models\PostBoost::updateOrCreate(
                 ['post_id' => $post->id],
                 [
                     'member_id'   => $member->id,
                     'age_from'    => $request->age_from,
                     'age_to'      => $request->age_to,
-                    'start_date'  => Carbon::now(),
-                    'end_date'    => $request->end_date ? Carbon::parse($request->end_date)->format('Y-m-d') : null,
+                    'start_date'  => \Carbon\Carbon::now(),
+                    'end_date'    => $request->end_date ? \Carbon\Carbon::parse($request->end_date)->format('Y-m-d') : null,
                     'gender'      => $request->gender,
                     'location'    => $request->location,
                     'profession'  => $request->profession,
@@ -1737,13 +1832,16 @@ public function store(Request $request)
                 ]
             );
         }
-    
-        $post->load(['boost', 'media']);
-    
+
+        // যদি নতুন মিডিয়া থাকে, পোস্টটি পেন্ডিং হতে পারে প্রসেস শেষ হওয়া পর্যন্ত
+        if ($hasNewMedia) {
+            $post->update(['status' => 'pending']);
+        }
+
         return response()->json([
             'status'  => 'success',
-            'message' => 'Post updated successfully!',
-            'post'    => $post,
+            'message' => $hasNewMedia ? 'Post updated. Media is processing...' : 'Post updated successfully!',
+            'post'    => $post->load(['boost', 'media']),
         ]);
     }
 

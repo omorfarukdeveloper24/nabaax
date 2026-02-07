@@ -137,7 +137,7 @@ Route::group(['namespace' => 'Api','prefix'=>'v1','middleware' => 'api'], functi
         Route::post('/store', [PostController::class, 'store']);  
         Route::post('/boost/click/{id}', [PostController::class, 'linkClick']);
         Route::get('/details/{id}', [PostController::class, 'details']); 
-        Route::post('/update', [PostController::class, 'update']); 
+        Route::post('/update/{id}', [PostController::class, 'update']); 
         Route::post('/destroy/{id}', [PostController::class, 'destroy']); 
         Route::post('/miniads', [PostController::class, 'miniads']);  
     });
