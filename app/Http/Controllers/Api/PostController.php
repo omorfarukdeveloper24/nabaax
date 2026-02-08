@@ -2002,17 +2002,73 @@ public function store(Request $request)
 
     public function destroy($id)
     {
-        $post = Post::find($id);
+        $member = Auth::guard("member")->user();
+        if (!$member) return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
+
+        // ১. পোস্টটি খুঁজে বের করা (নিশ্চিত করা যে এটি এই ইউজারেরই পোস্ট)
+        $post = \App\Models\Post::where('id', $id)->where('member_id', $member->id)->first();
 
         if (!$post) {
-            return response()->json(['status' => false, 'message' => 'Post not found'], 404);
+            return response()->json(['status' => 'failed', 'message' => 'Post not found or unauthorized'], 404);
         }
 
-        $post->delete();
+        try {
+            \DB::beginTransaction();
 
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Post deleted successfully!',
-        ]);
+            // ২. GCS থেকে সব মিডিয়া ফাইল ডিলিট করা
+            $storage = new \Google\Cloud\Storage\StorageClient([
+                'projectId' => config('filesystems.disks.gcs.project_id'),
+                'keyFile'   => config('filesystems.disks.gcs.key_file'),
+            ]);
+            $bucket = $storage->bucket(config('filesystems.disks.gcs.bucket'));
+
+            foreach ($post->media as $media) {
+                try {
+                    // URL থেকে অবজেক্ট নেম বের করা
+                    $pathParts = explode(config('filesystems.disks.gcs.bucket') . '/', $media->path);
+                    $objectName = end($pathParts);
+
+                    $object = $bucket->object($objectName);
+                    if ($object->exists()) {
+                        $object->delete();
+                    }
+                } catch (\Exception $e) {
+                    \Log::error("GCS Delete Error in Destroy: " . $e->getMessage());
+                    // GCS ফাইল ডিলিট না হলেও আমরা ডাটাবেস ডিলিট কন্টিনিউ করতে পারি
+                }
+            }
+
+            // ৩. রিলেটেড ডাটা ডিলিট (Like, Comment, Media, Boost)
+            // দ্রষ্টব্য: আপনার মডেলে যদি Cascade Delete সেট করা না থাকে তবে ম্যানুয়ালি ডিলিট করতে হবে।
+            $post->media()->delete();      // PostMedia টেবিল থেকে
+            $post->likes()->delete();      // Like টেবিল থেকে
+            $post->comments()->delete();   // Comment টেবিল থেকে
+            $post->boost()->delete();      // Boost টেবিল থেকে (যদি থাকে)
+
+            // ৪. মূল পোস্ট ডিলিট করা
+            $post->delete();
+
+            \DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Post and all associated data deleted successfully!',
+            ]);
+
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            \Log::error("Post Destroy Error: " . $e->getMessage());
+            return response()->json([
+                'status' => 'failed',
+                'message' => 'Something went wrong while deleting the post.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
+
+
+
+
+
+
 }
