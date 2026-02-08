@@ -1006,7 +1006,7 @@ public function store(Request $request)
     $request->validate([
         'content' => 'nullable|string',
         'visibility' => 'required',
-        'media.*' => 'nullable|file|max:51200',
+        'media.*' => 'nullable|file|max:102400',
     ]);
 
     $member = Auth::guard("member")->user();
