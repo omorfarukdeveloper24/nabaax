@@ -10,6 +10,8 @@ use Illuminate\Queue\SerializesModels;
 use Google\Cloud\VideoIntelligence\V1\VideoIntelligenceServiceClient;
 use Google\Cloud\VideoIntelligence\V1\Feature;
 use App\Models\Post;
+use App\Models\Post_media;
+use Illuminate\Support\Facades\Log;
 
 class ProcessVideoSafetyCheck implements ShouldQueue
 {
@@ -17,6 +19,9 @@ class ProcessVideoSafetyCheck implements ShouldQueue
 
     protected $postId;
     protected $videoPath;
+
+    // বড় ভিডিওর জন্য টাইমআউট বাড়িয়ে ২০ মিনিট (১২০০ সেকেন্ড) করা হলো
+    public $timeout = 1200; 
 
     public function __construct($postId, $videoPath)
     {
@@ -27,40 +32,46 @@ class ProcessVideoSafetyCheck implements ShouldQueue
     public function handle()
     {
         $keyFileData = config('filesystems.disks.gcs.key_file');
-        $storage = new \Google\Cloud\Storage\StorageClient([
-            'projectId' => config('filesystems.disks.gcs.project_id'),
-            'keyFile'    => $keyFileData,
-        ]);
-        $bucket = $storage->bucket(config('filesystems.disks.gcs.bucket'));
-
         $fileName = "posts/videos/" . basename($this->videoPath);
         
         try {
-            // ১. আগে ভিডিওটি GCS-এ আপলোড করুন
-            $bucket->upload(fopen($this->videoPath, 'r'), [
+            $storage = new \Google\Cloud\Storage\StorageClient([
+                'projectId' => config('filesystems.disks.gcs.project_id'),
+                'keyFile'    => $keyFileData,
+            ]);
+            $bucket = $storage->bucket(config('filesystems.disks.gcs.bucket'));
+
+            // ১. ফাইলটি GCS-এ আপলোড (Stream upload for large files)
+            $fileStream = fopen($this->videoPath, 'r');
+            $bucket->upload($fileStream, [
                 'name' => $fileName,
             ]);
 
             // ২. ভিডিও ইন্টেলিজেন্স চেক
-            $videoClient = new \Google\Cloud\VideoIntelligence\V1\VideoIntelligenceServiceClient(['credentials' => $keyFileData]);
+            $videoClient = new VideoIntelligenceServiceClient(['credentials' => $keyFileData]);
             $gcsUri = 'gs://' . config('filesystems.disks.gcs.bucket') . '/' . $fileName;
 
             $operation = $videoClient->annotateVideo([
                 'inputUri' => $gcsUri,
-                'features' => [\Google\Cloud\VideoIntelligence\V1\Feature::EXPLICIT_CONTENT_DETECTION],
+                'features' => [Feature::EXPLICIT_CONTENT_DETECTION],
             ]);
 
-            $operation->pollUntilComplete();
-            $isSafe = true;
+            // ৩. লুপ দিয়ে চেক করা যাতে কিউ ওয়ার্কার বুঝতে পারে কাজ চলছে
+            $operation->pollUntilComplete([
+                'pollingIntervalSeconds' => 5
+            ]);
 
+            $isSafe = true;
             if ($operation->operationSucceeded()) {
                 $results = $operation->getResult()->getAnnotationResults()[0];
                 $explicitAnnotation = $results->getExplicitAnnotation();
 
                 if ($explicitAnnotation) {
                     foreach ($explicitAnnotation->getFrames() as $frame) {
+                        // Likelihood 4 = Likely, 5 = Very Likely
                         if ($frame->getPornographyLikelihood() >= 4) {
-                            $isSafe = false; break;
+                            $isSafe = false; 
+                            break;
                         }
                     }
                 }
@@ -69,27 +80,31 @@ class ProcessVideoSafetyCheck implements ShouldQueue
             $post = Post::find($this->postId);
             if ($post) {
                 if ($isSafe) {
-                    // সব ঠিক থাকলে মিডিয়া রেকর্ড সেভ এবং স্ট্যাটাস Active
                     $mediaPath = "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $fileName;
-                    \App\Models\Post_media::create([
+                    
+                    // মিডিয়া টেবিল সেভ (এটি ট্রাই-ক্যাচ এর ভেতরে রাখাই নিরাপদ)
+                    Post_media::create([
                         'post_id' => $post->id,
                         'media_type' => 'video',
                         'path' => $mediaPath,
                     ]);
+                    
                     $post->update(['status' => 'active']);
+                    Log::info("Video successfully processed and saved for Post ID: {$this->postId}");
                 } else {
-                    // ১৮+ হলে পোস্ট ডিলিট এবং GCS থেকে ফাইল ডিলিট
                     $bucket->object($fileName)->delete();
                     $post->delete(); 
+                    Log::warning("Inappropriate video deleted for Post ID: {$this->postId}");
                 }
             }
             
             $videoClient->close();
 
         } catch (\Exception $e) {
-            \Log::error("Video Job Error: " . $e->getMessage());
+            Log::error("Video Job Error (Post ID {$this->postId}): " . $e->getMessage());
+            // এরর হলেও যাতে কিউ বারবার ট্রাই না করে (বড় ফাইল বলে)
+            throw $e; 
         } finally {
-            // টেম্পোরারি ফাইল ডিলিট করা
             if (file_exists($this->videoPath)) {
                 unlink($this->videoPath);
             }
