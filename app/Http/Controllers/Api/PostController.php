@@ -1864,40 +1864,144 @@ public function store(Request $request)
 
 
 
+    // public function update(Request $request, $id) 
+    // {
+    //     $member = Auth::guard("member")->user();
+    //     if (!$member) return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
+
+    //     // ১. পোস্টটি খুঁজে বের করা
+    //     $post = \App\Models\Post::where('id', $id)->where('member_id', $member->id)->first();
+    //     if (!$post) return response()->json(['status' => 'failed', 'message' => 'Post not found'], 404);
+
+    //     // ২. ভ্যালিডেশন
+    //     $request->validate([
+    //         'content' => 'nullable|string',
+    //         'visibility' => 'nullable|in:public,private,friends',
+    //         'media.*' => 'nullable|file|max:51200',
+    //     ]);
+
+    //     // ৩. পুরনো মিডিয়া সম্পূর্ণ ডিলিট (GCS + DB)
+    //     // আপনি যেহেতু চেয়েছেন আগের সব ডিলিট করে নতুন ডাটা সেভ করতে
+    //     if ($request->hasFile('media')) {
+    //         $this->deletePostMediaFromGCS($post);
+    //     }
+
+    //     // ৪. টেক্সট ডাটা আপডেট
+    //     // রিকোয়েস্টে যা আছে তা দিয়ে আপডেট হবে, না থাকলে আগেরটাই থাকবে
+    //     $post->update([
+    //         'content'      => $request->content ?? $post->content,
+    //         'visibility'   => $request->visibility ?? $post->visibility,
+    //         'is_pinned'    => $request->is_pinned ?? $post->is_pinned,
+    //         'scheduled_at' => $request->scheduled_at ?? $post->scheduled_at,
+    //         'boost_status' => $request->boost_status ?? $post->boost_status,
+    //         'status'       => $request->hasFile('media') ? 'pending' : $post->status,
+    //     ]);
+
+    //     // ৫. নতুন মিডিয়া প্রসেসিং (Jobs)
+    //     if ($request->hasFile('media')) {
+    //         $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+    //         $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
+
+    //         foreach ($request->file('media') as $file) {
+    //             $extension = strtolower($file->getClientOriginalExtension());
+    //             $fileNameBase = time() . '-' . uniqid();
+
+    //             if (in_array($extension, $imageExtensions)) {
+    //                 $tempPath = $file->storeAs('temp_images', $fileNameBase . '.' . $extension, 'local');
+    //                 \App\Jobs\ProcessImageUpload::dispatch($post->id, storage_path('app/' . $tempPath), $fileNameBase);
+    //             } 
+    //             elseif (in_array($extension, $videoExtensions)) {
+    //                 $tempPath = $file->storeAs('temp_videos', $fileNameBase . '.' . $extension, 'local');
+    //                 \App\Jobs\ProcessVideoSafetyCheck::dispatch($post->id, storage_path('app/' . $tempPath), $extension);
+    //             }
+    //         }
+    //     }
+
+    //     // ৬. বুস্ট ডাটা আপডেট
+    //     if ($request->boost_status == 1) {
+    //         $post->boost()->updateOrCreate(
+    //             ['post_id' => $post->id],
+    //             [
+    //                 'member_id'    => $member->id,
+    //                 'age_from'     => $request->age_from,
+    //                 'age_to'       => $request->age_to,
+    //                 'start_date'   => \Carbon\Carbon::now(),
+    //                 'end_date'     => $request->end_date ? \Carbon\Carbon::parse($request->end_date)->format('Y-m-d') : null,
+    //                 'gender'       => $request->gender,
+    //                 'location'     => $request->location,
+    //                 'profession'   => $request->profession,
+    //                 'income_range' => $request->income_range,
+    //             ]
+    //         );
+    //     }
+
+    //     return response()->json([
+    //         'status'  => 'success',
+    //         'message' => $request->hasFile('media') ? 'Post updating with new media...' : 'Post updated successfully!',
+    //         'post'    => $post->load(['media', 'boost']),
+    //     ]);
+    // }
+
+    // /**
+    //  * GCS এবং ডাটাবেস থেকে মিডিয়া ডিলিট করার মেথড
+    //  */
+    // private function deletePostMediaFromGCS($post)
+    // {
+    //     $storage = new \Google\Cloud\Storage\StorageClient([
+    //         'projectId' => config('filesystems.disks.gcs.project_id'),
+    //         'keyFile'   => config('filesystems.disks.gcs.key_file'),
+    //     ]);
+    //     $bucket = $storage->bucket(config('filesystems.disks.gcs.bucket'));
+
+    //     foreach ($post->media as $media) {
+    //         try {
+    //             // URL থেকে অবজেক্ট নেম বের করা
+    //             $pathParts = explode(config('filesystems.disks.gcs.bucket') . '/', $media->path);
+    //             $objectName = end($pathParts);
+
+    //             $object = $bucket->object($objectName);
+    //             if ($object->exists()) {
+    //                 $object->delete();
+    //             }
+    //         } catch (\Exception $e) {
+    //             \Log::error("GCS File Delete Failed: " . $e->getMessage());
+    //         }
+    //         // ডাটাবেস থেকে রেকর্ড ডিলিট
+    //         $media->delete();
+    //     }
+    // }
+
+
+
     public function update(Request $request, $id) 
     {
         $member = Auth::guard("member")->user();
         if (!$member) return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
 
-        // ১. পোস্টটি খুঁজে বের করা
         $post = \App\Models\Post::where('id', $id)->where('member_id', $member->id)->first();
         if (!$post) return response()->json(['status' => 'failed', 'message' => 'Post not found'], 404);
 
-        // ২. ভ্যালিডেশন
         $request->validate([
             'content' => 'nullable|string',
             'visibility' => 'nullable|in:public,private,friends',
-            'media.*' => 'nullable|file|max:51200',
+            'media.*' => 'nullable|file|max:102400', // ১০০ এমবি পর্যন্ত
+            'deleted_media_ids' => 'nullable|array', // যে আইডিগুলো ইউজার ডিলিট করতে চায়
+            'deleted_media_ids.*' => 'exists:post_media,id'
         ]);
 
-        // ৩. পুরনো মিডিয়া সম্পূর্ণ ডিলিট (GCS + DB)
-        // আপনি যেহেতু চেয়েছেন আগের সব ডিলিট করে নতুন ডাটা সেভ করতে
-        if ($request->hasFile('media')) {
-            $this->deletePostMediaFromGCS($post);
+        // ১. নির্দিষ্ট মিডিয়া ডিলিট করা (যদি ইউজার কোনোটা রিমুভ করে)
+        if ($request->has('deleted_media_ids')) {
+            $this->deleteSpecificMediaFromGCS($request->deleted_media_ids);
         }
 
-        // ৪. টেক্সট ডাটা আপডেট
-        // রিকোয়েস্টে যা আছে তা দিয়ে আপডেট হবে, না থাকলে আগেরটাই থাকবে
+        // ২. পোস্ট আপডেট
         $post->update([
-            'content'      => $request->content ?? $post->content,
-            'visibility'   => $request->visibility ?? $post->visibility,
-            'is_pinned'    => $request->is_pinned ?? $post->is_pinned,
-            'scheduled_at' => $request->scheduled_at ?? $post->scheduled_at,
-            'boost_status' => $request->boost_status ?? $post->boost_status,
-            'status'       => $request->hasFile('media') ? 'pending' : $post->status,
+            'content'    => $request->has('content') ? $request->content : $post->content,
+            'visibility' => $request->visibility ?? $post->visibility,
+            'status'     => $request->hasFile('media') ? 'pending' : $post->status,
         ]);
 
-        // ৫. নতুন মিডিয়া প্রসেসিং (Jobs)
+        // ৩. নতুন মিডিয়া প্রসেসিং (পুরনোগুলো ডিলিট না করে নতুনগুলো যোগ হবে)
         if ($request->hasFile('media')) {
             $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
             $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
@@ -1917,35 +2021,17 @@ public function store(Request $request)
             }
         }
 
-        // ৬. বুস্ট ডাটা আপডেট
-        if ($request->boost_status == 1) {
-            $post->boost()->updateOrCreate(
-                ['post_id' => $post->id],
-                [
-                    'member_id'    => $member->id,
-                    'age_from'     => $request->age_from,
-                    'age_to'       => $request->age_to,
-                    'start_date'   => \Carbon\Carbon::now(),
-                    'end_date'     => $request->end_date ? \Carbon\Carbon::parse($request->end_date)->format('Y-m-d') : null,
-                    'gender'       => $request->gender,
-                    'location'     => $request->location,
-                    'profession'   => $request->profession,
-                    'income_range' => $request->income_range,
-                ]
-            );
-        }
-
         return response()->json([
             'status'  => 'success',
-            'message' => $request->hasFile('media') ? 'Post updating with new media...' : 'Post updated successfully!',
+            'message' => 'Post update initiated...',
             'post'    => $post->load(['media', 'boost']),
         ]);
     }
 
     /**
-     * GCS এবং ডাটাবেস থেকে মিডিয়া ডিলিট করার মেথড
+     * শুধুমাত্র নির্দিষ্ট আইডিগুলো ডিলিট করার মেথড
      */
-    private function deletePostMediaFromGCS($post)
+    private function deleteSpecificMediaFromGCS($mediaIds)
     {
         $storage = new \Google\Cloud\Storage\StorageClient([
             'projectId' => config('filesystems.disks.gcs.project_id'),
@@ -1953,20 +2039,20 @@ public function store(Request $request)
         ]);
         $bucket = $storage->bucket(config('filesystems.disks.gcs.bucket'));
 
-        foreach ($post->media as $media) {
+        $allMedia = \App\Models\Post_media::whereIn('id', $mediaIds)->get();
+
+        foreach ($allMedia as $media) {
             try {
-                // URL থেকে অবজেক্ট নেম বের করা
                 $pathParts = explode(config('filesystems.disks.gcs.bucket') . '/', $media->path);
                 $objectName = end($pathParts);
-
                 $object = $bucket->object($objectName);
+                
                 if ($object->exists()) {
                     $object->delete();
                 }
             } catch (\Exception $e) {
-                \Log::error("GCS File Delete Failed: " . $e->getMessage());
+                \Log::error("GCS Delete Error: " . $e->getMessage());
             }
-            // ডাটাবেস থেকে রেকর্ড ডিলিট
             $media->delete();
         }
     }
