@@ -1864,7 +1864,6 @@ class MemberController extends Controller
                 'blood'         => 'sometimes|string|max:5',
                 'religion'      => 'sometimes',
                 'monthlyincome' => 'sometimes|numeric',
-                'profession'    => 'sometimes|string|max:255',
                 'nationality'   => 'sometimes|string|max:100',
                 'married'       => 'sometimes',
                 'division'      => 'sometimes|string|max:100',
@@ -1876,7 +1875,7 @@ class MemberController extends Controller
             // ব্যাকআপের জন্য বর্তমান ডাটা সংরক্ষণ
             $backupData = $member->only([
                 'name', 'email', 'phone', 'image', 'address', 'bio', 'location', 'gender',
-                'blood', 'religion', 'monthlyincome', 'profession', 'nationality', 'married',
+                'blood', 'religion', 'monthlyincome', 'nationality', 'married',
                 'division', 'district', 'upazila'
             ]);
 
