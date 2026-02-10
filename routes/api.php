@@ -62,6 +62,7 @@ Route::group(['namespace' => 'Api','prefix'=>'v1','middleware' => 'api'], functi
 Route::group(['namespace' => 'Api','prefix'=>'v1','middleware' => 'api'], function(){
     
     Route::post('/member-login', [MemberController::class, 'signin']);
+    Route::post('/member-logout', [MemberController::class, 'logout']);
 
     Route::prefix('member')->group(function () {
         Route::get('/list', [MemberController::class, 'list']);  
