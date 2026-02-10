@@ -180,17 +180,25 @@ public function testApi() {
                 ];
             }
     
+            // if ($miniAds->count() > 0) {
+            //     $start = ($index * 2) % $miniAds->count();
+            //     $miniAdPair = [];
+    
+            //     for ($i = 0; $i < 2; $i++) {
+            //         $miniAdPair[] = $miniAds[($start + $i) % $miniAds->count()];
+            //     }
+    
+            //     $post->mini_ads = $miniAdPair;
+            // } else {
+            //     $post->mini_ads = [];
+            // }
+
             if ($miniAds->count() > 0) {
-                $start = ($index * 2) % $miniAds->count();
-                $miniAdPair = [];
-    
-                for ($i = 0; $i < 2; $i++) {
-                    $miniAdPair[] = $miniAds[($start + $i) % $miniAds->count()];
-                }
-    
-                $post->mini_ads = $miniAdPair;
+                $adIndex = $index % $miniAds->count();
+                
+                $post->mini_ads = $miniAds[$adIndex]; 
             } else {
-                $post->mini_ads = [];
+                $post->mini_ads = null; 
             }
     
             return $post;

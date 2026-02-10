@@ -1153,13 +1153,13 @@ class MemberController extends Controller
         $member->upazila  = $upazila;
         $member->profession  = $profession;
         $member->division = $division;
-        // $followers_count = Follow::where('following_id', $member->id)->count();
+        $followers_count = Follow::where('following_id', $member->id)->count();
 
-        // $following_count = Follow::where('follower_id', $member->id)->count();
+        $following_count = Follow::where('follower_id', $member->id)->count();
 
-        // $friends_count = Follow::where('follower_id', $member->id)
-        //                     ->where('is_friend', 1)
-        //                     ->count();
+        $friends_count = Follow::where('follower_id', $member->id)
+                            ->where('is_friend', 1)
+                            ->count();
         
         
         
@@ -1222,31 +1222,28 @@ class MemberController extends Controller
                 ];
             }
     
-            if ($miniAds->count() > 0) {
-                
-                $start = ($index * 2) % $miniAds->count();
-                $miniAdPair = [];
-    
-                for ($i = 0; $i < 2; $i++) {
-                    $miniAdPair[] = $miniAds[($start + $i) % $miniAds->count()];
-                }
-    
-                $post->mini_ads = $miniAdPair;
-            } else {
-                $post->mini_ads = [];
-            }
-
-            // // --- এখান থেকে ১টি করে অ্যাড দেখানোর লজিক শুরু ---
             // if ($miniAds->count() > 0) {
-            //     // ইনডেক্স অনুযায়ী ১টি করে অ্যাড সিলেক্ট করবে (রাউন্ড রবিন সিস্টেম)
-            //     $adIndex = $index % $miniAds->count();
                 
-            //     // এটি সরাসরি ১টি অবজেক্ট হিসেবে পাঠাবে
-            //     // যদি অ্যারে আকারে ১টি অবজেক্ট চান তবে [$miniAds[$adIndex]] লিখুন
-            //     $post->mini_ads = $miniAds[$adIndex]; 
+            //     $start = ($index * 2) % $miniAds->count();
+            //     $miniAdPair = [];
+    
+            //     for ($i = 0; $i < 2; $i++) {
+            //         $miniAdPair[] = $miniAds[($start + $i) % $miniAds->count()];
+            //     }
+    
+            //     $post->mini_ads = $miniAdPair;
             // } else {
-            //     $post->mini_ads = null; // অ্যাড না থাকলে null
+            //     $post->mini_ads = [];
             // }
+
+            
+            if ($miniAds->count() > 0) {
+                $adIndex = $index % $miniAds->count();
+                
+                $post->mini_ads = $miniAds[$adIndex]; 
+            } else {
+                $post->mini_ads = null; 
+            }
     
             return $post;
         });
@@ -1259,10 +1256,10 @@ class MemberController extends Controller
         return response()->json([
             'status' => 'success',
             'message'=> '10 post show',
+            'followers_count' => $followers_count, 
+            'following_count' => $following_count, 
+            'friends_count'   => $friends_count,
             'member'   => $member,
-            // 'followers_count' => $followers_count, 
-            // 'following_count' => $following_count, 
-            // 'friends_count'   => $friends_count,
             'data'   => $posts,
             
         ]);
