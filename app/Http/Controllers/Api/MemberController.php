@@ -325,27 +325,107 @@ class MemberController extends Controller
     
 
 
+    // public function store(Request $request) 
+    // {
+
+    //     $validator = Validator::make($request->all(), [
+    //         'name'     => 'required|string|max:255',
+    //         'phone'    => 'required|string|max:20|unique:members,phone',
+    //         'username' => 'required|string|max:50|unique:members,username',
+    //         'password' => 'required|string|min:6',
+    //         'partner_code' => 'nullable|exists:members,referrer_code',
+    //     ]);
+
+    //     if ($validator->fails()) {
+    //         return response()->json([
+    //             'status'  => 'faield',
+    //             'message' => $validator->errors()->first(), 
+    //             'data'    => null
+    //         ]);
+    //     }
+        
+        
+        
+    //     if ($request->password !== $request->confirm_pass) {
+    //         return response()->json([
+    //             'status'  => 'failed', 
+    //             'message' => 'Password and Confirm Password do not match',
+    //             'data'    => null
+    //         ]);
+    //     }
+        
+        
+    //     $referrerMember = Member::where('referrer_code', $request->partner_code)->first();
+    //     $referrerMemberId = $referrerMember ? $referrerMember->id : null;
+        
+        
+
+    //     $member = Member::create([
+    //         'name'          => $request->name,
+    //         'username'      => $request->username,
+    //         'phone'         => $request->phone,
+    //         'password'      => Hash::make($request->password),
+    //         'balance'       => 0,
+    //         'referrer_code' => $this->generateReferrerCode(), 
+    //         'phoneverify'   => rand(111111, 999999),
+    //         'only_reffer'   => $referrerMemberId, 
+    //     ]);
+        
+        
+    //     $site_setting = GeneralSetting::where('status', 1)->select('name', 'white_logo', 'status')->first();
+    //     $sms_gateway = SmsGateway::where(['status' => 1])->first();
+    //     if ($sms_gateway) {
+    //         $url = "$sms_gateway->url";
+    //         $data = [
+    //             "api_key" => "$sms_gateway->api_key",
+    //             "number" => $member->phone,
+    //             "type" => 'text',
+    //             "senderid" => "$sms_gateway->senderid",
+    //             "message"  => "Dear {$member->name},\r\nYour verification code (OTP) is: {$member->phoneverify}\r\nThank you for using {$site_setting->name}!\r\nPowered by Safoan."
+
+    //         ];
+    //         $ch = curl_init();
+    //         curl_setopt($ch, CURLOPT_URL, $url);
+    //         curl_setopt($ch, CURLOPT_POST, 1);
+    //         curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+    //         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    //         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    //         $response = curl_exec($ch);
+    //         curl_close($ch);
+    //     }
+
+    //     Toastr::success('Success', 'Verify code send successfully');
+        
+        
+
+    //     return response()->json([
+    //         'status'  => 'success',
+    //         'message' => 'Member created successfully!',
+    //         'data'    => $member,
+    //     ]);
+    // }
+    
+
     public function store(Request $request) 
     {
-
+        // ১. ভ্যালিডেশন
         $validator = Validator::make($request->all(), [
-            'name'     => 'required|string|max:255',
-            'phone'    => 'required|string|max:20|unique:members,phone',
-            'username' => 'required|string|max:50|unique:members,username',
-            'password' => 'required|string|min:6',
+            'name'         => 'required|string|max:255',
+            'phone'        => 'required|string|max:20|unique:members,phone',
+            'username'     => 'required|string|max:50|unique:members,username',
+            'password'     => 'required|string|min:6',
             'partner_code' => 'nullable|exists:members,referrer_code',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
-                'status'  => 'faield',
+                'status'  => 'failed', // বানান ঠিক করা হয়েছে (faield -> failed)
                 'message' => $validator->errors()->first(), 
                 'data'    => null
             ]);
         }
-        
-        
-        
+
+        // ২. পাসওয়ার্ড ম্যাচিং চেক
         if ($request->password !== $request->confirm_pass) {
             return response()->json([
                 'status'  => 'failed', 
@@ -353,57 +433,70 @@ class MemberController extends Controller
                 'data'    => null
             ]);
         }
-        
-        
-        $referrerMember = Member::where('referrer_code', $request->partner_code)->first();
-        $referrerMemberId = $referrerMember ? $referrerMember->id : null;
-        
-        
 
-        $member = Member::create([
-            'name'          => $request->name,
-            'username'      => $request->username,
-            'phone'         => $request->phone,
-            'password'      => Hash::make($request->password),
-            'balance'       => 0,
-            'referrer_code' => $this->generateReferrerCode(), 
-            'phoneverify'   => rand(111111, 999999),
-            'only_reffer'   => $referrerMemberId, 
-        ]);
-        
-        
-        $site_setting = GeneralSetting::where('status', 1)->select('name', 'white_logo', 'status')->first();
-        $sms_gateway = SmsGateway::where(['status' => 1])->first();
-        if ($sms_gateway) {
-            $url = "$sms_gateway->url";
-            $data = [
-                "api_key" => "$sms_gateway->api_key",
-                "number" => $member->phone,
-                "type" => 'text',
-                "senderid" => "$sms_gateway->senderid",
-                "message"  => "Dear {$member->name},\r\nYour verification code (OTP) is: {$member->phoneverify}\r\nThank you for using {$site_setting->name}!\r\nPowered by Safoan."
+        DB::beginTransaction(); // ডাটাবেস ট্রানজেকশন শুরু
 
-            ];
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, $url);
-            curl_setopt($ch, CURLOPT_POST, 1);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-            $response = curl_exec($ch);
-            curl_close($ch);
+        try {
+            // ৩. রেফারার মেম্বার খুঁজে বের করা
+            $referrerMember = Member::where('referrer_code', $request->partner_code)->first();
+            $referrerMemberId = $referrerMember ? $referrerMember->id : null;
+
+            // ৪. মেম্বার তৈরি করা
+            $member = Member::create([
+                'name'          => $request->name,
+                'username'      => $request->username,
+                'phone'         => $request->phone,
+                'password'      => Hash::make($request->password),
+                'balance'       => 0,
+                'referrer_code' => $this->generateReferrerCode(), 
+                'phoneverify'   => rand(111111, 999999),
+                'only_reffer'   => $referrerMemberId, 
+            ]);
+
+            // ৫. SMS পাঠানো
+            $site_setting = GeneralSetting::where('status', 1)->select('name', 'white_logo', 'status')->first();
+            $sms_gateway = SmsGateway::where(['status' => 1])->first();
+
+            if ($sms_gateway) {
+                $url = $sms_gateway->url;
+                $data = [
+                    "api_key"  => $sms_gateway->api_key,
+                    "number"   => $member->phone,
+                    "type"     => 'text',
+                    "senderid" => $sms_gateway->senderid,
+                    "message"  => "Dear {$member->name},\r\nYour verification code (OTP) is: {$member->phoneverify}\r\nThank you for using {$site_setting->name}!\r\nPowered by Safoan."
+                ];
+
+                $ch = curl_init();
+                curl_setopt($ch, CURLOPT_URL, $url);
+                curl_setopt($ch, CURLOPT_POST, 1);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                $response = curl_exec($ch);
+                curl_close($ch);
+            }
+
+            DB::commit(); // সব ঠিক থাকলে ডাটা সেভ হবে
+            Toastr::success('Success', 'Verify code send successfully');
+
+            return response()->json([
+                'status'  => 'success',
+                'message' => 'Member created successfully!',
+                'data'    => $member,
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack(); // কোনো এরর হলে ডাটা সেভ হবে না (আগের অবস্থায় ফিরে যাবে)
+            
+            return response()->json([
+                'status'  => 'failed',
+                'message' => 'Something went wrong! ' . $e->getMessage(), // ডেভেলপমেন্ট মোডে মেসেজটি দেখতে পাবেন
+                'data'    => null
+            ]);
         }
-
-        Toastr::success('Success', 'Verify code send successfully');
-        
-        
-
-        return response()->json([
-            'status'  => 'success',
-            'message' => 'Member created successfully!',
-            'data'    => $member,
-        ]);
     }
+
     
     
     
