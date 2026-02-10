@@ -2292,13 +2292,14 @@ class MemberController extends Controller
         
             $device = DeviceToken::where('member_id', $memberId)->first();
     
-            if ($device) {
+            if ($device && $device->device_ip == $deviceIp) {
+
                 $device->update([
                     'token' => $validated['token'],
                 ]);
     
                 $message = "Device token updated successfully";
-        // return $request;
+        
     
             } else {
                 $device = DeviceToken::create([
