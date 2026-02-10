@@ -105,34 +105,71 @@ class VerifyMemberController extends Controller
     //     return redirect()->back();
     // }
 
+    // public function status(Request $request)
+    // {
+    //     $member = Member::findOrFail($request->hidden_id);
+        
+    //     // রিজেক্ট করা হলে (যদি বাটন থেকে verified এর মান ০ বা খালি আসে)
+    //     if ($request->verified == '0' || $request->verified == '') {
+    //         $member->verified = null; // ডেটাবেজে NULL সেভ হবে
+    //         $member->submit   = 0;    // সাবমিট ০ হবে যাতে সে আবার অ্যাপ্লাই করতে পারে
+    //         $status_msg = "Rejected";
+    //     } 
+    //     else {
+    //         // ভেরিফাই (১) অথবা ব্লক (৩) এর জন্য
+    //         $member->verified = $request->verified;
+    //         $member->submit   = $request->submit;
+
+    //         if($request->verified == 1) {
+    //             $status_msg = "Verified Successfully";
+    //         } elseif($request->verified == 3) {
+    //             $status_msg = "Blocked";
+    //         } else {
+    //             $status_msg = "Updated";
+    //         }
+    //     }
+        
+    //     $member->save();
+
+    //     Toastr::success('Member status ' . $status_msg);
+    //     return redirect()->back();
+    // }
+
     public function status(Request $request)
     {
-        $member = Member::findOrFail($request->hidden_id);
-        
-        // রিজেক্ট করা হলে (যদি বাটন থেকে verified এর মান ০ বা খালি আসে)
-        if ($request->verified == '0' || $request->verified == '') {
-            $member->verified = null; // ডেটাবেজে NULL সেভ হবে
-            $member->submit   = 0;    // সাবমিট ০ হবে যাতে সে আবার অ্যাপ্লাই করতে পারে
-            $status_msg = "Rejected";
-        } 
-        else {
-            // ভেরিফাই (১) অথবা ব্লক (৩) এর জন্য
-            $member->verified = $request->verified;
-            $member->submit   = $request->submit;
+        try {
+            $member = Member::findOrFail($request->hidden_id);
+            
+            // রিজেক্ট করা হলে
+            if ($request->verified == '0' || $request->verified == '') {
+                $member->verified = null; 
+                $member->submit   = 0;    
+                $status_msg = "Rejected";
+            } 
+            else {
+                // ভেরিফাই (১) অথবা ব্লক (৩) এর জন্য
+                $member->verified = $request->verified;
+                $member->submit   = $request->submit;
 
-            if($request->verified == 1) {
-                $status_msg = "Verified Successfully";
-            } elseif($request->verified == 3) {
-                $status_msg = "Blocked";
-            } else {
-                $status_msg = "Updated";
+                if($request->verified == 1) {
+                    $member->status = 1; // আপনার চাহিদা অনুযায়ী স্ট্যাটাস ১ করে দেওয়া হলো
+                    $status_msg = "Verified Successfully";
+                } elseif($request->verified == 3) {
+                    $status_msg = "Blocked";
+                } else {
+                    $status_msg = "Updated";
+                }
             }
-        }
-        
-        $member->save();
+            
+            $member->save();
 
-        Toastr::success('Member status ' . $status_msg);
-        return redirect()->back();
+            Toastr::success('Member status ' . $status_msg);
+            return redirect()->back();
+
+        } catch (\Exception $e) {
+            Toastr::error('Something went wrong!');
+            return redirect()->back();
+        }
     }
 
     // মেম্বার ডিলিট

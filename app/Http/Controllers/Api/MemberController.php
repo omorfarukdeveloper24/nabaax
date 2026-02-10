@@ -1855,21 +1855,21 @@ class MemberController extends Controller
             // --- ১. ভ্যালিডেশন (২০ এমবি পর্যন্ত অনুমতি দেওয়া হয়েছে) ---
             $validated = $request->validate([
                 'name'          => 'sometimes|string|max:255',
-                'email'         => 'sometimes|email|max:255|unique:members,email,' . $member->id,
+                'email'         => 'nullable|email|max:255|unique:members,email,' . $member->id,
                 'phone'         => 'sometimes|string|max:20',
                 'address'       => 'nullable|string|max:500',
                 'bio'           => 'nullable|string|max:1000',
                 'location'      => 'nullable|string|max:255',
-                'gender'        => 'sometimes|string|max:50',
-                'blood'         => 'sometimes|string|max:5',
-                'religion'      => 'sometimes',
-                'monthlyincome' => 'sometimes|numeric',
-                'nationality'   => 'sometimes|string|max:100',
-                'married'       => 'sometimes',
-                'division'      => 'sometimes|string|max:100',
-                'district'      => 'sometimes|string|max:100',
-                'upazila'       => 'sometimes|string|max:100',
-                'image'         => 'sometimes|image|mimes:jpg,jpeg,png,webp|max:20480', 
+                'gender'        => 'nullable|string|max:50',
+                'blood'         => 'nullable|string|max:5',
+                'religion'      => 'nullable',
+                'monthlyincome' => 'nullable|numeric',
+                'nationality'   => 'nullable|string|max:100',
+                'married'       => 'nullable',
+                'division'      => 'nullable|string|max:100',
+                'district'      => 'nullable|string|max:100',
+                'upazila'       => 'nullable|string|max:100',
+                'image'         => 'nullable|image|mimes:jpg,jpeg,png,webp|max:20480', 
             ]);
 
             // ব্যাকআপের জন্য বর্তমান ডাটা সংরক্ষণ
