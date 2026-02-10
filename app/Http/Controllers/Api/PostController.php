@@ -540,6 +540,70 @@ public function miniads(Request $request)
     
     
     
+    // public function postvideo()
+    // {
+    //     $member = Auth::guard('member')->user();
+    //     if (!$member) {
+    //         return response()->json([
+    //             'status' => 'failed',
+    //             'message' => 'Unauthorized user'
+    //         ], 401);
+    //     }
+    
+    //     $memberId = $member->id;
+    
+    //     $watchedVideos = VideoView::where('member_id', $memberId)
+    //         ->pluck('post_media_id')
+    //         ->toArray();
+    
+    //     $videos = Post_media::with([
+    //             'post' => function ($q) use ($memberId) {
+    //                 $q->select('id', 'member_id', 'content', 'visibility', 'created_at')
+    //                     ->with(['member'])
+    //                     ->withCount([
+    //                         'likes as like_count' => fn($q) => $q->where('type', 1),
+    //                         'likes as dislike_count' => fn($q) => $q->where('type', 2),
+    //                         'comments as comment_count',
+    //                     ])
+    //                     ->withExists([
+    //                         'likes as liked_by_me' => fn($q) => $q->where('member_id', $memberId)->where('type', 1),
+    //                         'likes as disliked_by_me' => fn($q) => $q->where('member_id', $memberId)->where('type', 2),
+    //                     ]);
+    //             }
+    //         ])
+    //         ->where('media_type', 'video')
+    //         ->whereHas('post', fn($q) => $q->where('visibility', 'public'))
+    //         ->whereNotIn('id', $watchedVideos)
+    //         ->latest()
+    //         ->paginate(5);
+    
+    //     $miniads = MiniAd::where('status', 1)->get();
+    //     $miniCount = $miniads->count();
+    
+    //     $videos->getCollection()->transform(function ($video, $index) use ($miniads, $miniCount) {
+    //         $firstIndex = ($index * 2) % $miniCount;
+    //         $secondIndex = ($firstIndex + 1) % $miniCount;
+    
+    //         $video->mini_ads = [
+    //             $miniads[$firstIndex],
+    //             $miniads[$secondIndex],
+    //         ];
+    
+    //         return $video;
+    //     });
+    
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'data' => $videos
+    //     ]);
+    // }
+
+
+
+    // ===============okk up video  ==============
+
+
+
     public function postvideo()
     {
         $member = Auth::guard('member')->user();
@@ -549,13 +613,18 @@ public function miniads(Request $request)
                 'message' => 'Unauthorized user'
             ], 401);
         }
-    
+
         $memberId = $member->id;
-    
+
+        $seed = request()->has('page') ? session()->get('video_seed') : rand(1, 9999);
+        if (!request()->has('page')) {
+            session()->put('video_seed', $seed);
+        }
+
         $watchedVideos = VideoView::where('member_id', $memberId)
             ->pluck('post_media_id')
             ->toArray();
-    
+
         $videos = Post_media::with([
                 'post' => function ($q) use ($memberId) {
                     $q->select('id', 'member_id', 'content', 'visibility', 'created_at')
@@ -574,24 +643,41 @@ public function miniads(Request $request)
             ->where('media_type', 'video')
             ->whereHas('post', fn($q) => $q->where('visibility', 'public'))
             ->whereNotIn('id', $watchedVideos)
-            ->latest()
-            ->paginate(5);
-    
-        $miniads = MiniAd::where('status', 1)->get();
-        $miniCount = $miniads->count();
-    
-        $videos->getCollection()->transform(function ($video, $index) use ($miniads, $miniCount) {
-            $firstIndex = ($index * 2) % $miniCount;
-            $secondIndex = ($firstIndex + 1) % $miniCount;
-    
-            $video->mini_ads = [
-                $miniads[$firstIndex],
-                $miniads[$secondIndex],
-            ];
-    
+            ->inRandomOrder($seed) 
+            ->paginate(15); 
+
+        
+        $videos->getCollection()->transform(function ($video) use ($memberId) {
+            $post = $video->post;
+            
+            if ($post) {
+                
+                $isFollowing = Follow::where('follower_id', $memberId)
+                    ->where('following_id', $post->member_id)
+                    ->exists();
+                $post->is_following = $isFollowing;
+
+                
+                $followBoost = FollowBoost::where('member_id', $post->member_id)->first();
+                $post->follow_boost_status = ($followBoost && $followBoost->status === 'active') ? 'active' : 'inactive';
+
+                // পোস্ট বুস্ট চেক
+                $postBoost = PostBoost::where('post_id', $post->id)->latest()->first();
+                if ($postBoost && $postBoost->status === 'active') {
+                    $post->post_boost = [
+                        'id' => $postBoost->id,
+                        'message_link' => $postBoost->message_link,
+                        'website_link' => $postBoost->website_link,
+                        'status' => 'active'
+                    ];
+                } else {
+                    $post->post_boost = ['id' => null, 'status' => 'inactive'];
+                }
+            }
+
             return $video;
         });
-    
+
         return response()->json([
             'status' => 'success',
             'data' => $videos
