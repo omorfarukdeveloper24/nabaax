@@ -70,15 +70,28 @@ class ProcessVideoSafetyCheck implements ShouldQueue
             if ($operation->operationSucceeded()) {
                 $results = $operation->getResult()->getAnnotationResults()[0];
 
-                // --- ডিউরেশন বের করার আপডেট করা লজিক ---
-                if ($results->getSegment()) {
-                    $endTime = $results->getSegment()->getEndTimeOffset();
-                    $durationSeconds = $endTime->getSeconds() + ($endTime->getNanos() / 1000000000);
-                } 
-                // যদি সেগমেন্টে না থাকে, তবে ভিডিওর মূল মেটাডাটা থেকে ট্রাই করুন
-                elseif ($results->getExplicitAnnotation() && $results->getExplicitAnnotation()->getFrames()->count() > 0) {
-                    // ফ্রেমের সংখ্যা এবং ইন্টারভাল থেকেও ডিউরেশন আন্দাজ করা যায়, তবে LABEL_DETECTION থাকলে উপরেরটাই কাজ করবে।
-                }
+                // ১. ভিডিওর ডিউরেশন বের করার সবচেয়ে নিরাপদ পদ্ধতি
+    // Label detection বা অন্য যেকোনো ফিচারের জন্য Google সাধারণত ভিডিওর 'segment' প্রদান করে
+    if ($results->getSegment()) {
+        $endTime = $results->getSegment()->getEndTimeOffset();
+        $durationSeconds = $endTime->getSeconds() + ($endTime->getNanos() / 1000000000);
+    } 
+    // যদি উপরে না পাওয়া যায়, তবে Explicit Content এর শেষ ফ্রেমের টাইম চেক করা
+    elseif ($results->getExplicitAnnotation()) {
+    $frames = $results->getExplicitAnnotation()->getFrames();
+    $frameCount = count($frames);
+    
+    if ($frameCount > 0) {
+        // লাস্ট ফ্রেমটি বের করার নিরাপদ উপায়
+        $lastFrame = $frames[$frameCount - 1];
+        $timeOffset = $lastFrame->getTimeOffset();
+        
+        // seconds এবং nanos যোগ করা
+        $seconds = $timeOffset->getSeconds();
+        $nanos = $timeOffset->getNanos();
+        $durationSeconds = $seconds + ($nanos / 1000000000);
+    }
+}
 
                 $explicitAnnotation = $results->getExplicitAnnotation();
 
