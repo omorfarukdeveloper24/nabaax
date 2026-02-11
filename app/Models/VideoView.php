@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class VideoView extends Model
 {
-    protected $fillable = ['member_id', 'post_media_id', 'watch_time'];
+    protected $fillable = ['member_id', 'post_media_id', 'watch_time','viewed_at'];
 
     public function member()
     {
