@@ -62,8 +62,19 @@ class ProcessVideoSafetyCheck implements ShouldQueue
             ]);
 
             $isSafe = true;
+            $durationSeconds = 0; // ভিডিওর ডিউরেশন রাখার জন্য ভেরিয়েবল ডিফাইন করা হলো
+
             if ($operation->operationSucceeded()) {
                 $results = $operation->getResult()->getAnnotationResults()[0];
+
+                // --- ভিডিওর ডিউরেশন বের করার কোড শুরু ---
+                if ($results->getSegment()) {
+                    $endTime = $results->getSegment()->getEndTimeOffset();
+                    // সেকেন্ড এবং ন্যানোসেকেন্ড যোগ করে মোট ডিউরেশন বের করা হলো
+                    $durationSeconds = $endTime->getSeconds() + ($endTime->getNanos() / 1000000000);
+                }
+                // --- ভিডিওর ডিউরেশন বের করার কোড শেষ ---
+
                 $explicitAnnotation = $results->getExplicitAnnotation();
 
                 if ($explicitAnnotation) {
@@ -87,6 +98,7 @@ class ProcessVideoSafetyCheck implements ShouldQueue
                         'post_id' => $post->id,
                         'media_type' => 'video',
                         'path' => $mediaPath,
+                        'duration' => round($durationSeconds), // এখানে ডাটাবেসে রাউন্ড ফিগার সেকেন্ড সেভ করা হচ্ছে
                     ]);
                     
                     $post->update(['status' => 'active']);

@@ -1147,6 +1147,68 @@ public function store(Request $request)
 // This is our 18+ image and video content filter code end////////////////////////////////////////////////////////////
 
 
+public function trackView(Request $request) {
+    $member = Auth::guard('member')->user();
+    if (!$member) return response()->json(['message' => 'Unauthorized'], 401);
+
+    $memberId = $member->id;
+    $postId = $request->post_id;
+    $mediaId = $request->post_media_id; // নির্দিষ্ট ভিডিওর ID
+    $seconds = (int) $request->seconds;
+
+    // ১. পোস্ট ভিউ (যখন পোস্টটি স্ক্রিনে আসবে)
+    // এটি পুরো পোস্টের ভিউ কাউন্ট করবে, সেটাতে ছবি থাকুক বা ভিডিও।
+    if ($postId) {
+        $view = PostView::firstOrCreate([
+            'post_id' => $postId,
+            'member_id' => $memberId
+        ], ['viewed_at' => now()]);
+
+        if ($view->wasRecentlyCreated) {
+            Post::where('id', $postId)->increment('total_views');
+        }
+        
+        // যদি এটি শুধু ইমেজ পোস্ট হয়, তবে এখানেই রেসপন্স শেষ।
+        if (!$mediaId) {
+            return response()->json(['status' => 'success', 'type' => 'post_view']);
+        }
+    }
+
+    // ২. ভিডিও ওয়াচ টাইম (যখন ইউজার নির্দিষ্ট ভিডিও প্লে করবে)
+    // এখানে $mediaId হলো আপনার Post_media টেবিলের ঐ নির্দিষ্ট রো-এর ID
+    if ($mediaId) {
+        $media = Post_media::where('id', $mediaId)->where('media_type', 'video')->first();
+        
+        // সিকিউরিটি চেক
+        if (!$media || $seconds < 3 || $seconds > 60) {
+            return response()->json(['status' => 'error', 'message' => 'Invalid video or duration']);
+        }
+
+        $videoView = VideoView::firstOrCreate(
+            ['member_id' => $memberId, 'post_media_id' => $mediaId],
+            ['watch_time' => 0]
+        );
+
+        // ভিডিওর জন্য আলাদা ভিউ কাউন্ট (যদি Post_media টেবিলে total_views কলাম রাখেন)
+        if ($videoView->wasRecentlyCreated) {
+            $media->increment('total_views');
+        }
+
+        // ওয়াচ টাইম আপডেট (লিমিট: অরিজিনাল ডিউরেশনের বেশি হবে না)
+        if ($videoView->watch_time < $media->duration) {
+            $newTime = min($videoView->watch_time + $seconds, $media->duration);
+            $videoView->update(['watch_time' => $newTime]);
+        }
+
+        return response()->json([
+            'status' => 'success', 
+            'type' => 'video_watch_time',
+            'current_watch_time' => $videoView->watch_time
+        ]);
+    }
+}
+
+
 
 
 

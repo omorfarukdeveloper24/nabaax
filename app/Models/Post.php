@@ -11,7 +11,7 @@ class Post extends Model
 
     protected $fillable = [
         'member_id', 'content', 'type', 'visibility', 'group_id',
-        'is_pinned', 'scheduled_at', 'is_edited','boost_amount','message_link','website_link','click_cost','status','boost_status'
+        'is_pinned', 'scheduled_at', 'is_edited','boost_amount','message_link','website_link','click_cost','status','total_views','boost_status'
     ];
 
     // Relations

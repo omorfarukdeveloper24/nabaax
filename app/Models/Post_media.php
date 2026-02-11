@@ -13,6 +13,8 @@ class Post_media extends Model
         'post_id',
         'media_type',
         'path',
+        'duration',
+        'total_views',
     ];
 
     // Accessor to get full URL

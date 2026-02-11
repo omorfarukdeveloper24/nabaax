@@ -131,16 +131,17 @@ Route::group(['namespace' => 'Api','prefix'=>'v1','middleware' => 'api'], functi
     
     // Post Routes
     Route::prefix('post')->middleware('member')->group(function () {
-            
+        
         Route::get('/list', [PostController::class, 'list']);   
         Route::get('/postvideo', [PostController::class, 'postvideo']);   
-        Route::get('/prosearch', [PostController::class, 'prosearch']);   
+        Route::get('/prosearch', [PostController::class, 'prosearch']); 
+        Route::get('/details/{id}', [PostController::class, 'details']);   
         Route::post('/store', [PostController::class, 'store']);  
-        Route::post('/boost/click/{id}', [PostController::class, 'linkClick']);
-        Route::get('/details/{id}', [PostController::class, 'details']); 
-        Route::post('/update/{id}', [PostController::class, 'update']); 
-        Route::post('/destroy/{id}', [PostController::class, 'destroy']); 
         Route::post('/miniads', [PostController::class, 'miniads']);  
+        Route::post('/update/{id}', [PostController::class, 'update']); 
+        Route::post('/track-view', [PostController::class, 'trackView']);
+        Route::post('/destroy/{id}', [PostController::class, 'destroy']); 
+        Route::post('/boost/click/{id}', [PostController::class, 'linkClick']);
     });
 
 
