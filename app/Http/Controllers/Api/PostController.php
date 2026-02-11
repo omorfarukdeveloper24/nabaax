@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\Post;
 use App\Models\Post_media;
 use App\Models\VideoView;
+use App\Models\PostView;
 use App\Models\PostBoost;
 use App\Models\Member;
 use App\Models\Follow;
