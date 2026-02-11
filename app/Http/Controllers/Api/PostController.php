@@ -1177,34 +1177,44 @@ public function trackView(Request $request) {
 
     // ২. ভিডিও ওয়াচ টাইম (যখন ইউজার নির্দিষ্ট ভিডিও প্লে করবে)
     // এখানে $mediaId হলো আপনার Post_media টেবিলের ঐ নির্দিষ্ট রো-এর ID
+    // ভিডিও ওয়াচ টাইম আপডেট (এটি আপনার কন্ট্রোলারের মেথডের ভেতরে বসিয়ে দিন)
     if ($mediaId) {
-        $media = Post_media::where('id', $mediaId)->where('media_type', 'video')->first();
+        // নির্দিষ্ট মিডিয়া ফাইলটি খুঁজে বের করা
+        $media = \App\Models\Post_media::find($mediaId);
         
-        // সিকিউরিটি চেক
-        if (!$media || $seconds < 3 || $seconds > 60) {
-            return response()->json(['status' => 'error', 'message' => 'Invalid video or duration']);
+        if (!$media) {
+            return response()->json(['status' => 'error', 'message' => 'Media not found'], 404);
         }
 
-        $videoView = VideoView::firstOrCreate(
-            ['member_id' => $memberId, 'post_media_id' => $mediaId],
-            ['watch_time' => 0]
-        );
+        // VideoView টেবিলে ডাটা খোঁজা বা নতুন অবজেক্ট তৈরি করা
+        // নিশ্চিত করুন আপনার VideoView মডেলে $fillable এ 'member_id' এবং 'post_media_id' আছে
+        $videoView = \App\Models\VideoView::firstOrNew([
+            'member_id' => $memberId,
+            'post_media_id' => $mediaId
+        ]);
 
-        // ভিডিওর জন্য আলাদা ভিউ কাউন্ট (যদি Post_media টেবিলে total_views কলাম রাখেন)
-        if ($videoView->wasRecentlyCreated) {
-            $media->increment('total_views');
+        // প্রথমবার ভিউ হলে বা নতুন রো তৈরি হলে প্রাথমিক ওয়াচ টাইম ০ সেট করা
+        if (!$videoView->exists) {
+            $videoView->watch_time = 0;
         }
 
-        // ওয়াচ টাইম আপডেট (লিমিট: অরিজিনাল ডিউরেশনের বেশি হবে না)
-        if ($videoView->watch_time < $media->duration) {
-            $newTime = min($videoView->watch_time + $seconds, $media->duration);
-            $videoView->update(['watch_time' => $newTime]);
+        // আগের ওয়াচ টাইমের সাথে নতুন পাঠানো সেকেন্ড যোগ করা
+        $updatedTime = (int) $videoView->watch_time + (int) $seconds;
+
+        // ভিডিওর মোট ডিউরেশনের (Job থেকে আসা duration) চেয়ে বেশি যেন না হয়
+        $maxDuration = (int) $media->duration;
+        if ($updatedTime > $maxDuration && $maxDuration > 0) {
+            $updatedTime = $maxDuration;
         }
+
+        // ডাটা সেভ করা
+        $videoView->watch_time = $updatedTime;
+        $videoView->save();
 
         return response()->json([
-            'status' => 'success', 
+            'status' => 'success',
             'type' => 'video_watch_time',
-            'current_watch_time' => $videoView->watch_time
+            'current_watch_time' => (int) $videoView->watch_time // ইন্টিজার হিসেবে রিটার্ন
         ]);
     }
 }
