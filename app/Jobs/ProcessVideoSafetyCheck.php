@@ -34,6 +34,16 @@ class ProcessVideoSafetyCheck implements ShouldQueue
         $keyFileData = config('filesystems.disks.gcs.key_file');
         $fileName = "posts/videos/" . basename($this->videoPath);
         
+        // --- ১. ভিডিওর ডিউরেশন লোকালি বের করার কোড (নিখুঁত পদ্ধতির জন্য) ---
+        $durationSeconds = 0;
+        try {
+            // সার্ভারে ffmpeg ইনস্টল থাকলে এটি দ্রুত ডিউরেশন দিয়ে দিবে
+            $ffprobe = \FFMpeg\FFProbe::create();
+            $durationSeconds = (float) $ffprobe->format($this->videoPath)->get('duration');
+        } catch (\Exception $e) {
+            Log::warning("FFMpeg duration extraction failed, will try Google API.");
+        }
+
         try {
             $storage = new \Google\Cloud\Storage\StorageClient([
                 'projectId' => config('filesystems.disks.gcs.project_id'),
@@ -41,45 +51,42 @@ class ProcessVideoSafetyCheck implements ShouldQueue
             ]);
             $bucket = $storage->bucket(config('filesystems.disks.gcs.bucket'));
 
-            // ১. ফাইলটি GCS-এ আপলোড (Stream upload for large files)
+            // ২. ফাইলটি GCS-এ আপলোড
             $fileStream = fopen($this->videoPath, 'r');
             $bucket->upload($fileStream, [
                 'name' => $fileName,
             ]);
 
-            // ২. ভিডিও ইন্টেলিজেন্স চেক
+            // ৩. ভিডিও ইন্টেলিজেন্স চেক
             $videoClient = new VideoIntelligenceServiceClient(['credentials' => $keyFileData]);
             $gcsUri = 'gs://' . config('filesystems.disks.gcs.bucket') . '/' . $fileName;
 
+            // এখানে Feature::LABEL_DETECTION যোগ করা হয়েছে যাতে ডিউরেশন ডাটা নিশ্চিত পাওয়া যায়
             $operation = $videoClient->annotateVideo([
                 'inputUri' => $gcsUri,
-                'features' => [Feature::EXPLICIT_CONTENT_DETECTION],
+                'features' => [
+                    Feature::EXPLICIT_CONTENT_DETECTION,
+                    Feature::LABEL_DETECTION 
+                ],
             ]);
 
-            // ৩. লুপ দিয়ে চেক করা যাতে কিউ ওয়ার্কার বুঝতে পারে কাজ চলছে
             $operation->pollUntilComplete([
                 'pollingIntervalSeconds' => 5
             ]);
 
             $isSafe = true;
-            $durationSeconds = 0; // ভিডিওর ডিউরেশন রাখার জন্য ভেরিয়েবল ডিফাইন করা হলো
-
             if ($operation->operationSucceeded()) {
                 $results = $operation->getResult()->getAnnotationResults()[0];
 
-                // --- ভিডিওর ডিউরেশন বের করার কোড শুরু ---
-                if ($results->getSegment()) {
+                // --- ৪. গুগল এপিআই থেকে ডিউরেশন ব্যাকআপ (যদি লোকাল ফেল করে) ---
+                if ($durationSeconds <= 0 && $results->getSegment()) {
                     $endTime = $results->getSegment()->getEndTimeOffset();
-                    // সেকেন্ড এবং ন্যানোসেকেন্ড যোগ করে মোট ডিউরেশন বের করা হলো
                     $durationSeconds = $endTime->getSeconds() + ($endTime->getNanos() / 1000000000);
                 }
-                // --- ভিডিওর ডিউরেশন বের করার কোড শেষ ---
 
                 $explicitAnnotation = $results->getExplicitAnnotation();
-
                 if ($explicitAnnotation) {
                     foreach ($explicitAnnotation->getFrames() as $frame) {
-                        // Likelihood 4 = Likely, 5 = Very Likely
                         if ($frame->getPornographyLikelihood() >= 4) {
                             $isSafe = false; 
                             break;
@@ -93,28 +100,26 @@ class ProcessVideoSafetyCheck implements ShouldQueue
                 if ($isSafe) {
                     $mediaPath = "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $fileName;
                     
-                    // মিডিয়া টেবিল সেভ (এটি ট্রাই-ক্যাচ এর ভেতরে রাখাই নিরাপদ)
                     Post_media::create([
                         'post_id' => $post->id,
                         'media_type' => 'video',
                         'path' => $mediaPath,
-                        'duration' => round($durationSeconds), // এখানে ডাটাবেসে রাউন্ড ফিগার সেকেন্ড সেভ করা হচ্ছে
+                        'duration' => round($durationSeconds), // ৫. ফাইনাল ডিউরেশন সেভ
                     ]);
                     
                     $post->update(['status' => 'active']);
-                    Log::info("Video successfully processed and saved for Post ID: {$this->postId}");
+                    Log::info("Video successfully processed. Duration: " . round($durationSeconds));
                 } else {
                     $bucket->object($fileName)->delete();
                     $post->delete(); 
-                    Log::warning("Inappropriate video deleted for Post ID: {$this->postId}");
+                    Log::warning("Inappropriate video deleted.");
                 }
             }
             
             $videoClient->close();
 
         } catch (\Exception $e) {
-            Log::error("Video Job Error (Post ID {$this->postId}): " . $e->getMessage());
-            // এরর হলেও যাতে কিউ বারবার ট্রাই না করে (বড় ফাইল বলে)
+            Log::error("Video Job Error: " . $e->getMessage());
             throw $e; 
         } finally {
             if (file_exists($this->videoPath)) {
@@ -122,4 +127,7 @@ class ProcessVideoSafetyCheck implements ShouldQueue
             }
         }
     }
+
+
+
 }
