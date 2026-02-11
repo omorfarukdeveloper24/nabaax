@@ -100,8 +100,10 @@ class ProcessVideoSafetyCheck implements ShouldQueue
 
                 if ($explicitAnnotation) {
                     foreach ($explicitAnnotation->getFrames() as $frame) {
-                        // Likelihood 4 = Likely, 5 = Very Likely
-                        if ($frame->getPornographyLikelihood() >= 4) {
+                        // ৪ এর বদলে ৫ ব্যবহার করুন। ৫ মানে 'Very Likely' বা নিশ্চিত।
+                        // এছাড়া আপনি পর্নোগ্রাফি চেক করছেন, কিন্তু গুগল অনেক সময় 'Racy' ভিডিওকেও ধরে।
+                        // আমরা শুধু পর্নোগ্রাফি ফিল্টার করব।
+                        if ($frame->getPornographyLikelihood() >= 5) { 
                             $isSafe = false; 
                             break;
                         }
