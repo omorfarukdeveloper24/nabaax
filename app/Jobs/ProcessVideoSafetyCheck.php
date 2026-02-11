@@ -70,28 +70,31 @@ class ProcessVideoSafetyCheck implements ShouldQueue
             if ($operation->operationSucceeded()) {
                 $results = $operation->getResult()->getAnnotationResults()[0];
 
-                // ১. ভিডিওর ডিউরেশন বের করার সবচেয়ে নিরাপদ পদ্ধতি
-    // Label detection বা অন্য যেকোনো ফিচারের জন্য Google সাধারণত ভিডিওর 'segment' প্রদান করে
-    if ($results->getSegment()) {
-        $endTime = $results->getSegment()->getEndTimeOffset();
-        $durationSeconds = $endTime->getSeconds() + ($endTime->getNanos() / 1000000000);
-    } 
-    // যদি উপরে না পাওয়া যায়, তবে Explicit Content এর শেষ ফ্রেমের টাইম চেক করা
-    elseif ($results->getExplicitAnnotation()) {
-    $frames = $results->getExplicitAnnotation()->getFrames();
-    $frameCount = count($frames);
-    
-    if ($frameCount > 0) {
-        // লাস্ট ফ্রেমটি বের করার নিরাপদ উপায়
-        $lastFrame = $frames[$frameCount - 1];
-        $timeOffset = $lastFrame->getTimeOffset();
-        
-        // seconds এবং nanos যোগ করা
-        $seconds = $timeOffset->getSeconds();
-        $nanos = $timeOffset->getNanos();
-        $durationSeconds = $seconds + ($nanos / 1000000000);
-    }
-}
+                if ($results->getSegment()) {
+                    $endTime = $results->getSegment()->getEndTimeOffset();
+                    
+                    // (int) কাস্টিং নিশ্চিত করুন কারণ Google API স্ট্রিং পাঠাতে পারে
+                    $seconds = (int) $endTime->getSeconds();
+                    $nanos = (int) $endTime->getNanos();
+                    
+                    $durationSeconds = $seconds + ($nanos / 1000000000);
+                } 
+                elseif ($results->getExplicitAnnotation()) {
+                    $frames = $results->getExplicitAnnotation()->getFrames();
+                    
+                    if (count($frames) > 0) {
+                        $lastFrame = $frames[count($frames) - 1];
+                        $timeOffset = $lastFrame->getTimeOffset();
+                        
+                        $seconds = (int) $timeOffset->getSeconds();
+                        $nanos = (int) $timeOffset->getNanos();
+                        
+                        $durationSeconds = $seconds + ($nanos / 1000000000);
+                    }
+                }
+
+                // ডিবাগ করার জন্য একটি লগ অবশ্যই রাখুন
+                Log::info("Post ID: {$this->postId} - Raw Duration: " . $durationSeconds);
 
                 $explicitAnnotation = $results->getExplicitAnnotation();
 
@@ -110,6 +113,11 @@ class ProcessVideoSafetyCheck implements ShouldQueue
             if ($post) {
                 if ($isSafe) {
                     $mediaPath = "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $fileName;
+
+                    if ($durationSeconds <= 0) {
+                        Log::warning("Duration could not be calculated for Post ID: {$this->postId}. Defaulting to 1 for safety.");
+                        $durationSeconds = 1; // অন্তত ০ যেন না থাকে
+                    }
                     
                     // মিডিয়া টেবিল সেভ (এটি ট্রাই-ক্যাচ এর ভেতরে রাখাই নিরাপদ)
                     Post_media::create([
