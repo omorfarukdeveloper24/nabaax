@@ -124,7 +124,8 @@ public function testApi() {
             session()->put('post_seed', $seed);
         }
     
-        $posts = Post::select('id', 'member_id', 'content', 'visibility', 'created_at', 'total_views', 'like_count', 'dislike_count', 'comment_count','liked_by_me','disliked_by_me','is_following')
+        $posts = Post::select('id', 'member_id', 'content', 'visibility', 'created_at', 'total_views', 'like_count', 'dislike_count', 'comment_count','liked_by_me','disliked_by_me','is_following','status')
+            ->where('status', 'active')
             ->with(['member', 'media'])
             ->withCount([
                 'likes as like_count' => function ($q) {
