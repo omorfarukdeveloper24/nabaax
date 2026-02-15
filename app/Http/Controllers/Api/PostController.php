@@ -124,7 +124,8 @@ public function testApi() {
             session()->put('post_seed', $seed);
         }
     
-        $posts = Post::with(['member', 'media'])
+        $posts = Post::select('id', 'member_id', 'content', 'visibility', 'created_at', 'total_views', 'like_count', 'dislike_count', 'comment_count','liked_by_me','disliked_by_me','is_following')
+            ->with(['member', 'media'])
             ->withCount([
                 'likes as like_count' => function ($q) {
                     $q->where('type', 1);
@@ -157,29 +158,29 @@ public function testApi() {
     
             $post->is_following = $isFollowing;
     
-            $followBoost = FollowBoost::where('member_id', $post->member->id)->first();
+            // $followBoost = FollowBoost::where('member_id', $post->member->id)->first();
     
-            if ($followBoost && $followBoost->status === 'active') {
-                $post->follow_boost_status = 'active';
-            } else {
-                $post->follow_boost_status = 'inactive';
-            }
+            // if ($followBoost && $followBoost->status === 'active') {
+            //     $post->follow_boost_status = 'active';
+            // } else {
+            //     $post->follow_boost_status = 'inactive';
+            // }
     
-            $postBoost = PostBoost::where('post_id', $post->id)->latest()->first();
+            // $postBoost = PostBoost::where('post_id', $post->id)->latest()->first();
     
-            if ($postBoost && $postBoost->status === 'active') {
-                $post->post_boost = [
-                    'id' => $postBoost->id,
-                    'message_link' => $postBoost->message_link,
-                    'website_link' => $postBoost->website_link,
-                    'status' => 'active'
-                ];
-            } else {
-                $post->post_boost = [
-                    'id' => null,
-                    'status' => 'inactive'
-                ];
-            }
+            // if ($postBoost && $postBoost->status === 'active') {
+            //     $post->post_boost = [
+            //         'id' => $postBoost->id,
+            //         'message_link' => $postBoost->message_link,
+            //         'website_link' => $postBoost->website_link,
+            //         'status' => 'active'
+            //     ];
+            // } else {
+            //     $post->post_boost = [
+            //         'id' => null,
+            //         'status' => 'inactive'
+            //     ];
+            // }
     
             // if ($miniAds->count() > 0) {
             //     $start = ($index * 2) % $miniAds->count();
