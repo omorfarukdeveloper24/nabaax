@@ -142,11 +142,11 @@ public function testApi() {
                     $q->where('member_id', $memberId)->where('type', 2);
                 },
             ])
-            ->whereNotIn('id', function ($query) use ($memberId) {
-                $query->select('post_id')
-                    ->from('post_views')
-                    ->where('member_id', $memberId);
-            })
+            // ->whereNotIn('id', function ($query) use ($memberId) {
+            //     $query->select('post_id')
+            //         ->from('post_views')
+            //         ->where('member_id', $memberId);
+            // })
             ->inRandomOrder($seed) 
             ->paginate(15);
     
@@ -622,9 +622,9 @@ public function miniads(Request $request)
             session()->put('video_seed', $seed);
         }
 
-        $watchedVideos = VideoView::where('member_id', $memberId)
-            ->pluck('post_media_id')
-            ->toArray();
+        // $watchedVideos = VideoView::where('member_id', $memberId)
+        //     ->pluck('post_media_id')
+        //     ->toArray();
 
         $videos = Post_media::with([
                 'post' => function ($q) use ($memberId) {
@@ -643,7 +643,7 @@ public function miniads(Request $request)
             ])
             ->where('media_type', 'video')
             ->whereHas('post', fn($q) => $q->where('visibility', 'public'))
-            ->whereNotIn('id', $watchedVideos)
+            // ->whereNotIn('id', $watchedVideos)
             ->inRandomOrder($seed) 
             ->paginate(15); 
 
