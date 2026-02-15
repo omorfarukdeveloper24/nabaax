@@ -228,7 +228,7 @@ public function testApi() {
         $memberId = $member->id;
 
         $miniAds = Miniad::where('status', 1)
-            ->select('id', 'title', 'image', 'link')
+            ->select('id', 'image')
             ->get();
 
         if ($miniAds->isEmpty()) {
@@ -242,8 +242,15 @@ public function testApi() {
 
         // সংশোধিত কোয়েরি
         $posts = Post::select('id', 'member_id', 'content', 'visibility', 'created_at', 'total_views', 'status')
-            ->where('status', 'active') // শুধুমাত্র একটিভ পোস্ট
-            ->with(['member', 'media'])
+            ->where('status', 'active') 
+            ->with([
+                'member' => function($q) {
+                    $q->select('id', 'name', 'image');
+                },
+                'media' => function($q) {
+                    $q->select('id', 'post_id', 'media_type', 'path', 'duration');
+                }
+            ])
             ->withCount([
                 'likes as like_count' => function ($q) {
                     $q->where('type', 1);
