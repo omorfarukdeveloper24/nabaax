@@ -98,34 +98,151 @@ public function testApi() {
 
 
     
+    // public function list()
+    // {
+    //     $member = Auth::guard("member")->user();
+    
+    //     if (!$member) {
+    //         return response()->json([
+    //             'status' => 'failed',
+    //             'message' => 'Unauthorized user'
+    //         ], 401);
+    //     }
+    
+    //     $memberId = $member->id;
+    
+    //     $miniAds = Miniad::where('status', 1)
+    //         ->select('id', 'title', 'image', 'link')
+    //         ->get();
+    
+    //     if ($miniAds->isEmpty()) {
+    //         $miniAds = collect([]);
+    //     }
+    
+    //     $seed = request()->has('page') ? session()->get('post_seed') : rand(1, 9999);
+    //     if (!request()->has('page')) {
+    //         session()->put('post_seed', $seed);
+    //     }
+    
+    //     $posts = Post::select('id', 'member_id', 'content', 'visibility', 'created_at', 'total_views', 'like_count', 'dislike_count', 'comment_count','liked_by_me','disliked_by_me','is_following','status')
+    //         ->where('status', 'active')
+    //         ->with(['member', 'media'])
+    //         ->withCount([
+    //             'likes as like_count' => function ($q) {
+    //                 $q->where('type', 1);
+    //             },
+    //             'likes as dislike_count' => function ($q) {
+    //                 $q->where('type', 2);
+    //             },
+    //             'comments as comment_count'
+    //         ])
+    //         ->withExists([
+    //             'likes as liked_by_me' => function ($q) use ($memberId) {
+    //                 $q->where('member_id', $memberId)->where('type', 1);
+    //             },
+    //             'likes as disliked_by_me' => function ($q) use ($memberId) {
+    //                 $q->where('member_id', $memberId)->where('type', 2);
+    //             },
+    //         ])
+    //         // ->whereNotIn('id', function ($query) use ($memberId) {
+    //         //     $query->select('post_id')
+    //         //         ->from('post_views')
+    //         //         ->where('member_id', $memberId);
+    //         // })
+    //         ->inRandomOrder($seed) 
+    //         ->paginate(15);
+    
+    //     $posts->getCollection()->transform(function ($post, $index) use ($memberId, $miniAds) {
+    //         $isFollowing = Follow::where('follower_id', $memberId)
+    //             ->where('following_id', $post->member->id)
+    //             ->exists();
+    
+    //         $post->is_following = $isFollowing;
+    
+    //         // $followBoost = FollowBoost::where('member_id', $post->member->id)->first();
+    
+    //         // if ($followBoost && $followBoost->status === 'active') {
+    //         //     $post->follow_boost_status = 'active';
+    //         // } else {
+    //         //     $post->follow_boost_status = 'inactive';
+    //         // }
+    
+    //         // $postBoost = PostBoost::where('post_id', $post->id)->latest()->first();
+    
+    //         // if ($postBoost && $postBoost->status === 'active') {
+    //         //     $post->post_boost = [
+    //         //         'id' => $postBoost->id,
+    //         //         'message_link' => $postBoost->message_link,
+    //         //         'website_link' => $postBoost->website_link,
+    //         //         'status' => 'active'
+    //         //     ];
+    //         // } else {
+    //         //     $post->post_boost = [
+    //         //         'id' => null,
+    //         //         'status' => 'inactive'
+    //         //     ];
+    //         // }
+    
+    //         // if ($miniAds->count() > 0) {
+    //         //     $start = ($index * 2) % $miniAds->count();
+    //         //     $miniAdPair = [];
+    
+    //         //     for ($i = 0; $i < 2; $i++) {
+    //         //         $miniAdPair[] = $miniAds[($start + $i) % $miniAds->count()];
+    //         //     }
+    
+    //         //     $post->mini_ads = $miniAdPair;
+    //         // } else {
+    //         //     $post->mini_ads = [];
+    //         // }
+
+    //         if ($miniAds->count() > 0) {
+    //             $adIndex = $index % $miniAds->count();
+                
+    //             $post->mini_ads = $miniAds[$adIndex]; 
+    //         } else {
+    //             $post->mini_ads = null; 
+    //         }
+    
+    //         return $post;
+    //     });
+    
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'data' => $posts
+    //     ]);
+    // }
+
+
     public function list()
     {
         $member = Auth::guard("member")->user();
-    
+
         if (!$member) {
             return response()->json([
                 'status' => 'failed',
                 'message' => 'Unauthorized user'
             ], 401);
         }
-    
+
         $memberId = $member->id;
-    
+
         $miniAds = Miniad::where('status', 1)
             ->select('id', 'title', 'image', 'link')
             ->get();
-    
+
         if ($miniAds->isEmpty()) {
             $miniAds = collect([]);
         }
-    
+
         $seed = request()->has('page') ? session()->get('post_seed') : rand(1, 9999);
         if (!request()->has('page')) {
             session()->put('post_seed', $seed);
         }
-    
-        $posts = Post::select('id', 'member_id', 'content', 'visibility', 'created_at', 'total_views', 'like_count', 'dislike_count', 'comment_count','liked_by_me','disliked_by_me','is_following','status')
-            ->where('status', 'active')
+
+        // সংশোধিত কোয়েরি
+        $posts = Post::select('id', 'member_id', 'content', 'visibility', 'created_at', 'total_views', 'status')
+            ->where('status', 'active') // শুধুমাত্র একটিভ পোস্ট
             ->with(['member', 'media'])
             ->withCount([
                 'likes as like_count' => function ($q) {
@@ -144,69 +261,28 @@ public function testApi() {
                     $q->where('member_id', $memberId)->where('type', 2);
                 },
             ])
-            // ->whereNotIn('id', function ($query) use ($memberId) {
-            //     $query->select('post_id')
-            //         ->from('post_views')
-            //         ->where('member_id', $memberId);
-            // })
             ->inRandomOrder($seed) 
             ->paginate(15);
-    
-        $posts->getCollection()->transform(function ($post, $index) use ($memberId, $miniAds) {
-            $isFollowing = Follow::where('follower_id', $memberId)
-                ->where('following_id', $post->member->id)
-                ->exists();
-    
-            $post->is_following = $isFollowing;
-    
-            // $followBoost = FollowBoost::where('member_id', $post->member->id)->first();
-    
-            // if ($followBoost && $followBoost->status === 'active') {
-            //     $post->follow_boost_status = 'active';
-            // } else {
-            //     $post->follow_boost_status = 'inactive';
-            // }
-    
-            // $postBoost = PostBoost::where('post_id', $post->id)->latest()->first();
-    
-            // if ($postBoost && $postBoost->status === 'active') {
-            //     $post->post_boost = [
-            //         'id' => $postBoost->id,
-            //         'message_link' => $postBoost->message_link,
-            //         'website_link' => $postBoost->website_link,
-            //         'status' => 'active'
-            //     ];
-            // } else {
-            //     $post->post_boost = [
-            //         'id' => null,
-            //         'status' => 'inactive'
-            //     ];
-            // }
-    
-            // if ($miniAds->count() > 0) {
-            //     $start = ($index * 2) % $miniAds->count();
-            //     $miniAdPair = [];
-    
-            //     for ($i = 0; $i < 2; $i++) {
-            //         $miniAdPair[] = $miniAds[($start + $i) % $miniAds->count()];
-            //     }
-    
-            //     $post->mini_ads = $miniAdPair;
-            // } else {
-            //     $post->mini_ads = [];
-            // }
 
+        $posts->getCollection()->transform(function ($post, $index) use ($memberId, $miniAds) {
+            // ফলো চেক
+            $isFollowing = Follow::where('follower_id', $memberId)
+                ->where('following_id', $post->member_id)
+                ->exists();
+
+            $post->is_following = $isFollowing;
+
+            // Mini Ads লজিক
             if ($miniAds->count() > 0) {
                 $adIndex = $index % $miniAds->count();
-                
                 $post->mini_ads = $miniAds[$adIndex]; 
             } else {
                 $post->mini_ads = null; 
             }
-    
+
             return $post;
         });
-    
+
         return response()->json([
             'status' => 'success',
             'data' => $posts
