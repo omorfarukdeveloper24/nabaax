@@ -18,6 +18,7 @@ class Kernel extends ConsoleKernel
     {
         $schedule->command('posts:expire-boost')->dailyAt('00:00');
         $schedule->command('monetization:process')->everyFiveMinutes();
+        $schedule->command('app:process-monetization')->everyFiveMinutes();
     }
 
     /**

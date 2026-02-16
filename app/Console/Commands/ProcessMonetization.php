@@ -11,7 +11,8 @@ class ProcessMonetization extends Command
      *
      * @var string
      */
-    protected $signature = 'app:process-monetization';
+    
+    protected $signature = 'monetization:process';
 
     /**
      * The console command description.
