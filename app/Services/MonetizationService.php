@@ -37,7 +37,7 @@ class MonetizationService {
         $refers = Member::where('only_reffer', $member->id)->count();
         $watch_time = DB::table('video_views')->where('member_id', $member->id)->sum('watch_time');
 
-        if ($followers >= 1000 || $partners >= 10 || $refers >= 100 || $watch_time >= 14400000) {
+        if ($followers >= 2 || $partners >= 2 || $refers >= 2 || $watch_time >= 500) {
             $member->update([
                 'monetization' => 1,
                 'monetization_activated_at' => now(),
@@ -53,7 +53,9 @@ class MonetizationService {
     private function calculateIncome($member) {
         $current_watch_time = DB::table('video_views')->where('member_id', $member->id)->sum('watch_time');
         
-        // নতুন কতটুকু ভিউ ও ওয়াচ টাইম হলো (স্ন্যাপশট বিয়োগফল)
+        // ১. আজকের তারিখ নিন
+        $today = now()->format('Y-m-d');
+
         $new_views = $member->total_views - $member->last_paid_views;
         $new_watch_sec = $current_watch_time - $member->last_paid_watch_time;
 
@@ -62,25 +64,40 @@ class MonetizationService {
             $watch_money = ($new_watch_sec / 3600) * $this->watch_hour_rate;
             $total_today = round($view_money + $watch_money, 2);
 
+            // ২. ৫ মিনিট পর পর চালালে যেন ডুপ্লিকেট না হয়, তাই updateOrCreate ব্যবহার করা ভালো
             if ($total_today > 0) {
-                // ১. আর্নিং টেবিল এন্ট্রি
-                Earning::create([
-                    'member_id' => $member->id,
-                    'amount' => $total_today,
-                    'new_views' => $new_views,
-                    'new_watch_time' => $new_watch_sec,
-                    'earning_date' => now()->subDay()->format('Y-m-d') // গতকালকের আয়
-                ]);
+                
+                // আর্নিং টেবিল আপডেট বা তৈরি করুন
+                // এটি চেক করবে আজ এই মেম্বারের কোনো এন্ট্রি আছে কি না, থাকলে তার সাথে যোগ করবে
+                $earning = Earning::where('member_id', $member->id)
+                                  ->where('earning_date', $today)
+                                  ->first();
 
-                // ২. মেম্বার ব্যালেন্স আপডেট
+                if ($earning) {
+                    $earning->increment('amount', $total_today);
+                    $earning->increment('new_views', $new_views);
+                    $earning->increment('new_watch_time', $new_watch_sec);
+                } else {
+                    Earning::create([
+                        'member_id' => $member->id,
+                        'amount' => $total_today,
+                        'new_views' => $new_views,
+                        'new_watch_time' => $new_watch_sec,
+                        'earning_date' => $today
+                    ]);
+                }
+
+                // ৩. মেম্বার ব্যালেন্স আপডেট
                 $member->increment('balance', $total_today);
                 $member->increment('total_earned', $total_today);
                 
-                // ৩. লাস্ট পেইড কাউন্টার আপডেট (খুবই জরুরি)
+                // ৪. লাস্ট পেইড কাউন্টার আপডেট (খুবই জরুরি)
                 $member->update([
                     'last_paid_views' => $member->total_views,
                     'last_paid_watch_time' => $current_watch_time
                 ]);
+
+                Log::info("Income updated for Member: {$member->id}. Amount: {$total_today}");
             }
         }
     }

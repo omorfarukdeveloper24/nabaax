@@ -17,7 +17,7 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
         $schedule->command('posts:expire-boost')->dailyAt('00:00');
-        $schedule->command('monetization:process')->dailyAt('00:00');
+        $schedule->command('monetization:process')->everyFiveMinutes();
     }
 
     /**
