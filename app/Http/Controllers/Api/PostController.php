@@ -269,7 +269,7 @@ public function testApi() {
                 },
             ])
             ->inRandomOrder($seed) 
-            ->paginate(15);
+            ->paginate(10);
 
         $posts->getCollection()->transform(function ($post, $index) use ($memberId, $miniAds) {
             // ফলো চেক

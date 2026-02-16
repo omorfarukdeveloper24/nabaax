@@ -1831,65 +1831,124 @@ class MemberController extends Controller
     // }
 
 
+    // public function monetizationReport()
+    // {
+    //     $member = Auth::guard('member')->user();
+
+    //     if (!$member) {
+    //         return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
+    //     }
+
+    //     $total_followers = Follow::where('following_id', $member->id)->count();
+    //     $total_partners = Member::where('referrer_id', $member->id)->count();
+    //     $total_reffers = Member::where('only_reffer', $member->id)->count();
+
+    //     $partner_goal = 10;
+    //     $reffer_goal = 100;
+    //     $follower_goal = 1000;
+
+    //     $partner_percentage = min(($total_partners / $partner_goal) * 100, 100);
+    //     $reffer_percentage = min(($total_reffers / $reffer_goal) * 100, 100);
+    //     $follower_percentage = min(($total_followers / $follower_goal) * 100, 100);
+
+    //     $partner_status  = ($total_partners >= $partner_goal) ? 'Complete' : 'Incomplete';
+    //     $reffer_status   = ($total_reffers >= $reffer_goal) ? 'Complete' : 'Incomplete';
+    //     $follower_status = ($total_followers >= $follower_goal) ? 'Complete' : 'Incomplete';
+
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'data' => [
+    //             'member_info' => [
+    //                 'name' => $member->name,
+    //                 'username' => $member->username,
+    //             ],
+    //             'stats' => [
+    //                 'total_followers' => $total_followers,
+    //                 'total_partners' => $total_partners,
+    //                 'total_reffers' => $total_reffers,
+    //             ],
+    //             'requirements' => [
+    //                 'partner' => [
+    //                     'status' => $partner_status,
+    //                     'current' => $total_partners,
+    //                     'goal' => $partner_goal,
+    //                     'percentage' => round($partner_percentage, 2) . '%'
+    //                 ],
+    //                 'follower' => [
+    //                     'status' => $follower_status,
+    //                     'current' => $total_followers,
+    //                     'goal' => $follower_goal,
+    //                     'percentage' => round($follower_percentage, 2) . '%'
+    //                 ],
+    //                 'reffer' => [
+    //                     'status' => $reffer_status,
+    //                     'current' => $total_reffers,
+    //                     'goal' => $reffer_goal,
+    //                     'percentage' => round($reffer_percentage, 2) . '%'
+    //                 ],
+    //             ]
+    //         ]
+    //     ], 200);
+    // }
+
     public function monetizationReport()
     {
-        $member = Auth::guard('member')->user();
+        try {
+            $member = Auth::guard('member')->user();
+            if (!$member) {
+                return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
+            }
 
-        if (!$member) {
-            return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
-        }
+            // ১. বেসিক স্ট্যাটাস কাউন্ট
+            $total_followers = Follow::where('following_id', $member->id)->count();
+            $total_partners = Member::where('referrer_id', $member->id)->count();
+            $total_reffers = Member::where('only_reffer', $member->id)->count();
 
-        $total_followers = Follow::where('following_id', $member->id)->count();
-        $total_partners = Member::where('referrer_id', $member->id)->count();
-        $total_reffers = Member::where('only_reffer', $member->id)->count();
+            // ২. ভিডিও ওয়াচ টাইম ক্যালকুলেশন (সেকেন্ড থেকে ঘণ্টায় রূপান্তর)
+            // আপনার video_views টেবিল থেকে মেম্বারের সব ভিডিওর মোট ওয়াচ টাইম
+            $total_watch_seconds = DB::table('video_views')->where('member_id', $member->id)->sum('watch_time');
+            $total_watch_hours = round($total_watch_seconds / 3600, 2);
 
-        $partner_goal = 10;
-        $reffer_goal = 100;
-        $follower_goal = 1000;
+            // ৩. গোল সেটিংস
+            $partner_goal = 10;
+            $reffer_goal = 100;
+            $follower_goal = 1000;
+            $watch_hour_goal = 4000;
 
-        $partner_percentage = min(($total_partners / $partner_goal) * 100, 100);
-        $reffer_percentage = min(($total_reffers / $reffer_goal) * 100, 100);
-        $follower_percentage = min(($total_followers / $follower_goal) * 100, 100);
-
-        $partner_status  = ($total_partners >= $partner_goal) ? 'Complete' : 'Incomplete';
-        $reffer_status   = ($total_reffers >= $reffer_goal) ? 'Complete' : 'Incomplete';
-        $follower_status = ($total_followers >= $follower_goal) ? 'Complete' : 'Incomplete';
-
-        return response()->json([
-            'status' => 'success',
-            'data' => [
-                'member_info' => [
-                    'name' => $member->name,
-                    'username' => $member->username,
-                ],
-                'stats' => [
-                    'total_followers' => $total_followers,
-                    'total_partners' => $total_partners,
-                    'total_reffers' => $total_reffers,
-                ],
-                'requirements' => [
-                    'partner' => [
-                        'status' => $partner_status,
-                        'current' => $total_partners,
-                        'goal' => $partner_goal,
-                        'percentage' => round($partner_percentage, 2) . '%'
+            return response()->json([
+                'status' => 'success',
+                'data' => [
+                    'is_monetized' => $member->monetization_status == 1,
+                    'stats' => [
+                        'total_followers' => $total_followers,
+                        'total_partners' => $total_partners,
+                        'total_reffers' => $total_reffers,
+                        'total_watch_hours' => $total_watch_hours,
                     ],
-                    'follower' => [
-                        'status' => $follower_status,
-                        'current' => $total_followers,
-                        'goal' => $follower_goal,
-                        'percentage' => round($follower_percentage, 2) . '%'
-                    ],
-                    'reffer' => [
-                        'status' => $reffer_status,
-                        'current' => $total_reffers,
-                        'goal' => $reffer_goal,
-                        'percentage' => round($reffer_percentage, 2) . '%'
-                    ],
+                    'requirements' => [
+                        'follower' => $this->calcGoal($total_followers, $follower_goal),
+                        'partner' => $this->calcGoal($total_partners, $partner_goal),
+                        'reffer' => $this->calcGoal($total_reffers, $reffer_goal),
+                        'watch_time' => $this->calcGoal($total_watch_hours, $watch_hour_goal),
+                    ]
                 ]
-            ]
-        ], 200);
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error("Monetization Report Error for Member {$member->id}: " . $e->getMessage());
+            return response()->json(['status' => 'error', 'message' => 'Internal Server Error'], 500);
+        }
     }
+
+// হেল্পার ফাংশন পার্সেন্টেজ বের করার জন্য
+private function calcGoal($current, $goal) {
+    return [
+        'status' => ($current >= $goal) ? 'Complete' : 'Incomplete',
+        'current' => $current,
+        'goal' => $goal,
+        'percentage' => round(min(($current / $goal) * 100, 100), 2) . '%'
+    ];
+}
 
 
 
