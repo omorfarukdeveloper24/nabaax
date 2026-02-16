@@ -3,6 +3,9 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use App\Models\Member; 
+use App\Services\MonetizationService; 
+use Illuminate\Support\Facades\Log;
 
 class ProcessMonetization extends Command
 {
