@@ -13,7 +13,20 @@ class Member extends Authenticatable implements JWTSubject
     use HasFactory, Notifiable;
 
     protected $fillable = [
-         'name', 'username', 'phone', 'password', 'referrer_id', 'referrer_code', 'partner_code','only_reffer', 'balance','phoneverify','approved','gender','blood','religion','monthlyincome','profession','nationality','married','division','district','upazila','verified','city', 'country', 'submit','status'
+        'name', 'username', 'phone', 'password', 'referrer_id', 'referrer_code', 
+        'partner_code', 'only_reffer', 'balance', 'phoneverify', 'approved', 
+        'gender', 'blood', 'religion', 'monthlyincome', 'profession', 
+        'nationality', 'married', 'division', 'district', 'upazila', 
+        'verified', 'city', 'country', 'submit', 'status',
+
+        // --- নতুন যোগ করা কলামগুলো নিচে দেওয়া হলো ---
+        'monetization', 
+        'total_earned', 
+        'monetization_activated_at', 
+        'initial_views', 
+        'initial_watch_time', 
+        'last_paid_views', 
+        'last_paid_watch_time'
     ];
 
     protected $hidden = [
