@@ -37,10 +37,10 @@ Route::get('/cc', function () {
     return "Cleared!";
 });
 
-Route::get('/video-test', function () {
-    $client = new VideoIntelligenceServiceClient();
-    return 'Google Video API Ready!';
-});
+// Route::get('/video-test', function () {
+//     $client = new VideoIntelligenceServiceClient();
+//     return 'Google Video API Ready!';
+// });
 
 // Route::get('/test-gcs-direct', function () {
 //     try {
@@ -75,10 +75,10 @@ Route::get('/video-test', function () {
 //     return "Controller Created";
 // });
 
-// Route::get('/migrate', function () {
-//     Artisan::call('migrate');
-//     return "Migrate Done!";
-// });
+Route::get('/migrate', function () {
+    Artisan::call('migrate');
+    return "Migrate Done!";
+});
 
 // Route::get('/model', function () {
 //     Artisan::call('make:model Notification -m');

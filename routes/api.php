@@ -84,6 +84,7 @@ Route::group(['namespace' => 'Api','prefix'=>'v1','middleware' => 'api'], functi
         Route::get('/allteam', [MemberController::class, 'allteam']); 
         Route::get('/pagelist', [MemberController::class, 'pagelist']); 
         Route::get('/monetization-report', [MemberController::class, 'monetizationReport']); 
+        Route::get('/income-history', [MemberController::class, 'incomeHistory']); 
         Route::get('/approved_acount/{id}', [MemberController::class, 'approved_acount']); 
         Route::post('/update', [MemberController::class, 'update']); 
         Route::post('/destroy/{id}', [MemberController::class, 'destroy']); 

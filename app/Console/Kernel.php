@@ -13,10 +13,11 @@ class Kernel extends ConsoleKernel
      * @param  \Illuminate\Console\Scheduling\Schedule  $schedule
      * @return void
      */
+
     protected function schedule(Schedule $schedule)
     {
-        
         $schedule->command('posts:expire-boost')->dailyAt('00:00');
+        $schedule->command('monetization:process')->dailyAt('00:00');
     }
 
     /**

@@ -1950,6 +1950,53 @@ private function calcGoal($current, $goal) {
     ];
 }
 
+public function incomeHistory()
+{
+    try {
+        // ১. বর্তমান মেম্বারকে গেট করা
+        $member = Auth::guard('member')->user();
+
+        if (!$member) {
+            return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
+        }
+
+        // ২. আর্নিংস টেবিল থেকে প্রতিদিনের ইনকাম রিপোর্ট আনা (লেটেস্ট আগে)
+        // ৫০ মিলিয়ন ইউজারের কথা মাথায় রেখে paginate ব্যবহার করা হয়েছে
+        $daily_history = DB::table('earnings')
+            ->where('member_id', $member->id)
+            ->select('amount', 'new_views', 'new_watch_time', 'earning_date')
+            ->orderBy('earning_date', 'desc')
+            ->paginate(15);
+
+        // ৩. রেসপন্স ডাটা সাজানো
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'member_summary' => [
+                    'name' => $member->name,
+                    'username' => $member->username,
+                    'monetization_status' => $member->monetization == 1 ? 'Active' : 'Inactive',
+                    'monetization_date' => $member->monetization_activated_at,
+                ],
+                'wallet' => [
+                    'current_balance' => number_format($member->balance, 2), // তোলা যাবে এমন টাকা
+                    'lifetime_earned' => number_format($member->total_earned, 2), // আজীবন মোট আয়
+                ],
+                'history' => $daily_history
+            ]
+        ], 200);
+
+    } catch (\Exception $e) {
+        // এরর হলে লগ ফাইলে জমা হবে
+        Log::error("Income History Retrieval Failed for Member ID {$member->id}: " . $e->getMessage());
+        
+        return response()->json([
+            'status' => 'error', 
+            'message' => 'Internal server error. Please try again later.'
+        ], 500);
+    }
+}
+
 
 
     public function update(Request $request)
