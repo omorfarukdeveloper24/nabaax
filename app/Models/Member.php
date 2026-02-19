@@ -33,6 +33,20 @@ class Member extends Authenticatable implements JWTSubject
         'password', 'remember_token',
     ];
 
+    /**
+     * UPDATED: $casts প্রপার্টি যুক্ত করা হয়েছে।
+     * এটি ব্যালেন্স এবং তারিখগুলোকে সঠিক ফরম্যাটে (decimal/datetime) রূপান্তর করবে।
+     */
+    
+    protected $casts = [
+        'monetization' => 'boolean',
+        'monetization_activated_at' => 'datetime',
+        'balance' => 'decimal:4',     
+        'total_earned' => 'decimal:4',
+        'approved' => 'boolean',
+        'status' => 'boolean',
+    ];
+
     public function getJWTIdentifier()
     {
         return $this->getKey(); 
