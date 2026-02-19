@@ -22,6 +22,7 @@ class ProcessVideoSafetyCheck implements ShouldQueue
 
     // বড় ভিডিওর জন্য টাইমআউট বাড়িয়ে ২০ মিনিট (১২০০ সেকেন্ড) করা হলো
     public $timeout = 1200; 
+    public $tries = 2;
 
     public function __construct($postId, $videoPath)
     {
@@ -121,16 +122,24 @@ class ProcessVideoSafetyCheck implements ShouldQueue
                         $durationSeconds = 1; // অন্তত ০ যেন না থাকে
                     }
                     
-                    // মিডিয়া টেবিল সেভ (এটি ট্রাই-ক্যাচ এর ভেতরে রাখাই নিরাপদ)
-                    Post_media::create([
-                        'post_id' => $post->id,
-                        'media_type' => 'video',
-                        'path' => $mediaPath,
-                        'duration' => round($durationSeconds), // এখানে ডাটাবেসে রাউন্ড ফিগার সেকেন্ড সেভ করা হচ্ছে
-                    ]);
+                    
+
+                    Post_media::updateOrCreate(
+                        [
+                            'post_id' => $post->id, 
+                            'path'    => $mediaPath
+                        ],
+                        [
+                            'media_type' => 'video',
+                            'duration'   => round($durationSeconds),
+                        ]
+                    );
                     
                     $post->update(['status' => 'active']);
                     Log::info("Video successfully processed and saved for Post ID: {$this->postId}");
+                    // --- পরিবর্তন এখানে শেষ ---
+
+                    
                 } else {
                     $bucket->object($fileName)->delete();
                     $post->delete(); 
