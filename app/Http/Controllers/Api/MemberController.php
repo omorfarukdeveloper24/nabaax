@@ -1182,13 +1182,13 @@ class MemberController extends Controller
                 },
             ])
             ->where('member_id', $memberId)
-            ->whereNotIn('id', function ($query) use ($memberId) {
-                $query->select('post_id')
-                      ->from('post_views')
-                      ->where('member_id', $memberId);
-            })
+            // ->whereNotIn('id', function ($query) use ($memberId) {
+            //     $query->select('post_id')
+            //           ->from('post_views')
+            //           ->where('member_id', $memberId);
+            // })
             ->latest()
-            ->paginate(10);
+            ->paginate(5);
             
             
             $posts->getCollection()->transform(function ($post, $index) use ($memberId, $miniAds) {
