@@ -2618,39 +2618,101 @@ public function incomeHistory()
 
     // }
 
+    // public function sendNotification(Request $request)
+    // {
+    //     $receiverToken = $request->receiverToken;
+    //     $title = $request->title;
+    //     $body = $request->body;
+        
+    //     // ১. ডাটা যদি খালি থাকে তবে এটি অবজেক্ট হিসেবে পাঠাতে হবে
+    //     // ২. ডাটার ভেতরে সব ভ্যালু স্ট্রিং (String) হতে হবে
+    //     $data = $request->data ?? [];
+        
+    //     // নিশ্চিত করুন ডাটা একটি Associative Array এবং সব ভ্যালু স্ট্রিং
+    //     $formattedData = [];
+    //     foreach ($data as $key => $value) {
+    //         $formattedData[(string)$key] = (string)$value;
+    //     }
+
+    //     $accessToken = $this->getAccessToken();
+    //     $projectId = "nabaax-1fdde";
+
+    //     $response = Http::withToken($accessToken)
+    //         ->post("https://fcm.googleapis.com/v1/projects/$projectId/messages:send", [
+    //             "message" => [
+    //                 "token" => $receiverToken,
+    //                 "notification" => [
+    //                     "title" => $title,
+    //                     "body" => $body
+    //                 ],
+    //                 // যদি ডাটা খালি থাকে তবে ডাটা ফিল্ড পাঠানোর দরকার নেই বা খালি অবজেক্ট দিন
+    //                 "data" => empty($formattedData) ? null : $formattedData
+    //             ]
+    //         ]);
+
+    //     return $response->json();
+    // }
+
     public function sendNotification(Request $request)
     {
-        $receiverToken = $request->receiverToken;
+        $memberId = $request->member_id;
         $title = $request->title;
         $body = $request->body;
-        
-        // ১. ডাটা যদি খালি থাকে তবে এটি অবজেক্ট হিসেবে পাঠাতে হবে
-        // ২. ডাটার ভেতরে সব ভ্যালু স্ট্রিং (String) হতে হবে
         $data = $request->data ?? [];
-        
-        // নিশ্চিত করুন ডাটা একটি Associative Array এবং সব ভ্যালু স্ট্রিং
+
         $formattedData = [];
         foreach ($data as $key => $value) {
             $formattedData[(string)$key] = (string)$value;
         }
 
+        // ইউনিক টোকেনগুলো সংগ্রহ করা (ডুপ্লিকেট এড়াতে unique() যোগ করা হয়েছে)
+        $deviceTokens = DB::table('device_tokens')
+                        ->where('member_id', $memberId)
+                        ->where('status', 1)
+                        ->pluck('token')
+                        ->unique();
+
+        if ($deviceTokens->isEmpty()) {
+            return response()->json(['message' => 'No active tokens found.'], 404);
+        }
+
         $accessToken = $this->getAccessToken();
         $projectId = "nabaax-1fdde";
+        $responses = [];
 
-        $response = Http::withToken($accessToken)
-            ->post("https://fcm.googleapis.com/v1/projects/$projectId/messages:send", [
-                "message" => [
-                    "token" => $receiverToken,
-                    "notification" => [
-                        "title" => $title,
-                        "body" => $body
-                    ],
-                    // যদি ডাটা খালি থাকে তবে ডাটা ফিল্ড পাঠানোর দরকার নেই বা খালি অবজেক্ট দিন
-                    "data" => empty($formattedData) ? null : $formattedData
-                ]
-            ]);
+        foreach ($deviceTokens as $token) {
+            $response = Http::withToken($accessToken)
+                ->post("https://fcm.googleapis.com/v1/projects/$projectId/messages:send", [
+                    "message" => [
+                        "token" => $token,
+                        "notification" => [
+                            "title" => $title,
+                            "body" => $body
+                        ],
+                        "data" => empty($formattedData) ? null : $formattedData
+                    ]
+                ]);
 
-        return $response->json();
+            $responseData = $response->json();
+
+            
+            if ($response->failed() && isset($responseData['error']['details'][0]['errorCode'])) {
+                if ($responseData['error']['details'][0]['errorCode'] == 'UNREGISTERED') {
+                    DB::table('device_tokens')->where('token', $token)->update(['status' => 0]);
+                }
+            }
+
+            $responses[] = [
+                'token' => substr($token, 0, 15) . '...',
+                'status' => $response->successful() ? 'Success' : 'Failed', 
+                'error_code' => $response->failed() ? ($responseData['error']['status'] ?? 'ERROR') : null
+            ];
+        }
+
+        return response()->json([
+            'total_unique_tokens' => count($deviceTokens),
+            'results' => $responses
+        ]);
     }
 
 
