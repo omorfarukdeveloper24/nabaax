@@ -63,6 +63,8 @@ class MemberController extends Controller
      ]);
     }
 
+    
+
 
     // public function signin(Request $request)
     //     {
