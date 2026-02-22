@@ -28,6 +28,8 @@ use App\Models\AdminPayHistory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
+use Google\Client;
 
 class MemberController extends Controller
 {
@@ -2535,49 +2537,102 @@ public function incomeHistory()
     
     
     
-    public function sendNotification(Request $request, \App\Services\FcmService $fcm)
+    // public function sendNotification(Request $request, \App\Services\FcmService $fcm)
+    // {
+    //     // Validate incoming request
+    //     $data = $request->validate([
+    //         'title'   => 'required|string',
+    //         'body'    => 'required|string',
+    //         'payload' => 'nullable|array',
+    //     ]);
+    
+    //     // Fetch all device tokens from DB
+    //     $tokens = DeviceToken::query()
+    //         ->pluck('token')
+    //         ->filter()
+    //         ->unique()
+    //         ->values()
+    //         ->all();
+    //     return $tokens;
+    //     if (empty($tokens)) {
+    //         return response()->json([
+    //             'ok' => false,
+    //             'error' => 'No device tokens found',
+    //         ], 404);
+    //     }
+    
+    //     $payload = array_merge($data['payload'] ?? [], [
+    //         'type' => 'general_notification',
+    //     ]);
+    
+    //     // Send FCM push notification
+    //     $res = $fcm->sendToTokensSequential(
+    //         $tokens,
+    //         $data['title'],
+    //         $data['body'],
+    //         $payload
+    //     );
+    
+    //     return response()->json([
+    //         'ok' => true,
+    //         'target' => 'tokens',
+    //         'success_count' => $res['success'],
+    //         'failure_count' => $res['failure'],
+    //         'failed_tokens' => $res['failed_tokens'],
+    //     ], 201);
+    // }
+
+    public function sendNotification(Request $request)
     {
-        // Validate incoming request
-        $data = $request->validate([
-            'title'   => 'required|string',
-            'body'    => 'required|string',
-            'payload' => 'nullable|array',
-        ]);
-    
-        // Fetch all device tokens from DB
-        $tokens = DeviceToken::query()
-            ->pluck('token')
-            ->filter()
-            ->unique()
-            ->values()
-            ->all();
-        return $tokens;
-        if (empty($tokens)) {
-            return response()->json([
-                'ok' => false,
-                'error' => 'No device tokens found',
-            ], 404);
-        }
-    
-        $payload = array_merge($data['payload'] ?? [], [
-            'type' => 'general_notification',
-        ]);
-    
-        // Send FCM push notification
-        $res = $fcm->sendToTokensSequential(
-            $tokens,
-            $data['title'],
-            $data['body'],
-            $payload
-        );
-    
-        return response()->json([
-            'ok' => true,
-            'target' => 'tokens',
-            'success_count' => $res['success'],
-            'failure_count' => $res['failure'],
-            'failed_tokens' => $res['failed_tokens'],
-        ], 201);
+
+        $receiverToken = $request->receiverToken;
+        $title = $request->title;
+        $body = $request->body;
+        $data = $request->data ?? [];
+
+        $accessToken = $this->getAccessToken();
+
+        $projectId = "nabaax-1fdde";
+
+        $response = Http::withToken($accessToken)
+            ->post("https://fcm.googleapis.com/v1/projects/$projectId/messages:send", [
+
+                "message" => [
+
+                    "token" => $receiverToken,
+
+                    "notification" => [
+                        "title" => $title,
+                        "body" => $body
+                    ],
+
+                    "data" => $data
+
+                ]
+
+            ]);
+
+        return $response->json();
+
+    }
+
+
+
+    private function getAccessToken()
+    {
+
+        $client = new Client();
+
+        $client->setAuthConfig(storage_path('app/firebase.json'));
+
+        $client->addScope('https://www.googleapis.com/auth/firebase.messaging');
+
+        $client->refreshTokenWithAssertion();
+
+        $token = $client->getAccessToken();
+
+        return $token['access_token'];
+
     }
 
 
