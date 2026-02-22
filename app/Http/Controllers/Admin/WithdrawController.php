@@ -17,9 +17,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Http;
 use Google\Client;
+use App\Traits\NotificationTrait;
 
 class WithdrawController extends Controller
 {
+        use NotificationTrait;
     /**
      * Show withdraw list with optional status filter
      */
@@ -251,50 +253,7 @@ class WithdrawController extends Controller
 
 
 
-    private function sendFcmNotification($memberId, $title, $body, $data = [])
-    {
-        $deviceTokens = DB::table('device_tokens')
-                        ->where('member_id', $memberId)
-                        ->where('status', 1)
-                        ->pluck('token')
-                        ->unique();
-
-        if ($deviceTokens->isEmpty()) {
-            return; 
-        }
-
-        $accessToken = $this->getFcmAccessToken();
-        $projectId = "nabaax-1fdde";
-
-        foreach ($deviceTokens as $token) {
-            $response = Http::withToken($accessToken)
-                ->post("https://fcm.googleapis.com/v1/projects/$projectId/messages:send", [
-                    "message" => [
-                        "token" => $token,
-                        "notification" => ["title" => $title, "body" => $body],
-                        "data" => empty($data) ? null : $data
-                    ]
-                ]);
-
-            if ($response->failed()) {
-                $responseData = $response->json();
-                if (isset($responseData['error']['details'][0]['errorCode']) && 
-                    $responseData['error']['details'][0]['errorCode'] == 'UNREGISTERED') {
-                    DB::table('device_tokens')->where('token', $token)->update(['status' => 0]);
-                }
-            }
-        }
-    }
-
-    private function getFcmAccessToken()
-    {
-        $client = new Client();
-        $client->setAuthConfig(storage_path('app/firebase.json'));
-        $client->addScope('https://www.googleapis.com/auth/firebase.messaging');
-        $client->refreshTokenWithAssertion();
-        $token = $client->getAccessToken();
-        return $token['access_token'];
-    }
+    
 
 
 
