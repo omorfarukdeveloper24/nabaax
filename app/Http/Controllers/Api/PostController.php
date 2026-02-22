@@ -33,37 +33,16 @@ class PostController extends Controller
         ]);
     }
 
+    public function testApi() {
+        return 'This is our Google cloud last testing Auto Update';
+    }
 
-
-//   public function list()
-//     {
-        
-//       $member = Auth::guard("member")->user();
-//       if (!$member) {
-//         return response()->json([
-//             'status' => failed,
-//                 'message' => 'Unauthorized user'
-//             ], 401);
-//         }
-        
-//      $posts = Post::with('member','media')
-//             ->latest()
-//             ->paginate(15);
-//         return response()->json(['status'=>'success','data'=>$posts]);
-//     }
-
-
-public function testApi() {
-    return 'This is our Google cloud last testing Auto Update';
-}
-
-   public function prosearch(Request $request)
+    public function prosearch(Request $request)
     {
         $posts = Post::select('id', 'member_id', 'content', 'visibility', 'created_at')
             ->with(['member:id,name,image,username', 'media:id,post_id,media_type,path'])
             ->where('visibility', 'public');
     
-        
         if ($request->keyword) {
             $keyword = $request->keyword;
             $posts = $posts->where(function ($query) use ($keyword) {
@@ -75,10 +54,8 @@ public function testApi() {
             });
         }
     
-  
         $posts = $posts->latest()->take(20)->get();
     
-       
         if (empty($request->keyword)) {
             return response()->json([
                 'status' => 'error',
@@ -94,124 +71,6 @@ public function testApi() {
         ]);
     }
 
-
-
-
-    
-    // public function list()
-    // {
-    //     $member = Auth::guard("member")->user();
-    
-    //     if (!$member) {
-    //         return response()->json([
-    //             'status' => 'failed',
-    //             'message' => 'Unauthorized user'
-    //         ], 401);
-    //     }
-    
-    //     $memberId = $member->id;
-    
-    //     $miniAds = Miniad::where('status', 1)
-    //         ->select('id', 'title', 'image', 'link')
-    //         ->get();
-    
-    //     if ($miniAds->isEmpty()) {
-    //         $miniAds = collect([]);
-    //     }
-    
-    //     $seed = request()->has('page') ? session()->get('post_seed') : rand(1, 9999);
-    //     if (!request()->has('page')) {
-    //         session()->put('post_seed', $seed);
-    //     }
-    
-    //     $posts = Post::select('id', 'member_id', 'content', 'visibility', 'created_at', 'total_views', 'like_count', 'dislike_count', 'comment_count','liked_by_me','disliked_by_me','is_following','status')
-    //         ->where('status', 'active')
-    //         ->with(['member', 'media'])
-    //         ->withCount([
-    //             'likes as like_count' => function ($q) {
-    //                 $q->where('type', 1);
-    //             },
-    //             'likes as dislike_count' => function ($q) {
-    //                 $q->where('type', 2);
-    //             },
-    //             'comments as comment_count'
-    //         ])
-    //         ->withExists([
-    //             'likes as liked_by_me' => function ($q) use ($memberId) {
-    //                 $q->where('member_id', $memberId)->where('type', 1);
-    //             },
-    //             'likes as disliked_by_me' => function ($q) use ($memberId) {
-    //                 $q->where('member_id', $memberId)->where('type', 2);
-    //             },
-    //         ])
-    //         // ->whereNotIn('id', function ($query) use ($memberId) {
-    //         //     $query->select('post_id')
-    //         //         ->from('post_views')
-    //         //         ->where('member_id', $memberId);
-    //         // })
-    //         ->inRandomOrder($seed) 
-    //         ->paginate(15);
-    
-    //     $posts->getCollection()->transform(function ($post, $index) use ($memberId, $miniAds) {
-    //         $isFollowing = Follow::where('follower_id', $memberId)
-    //             ->where('following_id', $post->member->id)
-    //             ->exists();
-    
-    //         $post->is_following = $isFollowing;
-    
-    //         // $followBoost = FollowBoost::where('member_id', $post->member->id)->first();
-    
-    //         // if ($followBoost && $followBoost->status === 'active') {
-    //         //     $post->follow_boost_status = 'active';
-    //         // } else {
-    //         //     $post->follow_boost_status = 'inactive';
-    //         // }
-    
-    //         // $postBoost = PostBoost::where('post_id', $post->id)->latest()->first();
-    
-    //         // if ($postBoost && $postBoost->status === 'active') {
-    //         //     $post->post_boost = [
-    //         //         'id' => $postBoost->id,
-    //         //         'message_link' => $postBoost->message_link,
-    //         //         'website_link' => $postBoost->website_link,
-    //         //         'status' => 'active'
-    //         //     ];
-    //         // } else {
-    //         //     $post->post_boost = [
-    //         //         'id' => null,
-    //         //         'status' => 'inactive'
-    //         //     ];
-    //         // }
-    
-    //         // if ($miniAds->count() > 0) {
-    //         //     $start = ($index * 2) % $miniAds->count();
-    //         //     $miniAdPair = [];
-    
-    //         //     for ($i = 0; $i < 2; $i++) {
-    //         //         $miniAdPair[] = $miniAds[($start + $i) % $miniAds->count()];
-    //         //     }
-    
-    //         //     $post->mini_ads = $miniAdPair;
-    //         // } else {
-    //         //     $post->mini_ads = [];
-    //         // }
-
-    //         if ($miniAds->count() > 0) {
-    //             $adIndex = $index % $miniAds->count();
-                
-    //             $post->mini_ads = $miniAds[$adIndex]; 
-    //         } else {
-    //             $post->mini_ads = null; 
-    //         }
-    
-    //         return $post;
-    //     });
-    
-    //     return response()->json([
-    //         'status' => 'success',
-    //         'data' => $posts
-    //     ]);
-    // }
 
 
     public function list()
@@ -294,398 +153,97 @@ public function testApi() {
         ]);
     }
     
-    
-    
 
-    
-    
-    
-    // This code our Correct post code latest version 22 June 2024
-    
-    
-    
-    // public function list()
-    // {
-    //     $member = Auth::guard("member")->user();
-    
-    //     if (!$member) {
-    //         return response()->json([
-    //             'status' => 'failed',
-    //             'message' => 'Unauthorized user'
-    //         ], 401);
-    //     }
-    
-    //     $memberId = $member->id;
-    
-    //     $miniAds = Miniad::where('status', 1)
-    //         ->select('id', 'title', 'image', 'link')
-    //         ->get();
-    
-    //     if ($miniAds->isEmpty()) {
-    //         $miniAds = collect([]);
-    //     }
-    
-    //     $posts = Post::with(['member', 'media'])
-    //         ->withCount([
-    //             'likes as like_count' => function ($q) {
-    //                 $q->where('type', 1);
-    //             },
-    //             'likes as dislike_count' => function ($q) {
-    //                 $q->where('type', 2);
-    //             },
-    //             'comments as comment_count'
-    //         ])
-    //         ->withExists([
-    //             'likes as liked_by_me' => function ($q) use ($memberId) {
-    //                 $q->where('member_id', $memberId)->where('type', 1);
-    //             },
-    //             'likes as disliked_by_me' => function ($q) use ($memberId) {
-    //                 $q->where('member_id', $memberId)->where('type', 2);
-    //             },
-    //         ])
-    //         ->whereNotIn('id', function ($query) use ($memberId) {
-    //             $query->select('post_id')
-    //                 ->from('post_views')
-    //                 ->where('member_id', $memberId);
-    //         })
-    //         ->latest()
-    //         ->paginate(10);
-            
-        
-    
-    //     $posts->getCollection()->transform(function ($post, $index) use ($memberId, $miniAds) {
-    //         $isFollowing = Follow::where('follower_id', $memberId)
-    //             ->where('following_id', $post->member->id)
-    //             ->exists();
-    
-    //         $post->is_following = $isFollowing;
-            
-            
-    //         $followBoost = FollowBoost::where('member_id', $post->member->id)->first();
-    
-    //         if ($followBoost && $followBoost->status === 'active') {
-    //             $post->follow_boost_status = 'active';
-    //         } else {
-    //             $post->follow_boost_status = 'inactive';
-    //         }
-            
-    //         // PostBoost check
-    //         $postBoost = PostBoost::where('post_id', $post->id)->latest()->first();
-            
-        
-    //         if ($postBoost && $postBoost->status === 'active') {
-    //             $post->post_boost = [
-    //                 'id' => $postBoost->id,
-    //                 'message_link' => $postBoost->message_link,
-    //                 'website_link' => $postBoost->website_link,
-    //                 'status' => 'active'
-    //             ];
-    //         } else {
-    //             $post->post_boost = [
-    //                 'id' => null,
-    //                 'status' => 'inactive'
-    //             ];
-    //         }
-    
-    //         if ($miniAds->count() > 0) {
-                
-    //             $start = ($index * 2) % $miniAds->count();
-    //             $miniAdPair = [];
-    
-    //             for ($i = 0; $i < 2; $i++) {
-    //                 $miniAdPair[] = $miniAds[($start + $i) % $miniAds->count()];
-    //             }
-    
-    //             $post->mini_ads = $miniAdPair;
-    //         } else {
-    //             $post->mini_ads = [];
-    //         }
-    
-    //         return $post;
-    //     });
-    
-    //     return response()->json([
-    //         'status' => 'success',
-    //         'data' => $posts
-    //     ]);
-    // }
-
-
-
-
-
-
-
-
-
-
-public function miniads(Request $request)
-{
-    $member = Auth::guard('member')->user();
-
-    if (!$member) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Unauthorized'
-        ], 401);
-    }
-
-    $validator = Validator::make($request->all(), [
-        'title'  => 'required|string|max:255',
-        'image'  => 'required|image|mimes:jpg,jpeg,png,webp',
-        'link'   => 'required|max:255',
-        'status' => 'required|in:0,1',
-    ]);
-
-    if ($validator->fails()) {
-        return response()->json([
-            'success' => false,
-            'errors'  => $validator->errors(),
-        ], 422);
-    }
-
-    $validated = $validator->validated();
-
-    $data = [
-        'member_id' => $member->id,
-        'title'     => $validated['title'],
-        'link'      => $validated['link'] ?? null,
-        'status'    => $validated['status'],
-        'image'     => null,
-    ];
-
-    if ($request->hasFile('image')) {
-        try {
-            $image = $request->file('image');
-
-            $originalName = pathinfo($image->getClientOriginalName(), PATHINFO_FILENAME);
-            $cleanName = time() . '-' . strtolower(preg_replace('/\s+/', '-', $originalName)) . '.webp';
-            $fileName = 'miniads/' . $cleanName;
-
-            $img = Image::make($image->getRealPath());
-
-            $img->orientate(); 
-
-            $encodedImage = $img->encode('webp', 80);
-
-            $keyFileData = config('filesystems.disks.gcs.key_file');
-            if (!is_array($keyFileData)) {
-                $keyFileData = json_decode(file_get_contents(base_path($keyFileData)), true);
-            }
-            
-            $storage = new StorageClient([
-                'projectId' => config('filesystems.disks.gcs.project_id'),
-                'keyFile' => $keyFileData,
-            ]);
-
-            $bucketName = config('filesystems.disks.gcs.bucket');
-            $bucket = $storage->bucket($bucketName);
-
-            $object = $bucket->upload($encodedImage->getEncoded(), [
-                'name' => $fileName,
-                'metadata' => [
-                    'contentType' => 'image/webp'
-                ]
-            ]);
-
-            if ($object) {
-                $data['image'] = "https://storage.googleapis.com/" . $bucketName . "/" . $fileName;
-            }
-
-        } catch (\Exception $e) {
-            \Log::error("GCS Upload Error: " . $e->getMessage());
-            
+    public function miniads(Request $request)
+    {
+        $member = Auth::guard('member')->user();
+        if (!$member) {
             return response()->json([
                 'success' => false,
-                'message' => 'Upload failed: ' . $e->getMessage(),
-            ], 500);
+                'message' => 'Unauthorized'
+            ], 401);
         }
+        $validator = Validator::make($request->all(), [
+            'title'  => 'required|string|max:255',
+            'image'  => 'required|image|mimes:jpg,jpeg,png,webp',
+            'link'   => 'required|max:255',
+            'status' => 'required|in:0,1',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors'  => $validator->errors(),
+            ], 422);
+        }
+
+        $validated = $validator->validated();
+
+        $data = [
+            'member_id' => $member->id,
+            'title'     => $validated['title'],
+            'link'      => $validated['link'] ?? null,
+            'status'    => $validated['status'],
+            'image'     => null,
+        ];
+
+        if ($request->hasFile('image')) {
+            try {
+                $image = $request->file('image');
+
+                $originalName = pathinfo($image->getClientOriginalName(), PATHINFO_FILENAME);
+                $cleanName = time() . '-' . strtolower(preg_replace('/\s+/', '-', $originalName)) . '.webp';
+                $fileName = 'miniads/' . $cleanName;
+
+                $img = Image::make($image->getRealPath());
+
+                $img->orientate(); 
+
+                $encodedImage = $img->encode('webp', 80);
+
+                $keyFileData = config('filesystems.disks.gcs.key_file');
+                if (!is_array($keyFileData)) {
+                    $keyFileData = json_decode(file_get_contents(base_path($keyFileData)), true);
+                }
+                
+                $storage = new StorageClient([
+                    'projectId' => config('filesystems.disks.gcs.project_id'),
+                    'keyFile' => $keyFileData,
+                ]);
+
+                $bucketName = config('filesystems.disks.gcs.bucket');
+                $bucket = $storage->bucket($bucketName);
+
+                $object = $bucket->upload($encodedImage->getEncoded(), [
+                    'name' => $fileName,
+                    'metadata' => [
+                        'contentType' => 'image/webp'
+                    ]
+                ]);
+
+                if ($object) {
+                    $data['image'] = "https://storage.googleapis.com/" . $bucketName . "/" . $fileName;
+                }
+
+            } catch (\Exception $e) {
+                \Log::error("GCS Upload Error: " . $e->getMessage());
+                
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Upload failed: ' . $e->getMessage(),
+                ], 500);
+            }
+        }
+
+        $miniad = MiniAd::create($data);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Mini Ad uploaded successfully!',
+            'url'     => $data['image'],
+            'data'    => $miniad
+        ]);
     }
-
-    $miniad = MiniAd::create($data);
-
-    return response()->json([
-        'success' => true,
-        'message' => 'Mini Ad uploaded successfully!',
-        'url'     => $data['image'],
-        'data'    => $miniad
-    ]);
-}
-
-
-
-
-
-
-
-
-    
-    // public function postvideo()
-    // {
-    //     $member = Auth::guard("member")->user();
-    
-    //     if (!$member) {
-    //         return response()->json([
-    //             'status' => 'failed',
-    //             'message' => 'Unauthorized user'
-    //         ], 401);
-    //     }
-    
-    //     $memberId = $member->id;
-    
-    //     $posts = Post::with(['member', 'media' => function ($q) {
-    //                 $q->where('media_type', 'video'); 
-    //             }])
-    //             ->whereHas('media', function ($q) {
-    //                 $q->where('media_type', 'video'); 
-    //             })
-    //             ->withCount([
-    //                 'likes as like_count' => function ($q) {
-    //                     $q->where('type', 1);
-    //                 },
-    //                 'likes as dislike_count' => function ($q) {
-    //                     $q->where('type', 2);
-    //                 },
-    //             ])
-    //             ->withExists([
-    //                 'likes as liked_by_me' => function ($q) use ($memberId) {
-    //                     $q->where('member_id', $memberId)->where('type', 1);
-    //                 },
-    //                 'likes as disliked_by_me' => function ($q) use ($memberId) {
-    //                     $q->where('member_id', $memberId)->where('type', 2);
-    //                 },
-    //             ])
-    //             ->whereNotIn('id', function ($query) use ($memberId) {
-    //                 $query->select('post_id')
-    //                     ->from('post_views')
-    //                     ->where('member_id', $memberId);
-    //             })
-    //             ->latest()
-    //             ->paginate(15);
-    
-    //     return response()->json([
-    //         'status' => 'success',
-    //         'data' => $posts
-    //     ]);
-    // }
-    
-    // public function postvideo()
-    // {
-    //     $member = Auth::guard('member')->user();
-    
-    //     if (!$member) {
-    //         return response()->json([
-    //             'status' => 'failed',
-    //             'message' => 'Unauthorized user'
-    //         ], 401);
-    //     }
-    
-    //     $memberId = $member->id;
-    
-    //     $videos = Post_media::with([
-    //             'post' => function ($q) use ($memberId) {
-    //                 $q->with(['member'])
-    //                     ->withCount([
-    //                         'likes as like_count' => function ($q) {
-    //                             $q->where('type', 1);
-    //                         },
-    //                         'likes as dislike_count' => function ($q) {
-    //                             $q->where('type', 2);
-    //                         },
-    //                     ])
-    //                     ->withExists([
-    //                         'likes as liked_by_me' => function ($q) use ($memberId) {
-    //                             $q->where('member_id', $memberId)->where('type', 1);
-    //                         },
-    //                         'likes as disliked_by_me' => function ($q) use ($memberId) {
-    //                             $q->where('member_id', $memberId)->where('type', 2);
-    //                         },
-    //                     ]);
-    //             }
-    //         ])
-    //         ->where('media_type', 'video') // ✅ শুধু ভিডিও মিডিয়া
-    //         ->whereHas('post', function ($q) {
-    //             $q->where('visibility', 'public');
-    //         })
-    //         ->latest()
-    //         ->paginate(15);
-    
-    //     return response()->json([
-    //         'status' => 'success',
-    //         'data' => $videos
-    //     ]);
-    // }
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    // public function postvideo()
-    // {
-    //     $member = Auth::guard('member')->user();
-    //     if (!$member) {
-    //         return response()->json([
-    //             'status' => 'failed',
-    //             'message' => 'Unauthorized user'
-    //         ], 401);
-    //     }
-    
-    //     $memberId = $member->id;
-    
-    //     $watchedVideos = VideoView::where('member_id', $memberId)
-    //         ->pluck('post_media_id')
-    //         ->toArray();
-    
-    //     $videos = Post_media::with([
-    //             'post' => function ($q) use ($memberId) {
-    //                 $q->select('id', 'member_id', 'content', 'visibility', 'created_at')
-    //                     ->with(['member'])
-    //                     ->withCount([
-    //                         'likes as like_count' => fn($q) => $q->where('type', 1),
-    //                         'likes as dislike_count' => fn($q) => $q->where('type', 2),
-    //                         'comments as comment_count',
-    //                     ])
-    //                     ->withExists([
-    //                         'likes as liked_by_me' => fn($q) => $q->where('member_id', $memberId)->where('type', 1),
-    //                         'likes as disliked_by_me' => fn($q) => $q->where('member_id', $memberId)->where('type', 2),
-    //                     ]);
-    //             }
-    //         ])
-    //         ->where('media_type', 'video')
-    //         ->whereHas('post', fn($q) => $q->where('visibility', 'public'))
-    //         ->whereNotIn('id', $watchedVideos)
-    //         ->latest()
-    //         ->paginate(5);
-    
-    //     $miniads = MiniAd::where('status', 1)->get();
-    //     $miniCount = $miniads->count();
-    
-    //     $videos->getCollection()->transform(function ($video, $index) use ($miniads, $miniCount) {
-    //         $firstIndex = ($index * 2) % $miniCount;
-    //         $secondIndex = ($firstIndex + 1) % $miniCount;
-    
-    //         $video->mini_ads = [
-    //             $miniads[$firstIndex],
-    //             $miniads[$secondIndex],
-    //         ];
-    
-    //         return $video;
-    //     });
-    
-    //     return response()->json([
-    //         'status' => 'success',
-    //         'data' => $videos
-    //     ]);
-    // }
-
-
-
-    // ===============okk up video  ==============
-
 
 
     public function postvideo()
@@ -704,10 +262,6 @@ public function miniads(Request $request)
         if (!request()->has('page')) {
             session()->put('video_seed', $seed);
         }
-
-        // $watchedVideos = VideoView::where('member_id', $memberId)
-        //     ->pluck('post_media_id')
-        //     ->toArray();
 
         $videos = Post_media::with([
                 'post' => function ($q) use ($memberId) {
@@ -735,17 +289,14 @@ public function miniads(Request $request)
             $post = $video->post;
             
             if ($post) {
-                
                 $isFollowing = Follow::where('follower_id', $memberId)
                     ->where('following_id', $post->member_id)
                     ->exists();
                 $post->is_following = $isFollowing;
 
-                
                 $followBoost = FollowBoost::where('member_id', $post->member_id)->first();
                 $post->follow_boost_status = ($followBoost && $followBoost->status === 'active') ? 'active' : 'inactive';
 
-                // পোস্ট বুস্ট চেক
                 $postBoost = PostBoost::where('post_id', $post->id)->latest()->first();
                 if ($postBoost && $postBoost->status === 'active') {
                     $post->post_boost = [
@@ -768,467 +319,54 @@ public function miniads(Request $request)
         ]);
     }
     
-    // public function postvideo()
-    // {
-    //     $member = Auth::guard('member')->user();
-
-    //     if (!$member) {
-    //         return response()->json([
-    //             'status' => 'failed',
-    //             'message' => 'Unauthorized user'
-    //         ], 401);
-    //     }
-
-    //     $memberId = $member->id;
-
-    //     $watchedVideos = VideoView::where('member_id', $memberId)
-    //         ->pluck('post_media_id')
-    //         ->toArray();
-
-    //     $videos = Post_media::with([
-    //             'post' => function ($q) use ($memberId) {
-    //                 $q->select('id', 'member_id', 'content', 'visibility', 'created_at')
-    //                     ->with(['member'])
-    //                     ->withCount([
-    //                         'likes as like_count' => fn($q) => $q->where('type', 1),
-    //                         'likes as dislike_count' => fn($q) => $q->where('type', 2),
-    //                     ])
-    //                     ->withExists([
-    //                         'likes as liked_by_me' => fn($q) => $q->where('member_id', $memberId)->where('type', 1),
-    //                         'likes as disliked_by_me' => fn($q) => $q->where('member_id', $memberId)->where('type', 2),
-    //                     ]);
-    //             }
-    //         ])
-    //         ->where('media_type', 'video')
-    //         ->whereHas('post', fn($q) => $q->where('visibility', 'public'))
-    //         ->whereNotIn('id', $watchedVideos)
-    //         ->latest()
-    //         ->paginate(15);
-
-    //     return response()->json([
-    //         'status' => 'success',
-    //         'data' => $videos
-    //     ]);
-    // }
-
-
-
-
-
-
-    // public function store(Request $request)
-    // {
-    //     // ১. ভ্যালিডেশন
-    //     $request->validate([
-    //         'content' => 'nullable|string',
-    //         'visibility' => 'required',
-    //         'media.*' => 'nullable|file|max:51200', // ৫২ এমবি ম্যাক্স
-    //     ]);
-
-    //     $member = Auth::guard("member")->user();
-    //     if (!$member) return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
-
-    //     // ক্রেডেনশিয়াল এবং এক্সটেনশন সেটআপ
-    //     $keyFileData = config('filesystems.disks.gcs.key_file');
-    //     $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
-    //     $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
-
-    //     // ২. কন্টেন্ট ফিল্টারিং (Image & Video)
-    //     if ($request->hasFile('media')) {
-            
-    //         // ইমেজ এবং ভিডিও ক্লায়েন্ট ইনিশিয়ালাইজ
-    //         $imageAnnotator = new \Google\Cloud\Vision\V1\ImageAnnotatorClient([
-    //             'credentials' => $keyFileData,
-    //             'scopes' => ['https://www.googleapis.com/auth/cloud-platform']
-    //         ]);
-
-    //         $videoClient = new \Google\Cloud\VideoIntelligence\V1\VideoIntelligenceServiceClient([
-    //             'credentials' => $keyFileData
-    //         ]);
-
-    //         try {
-    //             foreach ($request->file('media') as $file) {
-    //                 $extension = strtolower($file->getClientOriginalExtension());
-                    
-    //                 // --- ইমেজ ফিল্টারিং ---
-    //                 if (in_array($extension, $imageExtensions)) {
-    //                     $content = file_get_contents($file->getRealPath());
-    //                     $response = $imageAnnotator->safeSearchDetection($content);
-    //                     $safe = $response->getSafeSearchAnnotation();
-
-    //                     if ($safe->getAdult() >= 4 || $safe->getRacy() >= 4) {
-    //                         return response()->json(['status' => 'failed', 'message' => 'ছবিতে আপত্তিজনক কন্টেন্ট পাওয়া গেছে!'], 403);
-    //                     }
-    //                 } 
-                    
-    //                 // --- ভিডিও ফিল্টারিং ---
-    //                 elseif (in_array($extension, $videoExtensions)) {
-    //                     $inputContent = file_get_contents($file->getRealPath());
-    //                     $features = [\Google\Cloud\VideoIntelligence\V1\Feature::EXPLICIT_CONTENT_DETECTION];
-                        
-    //                     // ভিডিও অ্যানালাইসিস শুরু
-    //                     $operation = $videoClient->annotateVideo([
-    //                         'inputContent' => $inputContent,
-    //                         'features' => $features,
-    //                     ]);
-
-    //                     // অ্যানালাইসিস শেষ হওয়া পর্যন্ত অপেক্ষা করবে
-    //                     $operation->pollUntilComplete();
-
-    //                     if ($operation->operationSucceeded()) {
-    //                         $results = $operation->getResult()->getAnnotationResults()[0];
-    //                         $explicitAnnotation = $results->getExplicitAnnotation();
-
-    //                         foreach ($explicitAnnotation->getFrames() as $frame) {
-    //                             $likelihood = $frame->getPornographyLikelihood();
-    //                             // ৪ = Likely, ৫ = Very Likely (পর্নোগ্রাফি বা আপত্তিজনক কিছু থাকলে)
-    //                             if ($likelihood >= 4) {
-    //                                 return response()->json(['status' => 'failed', 'message' => 'ভিডিওতে আপত্তিজনক কন্টেন্ট পাওয়া গেছে!'], 403);
-    //                             }
-    //                         }
-    //                     }
-    //                 }
-    //             }
-    //         } catch (\Exception $e) {
-    //             \Log::error("Intelligence API Error: " . $e->getMessage());
-    //         } finally {
-    //             $imageAnnotator->close();
-    //             $videoClient->close();
-    //         }
-    //     }
-
-    //     // ৩. ডাটাবেসে পোস্ট তৈরি
-    //     $post = \App\Models\Post::create([
-    //         'member_id' => $member->id,
-    //         'content' => $request->content,
-    //         'boost_status' => $request->boost_status ?? 0,
-    //         'visibility' => $request->visibility,
-    //         'is_pinned' => $request->is_pinned ?? false,
-    //         'scheduled_at' => $request->scheduled_at,
-    //     ]);
-
-    //     // ৪. মিডিয়া আপলোড প্রসেস (GCS এবং ডাটাবেস)
-    //     if ($request->hasFile('media')) {
-    //         try {
-    //             $storage = new \Google\Cloud\Storage\StorageClient([
-    //                 'projectId' => config('filesystems.disks.gcs.project_id'),
-    //                 'keyFile'    => $keyFileData, 
-    //             ]);
-                
-    //             $bucket = $storage->bucket(config('filesystems.disks.gcs.bucket'));
-
-    //             foreach ($request->file('media') as $file) {
-    //                 $extension = strtolower($file->getClientOriginalExtension());
-    //                 $fileNameBase = time() . '-' . uniqid();
-
-    //                 if (in_array($extension, $imageExtensions)) {
-    //                     // ইমেজ প্রসেসিং
-    //                     $img = \Intervention\Image\Facades\Image::make($file->getRealPath())->resize(1200, null, function ($constraint) {
-    //                         $constraint->aspectRatio();
-    //                         $constraint->upsize();
-    //                     });
-
-    //                     $encoded = (string) $img->encode('webp', 85);
-    //                     $fileName = "posts/images/{$fileNameBase}.webp";
-                        
-    //                     $bucket->upload($encoded, [
-    //                         'name' => $fileName,
-    //                         'metadata' => ['contentType' => 'image/webp']
-    //                     ]);
-
-    //                     $this->saveMediaRecord($post->id, 'image', $fileName);
-
-    //                 } elseif (in_array($extension, $videoExtensions)) {
-                        
-    //                     $fileName = "posts/videos/{$fileNameBase}.{$extension}";
-                        
-    //                     $bucket->upload(fopen($file->getRealPath(), 'r'), [
-    //                         'name' => $fileName,
-    //                         'metadata' => ['contentType' => $file->getMimeType()]
-    //                     ]);
-
-    //                     $this->saveMediaRecord($post->id, 'video', $fileName);
-    //                 }
-    //             }
-    //         } catch (\Exception $e) {
-    //             \Log::error("Media Upload Error: " . $e->getMessage());
-    //         }
-    //     }
-
-    //     return response()->json([
-    //         'status' => 'success',
-    //         'message' => 'Post created successfully!',
-    //         'post' => $post->load('media')
-    //     ]);
-    // }
-
-    // private function saveMediaRecord($postId, $type, $path)
-    // {
-    //     \App\Models\Post_media::create([
-    //         'post_id' => $postId,
-    //         'media_type' => $type,
-    //         'path' => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $path,
-    //     ]);
-    // }
-
-
-
-
-
-    // THIS IS OUR VIDEO 18 + CODE START===========================================================================
-    // public function store(Request $request)
-    // {
-    //     // ১. ভ্যালিডেশন
-    //     $request->validate([
-    //         'content' => 'nullable|string',
-    //         'visibility' => 'required',
-    //         'media.*' => 'nullable|file|max:51200', // ৫২ এমবি ম্যাক্স
-    //     ]);
-
-    //     $member = Auth::guard("member")->user();
-    //     if (!$member) return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
-
-    //     $keyFileData = config('filesystems.disks.gcs.key_file');
-    //     $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
-    //     $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
-
-    //     // ২. ইমেজ প্রি-ফিল্টারিং (ইমেজ আপত্তিজনক হলে পোস্টই হবে না)
-    //     if ($request->hasFile('media')) {
-    //         $imageAnnotator = new \Google\Cloud\Vision\V1\ImageAnnotatorClient(['credentials' => $keyFileData]);
-    //         try {
-    //             foreach ($request->file('media') as $file) {
-    //                 $extension = strtolower($file->getClientOriginalExtension());
-    //                 if (in_array($extension, $imageExtensions)) {
-    //                     $content = file_get_contents($file->getRealPath());
-    //                     $response = $imageAnnotator->safeSearchDetection($content);
-    //                     $safe = $response->getSafeSearchAnnotation();
-
-    //                     if ($safe->getAdult() >= 4 || $safe->getRacy() >= 4) {
-    //                         return response()->json(['status' => 'failed', 'message' => 'ছবিতে আপত্তিজনক কন্টেন্ট পাওয়া গেছে!'], 403);
-    //                     }
-    //                 }
-    //             }
-    //         } finally {
-    //             $imageAnnotator->close();
-    //         }
-    //     }
-
-    //     // ৩. ভিডিও আছে কি না চেক করা
-    //     $hasVideo = false;
-    //     if ($request->hasFile('media')) {
-    //         foreach ($request->file('media') as $file) {
-    //             if (in_array(strtolower($file->getClientOriginalExtension()), $videoExtensions)) {
-    //                 $hasVideo = true;
-    //                 break;
-    //             }
-    //         }
-    //     }
-
-    //     // ৪. ডাটাবেসে পোস্ট তৈরি (ভিডিও থাকলে স্ট্যাটাস হবে pending)
-    //     $post = \App\Models\Post::create([
-    //         'member_id' => $member->id,
-    //         'content' => $request->content,
-    //         'boost_status' => $request->boost_status ?? 0,
-    //         'visibility' => $request->visibility,
-    //         'is_pinned' => $request->is_pinned ?? false,
-    //         'scheduled_at' => $request->scheduled_at,
-    //         'status' => $hasVideo ? 'pending' : 'active', 
-    //     ]);
-
-    //     // ৫. মিডিয়া আপলোড প্রসেস
-    //     if ($request->hasFile('media')) {
-    //         try {
-    //             $storage = new \Google\Cloud\Storage\StorageClient([
-    //                 'projectId' => config('filesystems.disks.gcs.project_id'),
-    //                 'keyFile'    => $keyFileData, 
-    //             ]);
-    //             $bucket = $storage->bucket(config('filesystems.disks.gcs.bucket'));
-
-    //             foreach ($request->file('media') as $file) {
-    //                 $extension = strtolower($file->getClientOriginalExtension());
-    //                 $fileNameBase = time() . '-' . uniqid();
-
-    //                 if (in_array($extension, $imageExtensions)) {
-    //                     $img = \Intervention\Image\Facades\Image::make($file->getRealPath())->resize(1200, null, function ($constraint) {
-    //                         $constraint->aspectRatio(); $constraint->upsize();
-    //                     });
-    //                     $fileName = "posts/images/{$fileNameBase}.webp";
-    //                     $bucket->upload((string)$img->encode('webp', 85), [
-    //                         'name' => $fileName,
-    //                         'metadata' => ['contentType' => 'image/webp']
-    //                     ]);
-    //                     $this->saveMediaRecord($post->id, 'image', $fileName);
-
-    //                 } elseif (in_array($extension, $videoExtensions)) {
-    //                     $fileName = "posts/videos/{$fileNameBase}.{$extension}";
-    //                     $bucket->upload(fopen($file->getRealPath(), 'r'), [
-    //                         'name' => $fileName,
-    //                         'metadata' => ['contentType' => $file->getMimeType()]
-    //                     ]);
-    //                     $this->saveMediaRecord($post->id, 'video', $fileName);
-
-    //                     // ব্যাকগ্রাউন্ড জব কল করা
-    //                     \App\Jobs\ProcessVideoSafetyCheck::dispatch($post->id, $fileName);
-    //                 }
-    //             }
-    //         } catch (\Exception $e) {
-    //             \Log::error("Media Upload Error: " . $e->getMessage());
-    //         }
-    //     }
-
-    //     return response()->json([
-    //         'status' => 'success',
-    //         'message' => $hasVideo ? 'পোস্টটি সফলভাবে আপলোড হয়েছে। ভিডিওটি রিভিউ করা হচ্ছে, ৫ মিনিটের মধ্যে পাবলিশ হবে।' : 'পোস্টটি সফলভাবে পাবলিশ হয়েছে।',
-    //         'post' => $post->load('media')
-    //     ]);
-    // }
-
-
-
-
     
 
-    // private function saveMediaRecord($postId, $type, $path)
-    // {
-    //     \App\Models\Post_media::create([
-    //         'post_id' => $postId,
-    //         'media_type' => $type,
-    //         'path' => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $path,
-    //     ]);
-    // }
+// ========= THIS IS OUR POST STORE FUNCTION WITH 18+ CONTENT FILTER START==============
+    public function store(Request $request)
+    {
+        $request->validate([
+            'content' => 'nullable|string',
+            'visibility' => 'required',
+            'media.*' => 'nullable|file|max:102400',
+        ]);
 
-    // THIS IS OUR VIDEO 18 + CODE END===========================================================================
+        $member = Auth::guard("member")->user();
+        if (!$member) return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
 
+        $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+        $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
+        $post = \App\Models\Post::create([
+            'member_id' => $member->id,
+            'content' => $request->content,
+            'visibility' => $request->visibility,
+            'status' => 'pending', 
+        ]);
 
+        if ($request->hasFile('media')) {
+            foreach ($request->file('media') as $file) {
+                $extension = strtolower($file->getClientOriginalExtension());
+                $fileNameBase = time() . '-' . uniqid();
 
-
-// This our 18+ backgorund job code start ///////////////
-
-// public function store(Request $request)
-// {
-//     $request->validate([
-//         'content' => 'nullable|string',
-//         'visibility' => 'required',
-//         'media.*' => 'nullable|file|max:51200',
-//     ]);
-
-//     $member = Auth::guard("member")->user();
-//     if (!$member) return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
-
-//     $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
-//     $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
-
-//     // ইমেজ সেফটি চেক (এটি দ্রুত হয় তাই সিঙ্ক্রোনাস রাখা যায়)
-//     if ($request->hasFile('media')) {
-//         $imageAnnotator = new \Google\Cloud\Vision\V1\ImageAnnotatorClient(['credentials' => config('filesystems.disks.gcs.key_file')]);
-//         foreach ($request->file('media') as $file) {
-//             if (in_array(strtolower($file->getClientOriginalExtension()), $imageExtensions)) {
-//                 $response = $imageAnnotator->safeSearchDetection(file_get_contents($file->getRealPath()));
-//                 $safe = $response->getSafeSearchAnnotation();
-//                 if ($safe->getAdult() >= 4 || $safe->getRacy() >= 4) {
-//                     $imageAnnotator->close();
-//                     return response()->json(['status' => 'failed', 'message' => 'ছবিতে আপত্তিজনক কন্টেন্ট পাওয়া গেছে!'], 403);
-//                 }
-//             }
-//         }
-//         $imageAnnotator->close();
-//     }
-
-//     $hasVideo = false;
-//     foreach ($request->file('media') ?? [] as $file) {
-//         if (in_array(strtolower($file->getClientOriginalExtension()), $videoExtensions)) {
-//             $hasVideo = true; break;
-//         }
-//     }
-
-//     // পোস্ট তৈরি (ভিডিও থাকলে pending/0 স্ট্যাটাস)
-//     $post = \App\Models\Post::create([
-//         'member_id' => $member->id,
-//         'content' => $request->content,
-//         'visibility' => $request->visibility,
-//         'status' => $hasVideo ? 'pending' : 'active', 
-//     ]);
-
-//     if ($request->hasFile('media')) {
-//         foreach ($request->file('media') as $file) {
-//             $extension = strtolower($file->getClientOriginalExtension());
-//             $fileNameBase = time() . '-' . uniqid();
-
-//             if (in_array($extension, $imageExtensions)) {
-//                 // ইমেজ প্রসেসিং ও আপলোড আগের মতোই রাখতে পারেন (অথবা জবে পাঠাতে পারেন)
-//                 $this->uploadImage($post, $file, $fileNameBase);
-//             } elseif (in_array($extension, $videoExtensions)) {
-//                 // ভিডিওটি টেম্পোরারি স্টোরেজে সেভ করুন যেন জব ফাইলটি খুঁজে পায়
-//                 $tempPath = $file->storeAs('temp_videos', $fileNameBase . '.' . $extension, 'local');
-                
-//                 // ভিডিও আপলোড এবং সেফটি চেকের জন্য জব কল
-//                 \App\Jobs\ProcessVideoSafetyCheck::dispatch($post->id, storage_path('app/' . $tempPath), $extension);
-//             }
-//         }
-//     }
-
-//     return response()->json([
-//         'status' => 'success',
-//         'message' => $hasVideo ? 'আপনার ভিডিওটি আপলোড হচ্ছে...' : 'পোস্টটি সফলভাবে পাবলিশ হয়েছে।',
-//         'post' => $post->load('media')
-//     ]);
-// }
-
-// This our 18+ backgorund job code End ///////////////
-
-
-
-// This is our 18+ image and video content filter code start////////////////////////////////////////////////////////////
-public function store(Request $request)
-{
-    $request->validate([
-        'content' => 'nullable|string',
-        'visibility' => 'required',
-        'media.*' => 'nullable|file|max:102400',
-    ]);
-
-    $member = Auth::guard("member")->user();
-    if (!$member) return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
-
-    $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
-    $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
-
-    // পোস্ট তৈরি (সব মিডিয়াই এখন ব্যাকগ্রাউন্ডে প্রসেস হবে)
-    $post = \App\Models\Post::create([
-        'member_id' => $member->id,
-        'content' => $request->content,
-        'visibility' => $request->visibility,
-        'status' => 'pending', // প্রসেসিং শেষ না হওয়া পর্যন্ত পেন্ডিং
-    ]);
-
-    if ($request->hasFile('media')) {
-        foreach ($request->file('media') as $file) {
-            $extension = strtolower($file->getClientOriginalExtension());
-            $fileNameBase = time() . '-' . uniqid();
-
-            if (in_array($extension, $imageExtensions)) {
-                // ইমেজের জন্য টেম্পোরারি সেভ ও জব
-                $tempPath = $file->storeAs('temp_images', $fileNameBase . '.' . $extension, 'local');
-                \App\Jobs\ProcessImageUpload::dispatch($post->id, storage_path('app/' . $tempPath), $fileNameBase);
-            } 
-            elseif (in_array($extension, $videoExtensions)) {
-                // ভিডিওর জন্য টেম্পোরারি সেভ ও জব
-                $tempPath = $file->storeAs('temp_videos', $fileNameBase . '.' . $extension, 'local');
-                \App\Jobs\ProcessVideoSafetyCheck::dispatch($post->id, storage_path('app/' . $tempPath), $extension);
+                if (in_array($extension, $imageExtensions)) {
+                    $tempPath = $file->storeAs('temp_images', $fileNameBase . '.' . $extension, 'local');
+                    \App\Jobs\ProcessImageUpload::dispatch($post->id, storage_path('app/' . $tempPath), $fileNameBase);
+                } 
+                elseif (in_array($extension, $videoExtensions)) {
+                    $tempPath = $file->storeAs('temp_videos', $fileNameBase . '.' . $extension, 'local');
+                    \App\Jobs\ProcessVideoSafetyCheck::dispatch($post->id, storage_path('app/' . $tempPath), $extension);
+                }
             }
+        } else {
+            $post->update(['status' => 'active']);
         }
-    } else {
-        // যদি কোনো মিডিয়া না থাকে, পোস্ট সাথে সাথে একটিভ হবে
-        $post->update(['status' => 'active']);
-    }
 
-    return response()->json([
-        'status' => 'success',
-        'message' => 'আপনার পোস্টটি প্রসেস হচ্ছে এবং কিছুক্ষণের মধ্যে পাবলিশ হবে।',
-        'post' => $post->load('media')
-    ]);
-}
-// This is our 18+ image and video content filter code end////////////////////////////////////////////////////////////
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Your post is being processed and will be published shortly.',
+            'post' => $post->load('media')
+        ]);
+    }
+// ========= THIS IS OUR POST STORE FUNCTION WITH 18+ CONTENT FILTER END ==============
 
 
 public function trackView(Request $request) {
@@ -1237,11 +375,9 @@ public function trackView(Request $request) {
 
     $memberId = $member->id;
     $postId = $request->post_id;
-    $mediaId = $request->post_media_id; // নির্দিষ্ট ভিডিওর ID
+    $mediaId = $request->post_media_id; 
     $seconds = (int) $request->seconds;
 
-    // ১. পোস্ট ভিউ (যখন পোস্টটি স্ক্রিনে আসবে)
-    // এটি পুরো পোস্টের ভিউ কাউন্ট করবে, সেটাতে ছবি থাকুক বা ভিডিও।
     if ($postId) {
         $view = PostView::firstOrCreate([
             'post_id' => $postId,
@@ -1252,52 +388,45 @@ public function trackView(Request $request) {
             Post::where('id', $postId)->increment('total_views');
         }
         
-        // যদি এটি শুধু ইমেজ পোস্ট হয়, তবে এখানেই রেসপন্স শেষ।
         if (!$mediaId) {
             return response()->json(['status' => 'success', 'type' => 'post_view']);
         }
     }
 
-    // ২. ভিডিও ওয়াচ টাইম (যখন ইউজার নির্দিষ্ট ভিডিও প্লে করবে)
-    // এখানে $mediaId হলো আপনার Post_media টেবিলের ঐ নির্দিষ্ট রো-এর ID
-    // ভিডিও ওয়াচ টাইম আপডেট (এটি আপনার কন্ট্রোলারের মেথডের ভেতরে বসিয়ে দিন)
     if ($mediaId) {
-        // নির্দিষ্ট মিডিয়া ফাইলটি খুঁজে বের করা
+       
         $media = \App\Models\Post_media::find($mediaId);
         
         if (!$media) {
             return response()->json(['status' => 'error', 'message' => 'Media not found'], 404);
         }
 
-        // VideoView টেবিলে ডাটা খোঁজা বা নতুন অবজেক্ট তৈরি করা
-        // নিশ্চিত করুন আপনার VideoView মডেলে $fillable এ 'member_id' এবং 'post_media_id' আছে
         $videoView = \App\Models\VideoView::firstOrNew([
             'member_id' => $memberId,
             'post_media_id' => $mediaId
         ]);
 
-        // প্রথমবার ভিউ হলে বা নতুন রো তৈরি হলে প্রাথমিক ওয়াচ টাইম ০ সেট করা
+        
         if (!$videoView->exists) {
             $videoView->watch_time = 0;
         }
 
-        // আগের ওয়াচ টাইমের সাথে নতুন পাঠানো সেকেন্ড যোগ করা
         $updatedTime = (int) $videoView->watch_time + (int) $seconds;
 
-        // ভিডিওর মোট ডিউরেশনের (Job থেকে আসা duration) চেয়ে বেশি যেন না হয়
+        
         $maxDuration = (int) $media->duration;
         if ($updatedTime > $maxDuration && $maxDuration > 0) {
             $updatedTime = $maxDuration;
         }
 
-        // ডাটা সেভ করা
+        
         $videoView->watch_time = $updatedTime;
         $videoView->save();
 
         return response()->json([
             'status' => 'success',
             'type' => 'video_watch_time',
-            'current_watch_time' => (int) $videoView->watch_time // ইন্টিজার হিসেবে রিটার্ন
+            'current_watch_time' => (int) $videoView->watch_time 
         ]);
     }
 }
