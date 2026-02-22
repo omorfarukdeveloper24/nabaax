@@ -63,7 +63,7 @@ class MemberController extends Controller
      ]);
     }
 
-    
+
 
 
     // public function signin(Request $request)
@@ -2584,38 +2584,73 @@ public function incomeHistory()
     //     ], 201);
     // }
 
+    // public function sendNotification(Request $request)
+    // {
+
+    //     $receiverToken = $request->receiverToken;
+    //     $title = $request->title;
+    //     $body = $request->body;
+    //     $data = $request->data ?? [];
+
+    //     $accessToken = $this->getAccessToken();
+
+    //     $projectId = "nabaax-1fdde";
+
+    //     $response = Http::withToken($accessToken)
+    //         ->post("https://fcm.googleapis.com/v1/projects/$projectId/messages:send", [
+
+    //             "message" => [
+
+    //                 "token" => $receiverToken,
+
+    //                 "notification" => [
+    //                     "title" => $title,
+    //                     "body" => $body
+    //                 ],
+
+    //                 "data" => $data
+
+    //             ]
+
+    //         ]);
+
+    //     return $response->json();
+
+    // }
+
     public function sendNotification(Request $request)
     {
-
         $receiverToken = $request->receiverToken;
         $title = $request->title;
         $body = $request->body;
+        
+        // ১. ডাটা যদি খালি থাকে তবে এটি অবজেক্ট হিসেবে পাঠাতে হবে
+        // ২. ডাটার ভেতরে সব ভ্যালু স্ট্রিং (String) হতে হবে
         $data = $request->data ?? [];
+        
+        // নিশ্চিত করুন ডাটা একটি Associative Array এবং সব ভ্যালু স্ট্রিং
+        $formattedData = [];
+        foreach ($data as $key => $value) {
+            $formattedData[(string)$key] = (string)$value;
+        }
 
         $accessToken = $this->getAccessToken();
-
         $projectId = "nabaax-1fdde";
 
         $response = Http::withToken($accessToken)
             ->post("https://fcm.googleapis.com/v1/projects/$projectId/messages:send", [
-
                 "message" => [
-
                     "token" => $receiverToken,
-
                     "notification" => [
                         "title" => $title,
                         "body" => $body
                     ],
-
-                    "data" => $data
-
+                    // যদি ডাটা খালি থাকে তবে ডাটা ফিল্ড পাঠানোর দরকার নেই বা খালি অবজেক্ট দিন
+                    "data" => empty($formattedData) ? null : $formattedData
                 ]
-
             ]);
 
         return $response->json();
-
     }
 
 
