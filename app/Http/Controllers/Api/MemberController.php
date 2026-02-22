@@ -1353,9 +1353,9 @@ class MemberController extends Controller
             ->where('id', $member->division)
             ->select('id', 'name')
             ->first();
-            
+
         $countries = DB::table('countries')
-            ->where('id', $member->country)
+            ->where('id', $member->nationality)
             ->select('id', 'name')
             ->first();
     
