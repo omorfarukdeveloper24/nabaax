@@ -1354,13 +1354,13 @@ class MemberController extends Controller
             ->select('id', 'name')
             ->first();
 
-        $countries = DB::table('countries')
+        $nationality = DB::table('countries')
             ->where('id', $member->nationality)
             ->select('id', 'name')
             ->first();
     
         $member->district = $district;
-        $member->country = $countries;
+        $member->nationality = $nationality;
         $member->upazila  = $upazila;
         $member->profession  = $profession;
         $member->division = $division;
