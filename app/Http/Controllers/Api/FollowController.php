@@ -12,37 +12,6 @@ use Illuminate\Support\Facades\Validator;
 
 class FollowController extends Controller
 {
-    
-    // public function follow(Request $request)
-    // {
-    //     $follower = Auth::guard('member')->user();
-    //     $following_id = $request->id;
-
-    //     if ($follower->id == $following_id) {
-    //         return response()->json(['message' => 'নিজেকে follow করা সম্ভব নয়!'], 400);
-    //     }
-
-    //     $exists = Follow::where('follower_id', $follower->id)
-    //         ->where('following_id', $following_id)
-    //         ->exists();
-
-    //     if ($exists) {
-    //         return response()->json(['message' => 'আপনি ইতিমধ্যে এই সদস্যকে follow করেছেন!']);
-    //     }
-
-    //     Follow::create([
-    //         'follower_id' => $follower->id,
-    //         'following_id' => $following_id,
-    //     ]);
-
-    //     return response()->json(['message' => 'Follow সফলভাবে সম্পন্ন হয়েছে!']);
-    // }
-
-
-
-
-
-
     public function follow(Request $request)
     {
         $follower = Auth::guard('member')->user();
@@ -126,82 +95,6 @@ class FollowController extends Controller
         return response()->json(['message' => 'Unfollowed successfully.']);
     }
 
-
-
-
-
-    
-    
-//    public function follow(Request $request)
-//     {
-//         $follower = Auth::guard('member')->user();
-//         $following_id = $request->id;
-    
-//         if ($follower->id == $following_id) {
-//             return response()->json(['message' => 'You cannot follow yourself!'], 400);
-//         }
-    
-//         $exists = Follow::where('follower_id', $follower->id)
-//             ->where('following_id', $following_id)
-//             ->exists();
-    
-//         if ($exists) {
-//             return response()->json(['message' => 'You are already following this member!'], 400);
-//         }
-    
-        
-//         $boost = FollowBoost::where('member_id', $following_id)
-//             ->where('status', 'active')
-//             ->first();
-    
-//         $followType = 0; 
-    
-//         if ($boost && $boost->remaining_amount > 0) {
-//             $follower->increment('balance', 1);
-//             $boost->decrement('remaining_amount', 1);
-    
-//             if ($boost->remaining_amount <= 1) {
-//                 $boost->update(['status' => 'completed']);
-//             }
-    
-//             $followType = 1; 
-//         }
-       
-
-//         Follow::create([
-//             'follower_id' => $follower->id,
-//             'following_id' => $following_id,
-//             'type' => $followType
-//         ]);
-    
-//         return response()->json(['message' => 'Follow completed successfully!']);
-//     }
-
-    
-    
-//     public function unfollow(Request $request)
-//     {
-//         $follower = Auth::guard('member')->user();
-//         $follow = Follow::where('follower_id', $follower->id)
-//             ->where('following_id', $request->following_id)
-//             ->first();
-    
-//         if (!$follow) {
-//             return response()->json(['message' => 'Follow record not found.'], 404);
-//         }
-    
-//         if ($follow->type == 1) {
-//             return response()->json([
-//                 'message' => 'You cannot unfollow this member because you are earning from their boost.'
-//             ], 400);
-//         }
-    
-//         $follow->delete();
-    
-//         return response()->json(['message' => 'Follow has been successfully removed.']);
-//     }
-
-
   
     public function followers()
     {
@@ -277,7 +170,6 @@ class FollowController extends Controller
 
         $suggestions = Member::where('id', '!=', $member->id) 
             ->whereNotIn('id', $following_ids) 
-            ->where('verified', '1') 
             ->inRandomOrder() 
             ->limit(20) 
             ->select('id', 'name', 'username', 'image')

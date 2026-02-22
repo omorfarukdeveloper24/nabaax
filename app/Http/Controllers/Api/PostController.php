@@ -240,7 +240,6 @@ public function testApi() {
             session()->put('post_seed', $seed);
         }
 
-        // সংশোধিত কোয়েরি
         $posts = Post::select('id', 'member_id', 'content', 'visibility', 'created_at', 'total_views', 'status')
             ->where('status', 'active') 
             ->with([
@@ -272,14 +271,13 @@ public function testApi() {
             ->paginate(5);
 
         $posts->getCollection()->transform(function ($post, $index) use ($memberId, $miniAds) {
-            // ফলো চেক
+
             $isFollowing = Follow::where('follower_id', $memberId)
                 ->where('following_id', $post->member_id)
                 ->exists();
 
             $post->is_following = $isFollowing;
 
-            // Mini Ads লজিক
             if ($miniAds->count() > 0) {
                 $adIndex = $index % $miniAds->count();
                 $post->mini_ads = $miniAds[$adIndex]; 
