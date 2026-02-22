@@ -217,6 +217,89 @@ class PaymentServiceController extends Controller
         ]);
     }
 
+    // public function balance_transfer(Request $request)
+    // {
+    //     $member = Auth::guard('member')->user();
+        
+    //     $settings = PaymentChargeSetting::first();
+    //     $transferlimit = $settings ? $settings->transfer_limit : 100;
+
+    //     if (!$request->amount) {
+    //         return response()->json(['status' => 'failed', 'message' => 'Please enter your amount.']);
+    //     }
+    //     if (!$request->amount || $request->amount < $transferlimit) {
+    //         return response()->json(['status' => 'failed', 'message' => "Minimum $transferlimit amount required."]);
+    //     }
+
+    //     if (!$request->username) {
+    //         return response()->json(['status' => 'failed', 'message' => 'Enter target username.']);
+    //     }
+
+    //     if (!Hash::check($request->password, $member->password)) {
+    //         return response()->json(['status' => 'failed', 'message' => 'Incorrect password.']);
+    //     }
+
+    //     $childMember = Member::where('username', $request->username)->first();
+
+    //     if (!$childMember || $childMember->id == $member->id) {
+    //         return response()->json(['status' => 'failed', 'message' => 'Invalid target member.']);
+    //     }
+
+    //     if ($member->balance < $request->amount) {
+    //         return response()->json(['status' => 'failed', 'message' => 'Insufficient balance.']);
+    //     }
+
+    //     try {
+    //         DB::beginTransaction(); 
+
+    //         $member->decrement('balance', $request->amount);
+    //         $childMember->increment('balance', $request->amount);
+
+    //         $transaction_id = 'TRX' . now()->format('ymdHis') . strtoupper(Str::random(3));
+
+    //         BalanceTransfer::create([
+    //             'sender_id'   => $member->id,
+    //             'receiver_id' => $childMember->id,
+    //             'amount'      => $request->amount,
+    //         ]);
+
+    //         CustomerPayHistory::create([
+    //             'member_id' => $member->id,
+    //             'payment_name'  => 'Balance Sent to ' . $childMember->username,
+    //             'tnx'       => $transaction_id . '-S',
+    //             'amount'    => $request->amount,
+    //             'balance'   => $member->balance,
+    //             'method'    => 'Wallet',
+    //             'type'      => 'debit',
+    //         ]);
+
+    //         CustomerPayHistory::create([
+    //             'member_id' => $childMember->id,
+    //             'payment_name'  => 'Balance Received from ' . $member->username,
+    //             'tnx'       => $transaction_id . '-R',
+    //             'amount'    => $request->amount,
+    //             'balance'   => $childMember->balance,
+    //             'method'    => 'Wallet',
+    //             'type'      => 'credit',
+    //         ]);
+
+    //         DB::commit(); 
+
+    //         return response()->json([
+    //             'status' => 'success',
+    //             'message' => 'Balance transferred successfully!',
+    //             'data' => $member
+    //         ]);
+
+    //     } catch (\Exception $e) {
+    //         DB::rollBack(); 
+    //         return response()->json([
+    //             'status' => 'failed', 
+    //             'message' => $e->getMessage()
+    //         ]);
+    //     }
+    // }
+
     public function balance_transfer(Request $request)
     {
         $member = Auth::guard('member')->user();
@@ -224,9 +307,6 @@ class PaymentServiceController extends Controller
         $settings = PaymentChargeSetting::first();
         $transferlimit = $settings ? $settings->transfer_limit : 100;
 
-        if (!$request->amount) {
-            return response()->json(['status' => 'failed', 'message' => 'Please enter your amount.']);
-        }
         if (!$request->amount || $request->amount < $transferlimit) {
             return response()->json(['status' => 'failed', 'message' => "Minimum $transferlimit amount required."]);
         }
@@ -285,6 +365,28 @@ class PaymentServiceController extends Controller
 
             DB::commit(); 
 
+            // --- নোটিফিকেশন লজিক শুরু ---
+            try {
+                // ১. প্রেরকের জন্য নোটিফিকেশন (Debit)
+                $senderTitle = "Balance Sent Successfully";
+                $senderBody  = "You have successfully sent {$request->amount} TK to {$childMember->username}.";
+                $this->sendFcmNotification($member->id, $senderTitle, $senderBody, [
+                    'type' => 'balance_transfer',
+                    'action' => 'sent'
+                ]);
+
+                // ২. প্রাপকের জন্য নোটিফিকেশন (Credit)
+                $receiverTitle = "Balance Received";
+                $receiverBody  = "You have received {$request->amount} TK from {$member->username}.";
+                $this->sendFcmNotification($childMember->id, $receiverTitle, $receiverBody, [
+                    'type' => 'balance_transfer',
+                    'action' => 'received'
+                ]);
+            } catch (\Exception $e) {
+                \Log::error("Transfer FCM Error: " . $e->getMessage());
+            }
+            // --- নোটিফিকেশন লজিক শেষ ---
+
             return response()->json([
                 'status' => 'success',
                 'message' => 'Balance transferred successfully!',
@@ -306,103 +408,7 @@ class PaymentServiceController extends Controller
 
 
     
-    // public function balance_transfer(Request $request){
-    //     $member = Auth::guard('member')->user();
-    //     $transferlimit = PaymentChargeSetting::first()->transfer_limit;
-       
-    //     if (!$request->amount) {
-    //         return response()->json([
-    //             'status'  => 'failed',
-    //             'message' => 'Please enter your amount.'
-    //         ]);
-    //     }
-
-    //     if ($request->amount < $transferlimit) {
-    //         return response()->json([
-    //             'status'  => 'failed',
-    //             'message' => 'Minimum ' . $transferlimit . ' amount required.'
-    //         ]);
-    //     }
     
-    //     if (!$request->username) {
-    //         return response()->json([
-    //             'status'  => 'failed',
-    //             'message' => 'Enter the username of the account you want to send money to.'
-    //         ]);
-    //     }
-        
-    //      if (!$request->password) {
-    //         return response()->json([
-    //             'status'  => 'failed',
-    //             'message' => 'Please enter your password.'
-    //         ]);
-    //     }
-        
-    //     if (!Hash::check($request->password, $member->password)) {
-    //         return response()->json([
-    //             'status'  => 'failed',
-    //             'message' => 'Incorrect password.'
-    //         ]);
-    //     }
-        
-        
-    //     $username = $request->username;
-    //     $childMember = Member::where('username', $username)->first();
-    //     if (!$childMember) {
-    //         return response()->json([
-    //             'status' => 'failed',
-    //             'message' => 'No member found this username.'
-    //         ]);
-    //     }
-    //     if ($childMember->id == $member->id) {
-    //         return response()->json([
-    //             'status' => 'failed',
-    //             'message' => "Don't use your own username."
-    //         ]);
-    //     }
-        
-    //     if ($member->balance < $request->amount) {
-    //         return response()->json(['status' => 'failed', 'message' => 'Insufficient balance.']);
-    //     }
-    
-    //     $member->decrement('balance', $request->amount);
-    //     $childMember->increment('balance', $request->amount);
-        
-    //     $transaction_id = 'TRX-' . strtoupper(Str::random(10));
-        
-    //     BalanceTransfer::create([
-    //         'sender_id'   => $member->id,
-    //         'receiver_id' => $childMember->id,
-    //         'amount'      => $request->amount,
-    //     ]);
-
-    //     CustomerPayHistory::create([
-    //         'member_id'    => $member->id,
-    //         'pay_type'     => 'Balance Sent', 
-    //         'tnx'          => $transaction_id,
-    //         'amount'       => $request->amount,
-    //         'balance'      => $member->balance,
-    //         'method'       => 'Wallet',
-    //         'type'         => 'debit', 
-    //     ]);
-
-    //     CustomerPayHistory::create([
-    //         'member_id'    => $childMember->id,
-    //         'pay_type'     => 'Balance Received',
-    //         'tnx'          => $transaction_id,
-    //         'amount'       => $request->amount,
-    //         'balance'      => $childMember->balance,
-    //         'method'       => 'Wallet',
-    //         'type'         => 'credit', 
-    //     ]);
-    
-    //     return response()->json([
-    //         'status' => 'success',
-    //         'message' => 'Balance transferred successfully!',
-    //         'data' => $member
-    //     ]);
-        
-    // }
     
     
     public function transfer_list()
