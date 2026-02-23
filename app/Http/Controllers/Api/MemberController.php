@@ -1152,7 +1152,13 @@ class MemberController extends Controller
             ->where('id', $member->division)
             ->select('id', 'name')
             ->first();
+        
+        $nationality = DB::table('countries')
+            ->where('id', $member->nationality)
+            ->select('id', 'name')
+            ->first();
     
+        $member->nationality = $nationality;
         $member->district = $district;
         $member->upazila  = $upazila;
         $member->profession  = $profession;
