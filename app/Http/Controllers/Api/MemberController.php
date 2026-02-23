@@ -1011,59 +1011,59 @@ class MemberController extends Controller
 //         ]);
 //     }
     
-    public function monetization(Request $request)
-    {
-        $memberId = Auth::guard('member')->user()->id;
+    // public function monetization(Request $request)
+    // {
+    //     $memberId = Auth::guard('member')->user()->id;
     
-        $member = Member::select(
-            'id', 'name', 'username', 'phone', 'balance', 
-            'phoneverify', 'approved', 'verified', 'status', 'monetization'
-        )->find($memberId);
+    //     $member = Member::select(
+    //         'id', 'name', 'username', 'phone', 'balance', 
+    //         'phoneverify', 'approved', 'verified', 'status', 'monetization'
+    //     )->find($memberId);
     
-        if (!$member) {
-            return response()->json(['error' => 'Member not found'], 404);
-        }
+    //     if (!$member) {
+    //         return response()->json(['error' => 'Member not found'], 404);
+    //     }
     
-        if ($member->phoneverify != 1) {
-            return response()->json([
-                'message' => 'Phone is not verified'
-            ]);
-        }
+    //     if ($member->phoneverify != 1) {
+    //         return response()->json([
+    //             'message' => 'Phone is not verified'
+    //         ]);
+    //     }
     
-        if ($member->approved != 1) {
-            return response()->json([
-                'message' => 'Your account is not approved yet'
-            ]);
-        }
+    //     if ($member->approved != 1) {
+    //         return response()->json([
+    //             'message' => 'Your account is not approved yet'
+    //         ]);
+    //     }
     
-        if ($member->verified != 1) {
-            return response()->json([
-                'message' => 'Account verification is pending'
-            ]);
-        }
+    //     if ($member->verified != 1) {
+    //         return response()->json([
+    //             'message' => 'Account verification is pending'
+    //         ]);
+    //     }
     
-        if ($member->status != 1) {
-            return response()->json([
-                'message' => 'Account is not active'
-            ]);
-        }
+    //     if ($member->status != 1) {
+    //         return response()->json([
+    //             'message' => 'Account is not active'
+    //         ]);
+    //     }
     
-        if ($member->balance >= 2000) {
-            $member->balance -= 2000;
-            $member->monetization = 1;
-            $member->save();
+    //     if ($member->balance >= 2000) {
+    //         $member->balance -= 2000;
+    //         $member->monetization = 1;
+    //         $member->save();
     
-            return response()->json([
-                'message' => 'Balance deducted and monetization activated',
-                'balance' => $member->balance,
-                'monetization' => $member->monetization
-            ]);
-        } else {
-            return response()->json([
-                'message' => 'Insufficient balance for monetization'
-            ]);
-        }
-    }
+    //         return response()->json([
+    //             'message' => 'Balance deducted and monetization activated',
+    //             'balance' => $member->balance,
+    //             'monetization' => $member->monetization
+    //         ]);
+    //     } else {
+    //         return response()->json([
+    //             'message' => 'Insufficient balance for monetization'
+    //         ]);
+    //     }
+    // }
     
     
     
@@ -1186,6 +1186,7 @@ class MemberController extends Controller
                 },
             ])
             ->where('member_id', $memberId)
+            ->where('status', 'active')
             // ->whereNotIn('id', function ($query) use ($memberId) {
             //     $query->select('post_id')
             //           ->from('post_views')

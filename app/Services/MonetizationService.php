@@ -6,11 +6,18 @@ use App\Models\Member;
 use App\Models\Earning;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Traits\NotificationTrait;
 
 class MonetizationService {
     
-    protected $view_rate = 1.50; 
-    protected $watch_hour_rate = 5.00;
+    use NotificationTrait;
+    /**
+     * ইনকাম ক্যালকুলেশন রেট:
+     * প্রতি ১০০০ ভিউতে ১.৫০ টাকা
+     * প্রতি ১ ঘণ্টা (৩৬০০ সেকেন্ড) ওয়াচ টাইমে ৫.০০ টাকা
+     */
+    protected $view_rate = 1000.00; // প্রতি ১০০০ ভিউতে ১.৫০ টাকা
+    protected $watch_hour_rate = 3600.00;
 
     public function processMember($member) {
         DB::beginTransaction();
@@ -30,6 +37,32 @@ class MonetizationService {
         }
     }
 
+    // private function checkEligibility($member) {
+    //     $myPostIds = DB::table('posts')->where('member_id', $member->id)->pluck('id');
+
+    //     $followers = DB::table('follows')->where('following_id', $member->id)->count();
+    //     $partners = Member::where('referrer_id', $member->id)->count();
+    //     $refers = Member::where('only_reffer', $member->id)->count();
+        
+    //     $current_views = DB::table('post_views')->whereIn('post_id', $myPostIds)->count();
+    //     $watch_time = DB::table('video_views')
+    //         ->whereIn('post_media_id', function($query) use ($myPostIds) {
+    //             $query->select('id')->from('post_media')->whereIn('post_id', $myPostIds);
+    //         })->sum('watch_time') ?? 0;
+
+    //     if ($followers >= 2 || $partners >= 2 || $refers >= 2 || $watch_time >= 500) {
+    //         $member->update([
+    //             'monetization' => 1,
+    //             'monetization_activated_at' => now(),
+    //             'initial_views' => $current_views,
+    //             'initial_watch_time' => $watch_time,
+    //             'last_paid_views' => $current_views,
+    //             'last_paid_watch_time' => $watch_time
+    //         ]);
+    //         Log::info("Monetization ENABLED for Member ID: {$member->id}");
+    //     }
+    // }
+
     private function checkEligibility($member) {
         $myPostIds = DB::table('posts')->where('member_id', $member->id)->pluck('id');
 
@@ -43,16 +76,50 @@ class MonetizationService {
                 $query->select('id')->from('post_media')->whereIn('post_id', $myPostIds);
             })->sum('watch_time') ?? 0;
 
+        // --- আপনার আগের এলিজিবিলিটি লজিক ---
         if ($followers >= 2 || $partners >= 2 || $refers >= 2 || $watch_time >= 500) {
-            $member->update([
-                'monetization' => 1,
-                'monetization_activated_at' => now(),
-                'initial_views' => $current_views,
-                'initial_watch_time' => $watch_time,
-                'last_paid_views' => $current_views,
-                'last_paid_watch_time' => $watch_time
-            ]);
-            Log::info("Monetization ENABLED for Member ID: {$member->id}");
+            
+            // ১. ভেরিফাইড কি না চেক করা হচ্ছে
+            if ($member->verified == 1) {
+                
+                // মনিটাইজেশন অন করা হচ্ছে
+                $member->update([
+                    'monetization' => 1,
+                    'monetization_activated_at' => now(),
+                    'initial_views' => $current_views,
+                    'initial_watch_time' => $watch_time,
+                    'last_paid_views' => $current_views,
+                    'last_paid_watch_time' => $watch_time
+                ]);
+
+                Log::info("Monetization ENABLED for Member ID: {$member->id}");
+
+                // --- সাকসেস মেসেজ: মনিটাইজেশন অন হওয়ার পর ---
+                try {
+                    $this->sendFcmNotification($member->id, 
+                        "Monetization Activated! 🎉", 
+                        "Congratulations! Your account is now monetized. Start posting and start earning money!",
+                        ['screen' => 'monetization_dashboard']
+                    );
+                } catch (\Exception $e) {
+                    Log::error("Monetization Success FCM Error: " . $e->getMessage());
+                }
+
+            } else {
+                
+                // ২. এলিজিবল কিন্তু ভেরিফাইড না থাকলে এই মেসেজ যাবে
+                Log::info("Member #{$member->id} is eligible but NOT verified.");
+
+                try {
+                    $this->sendFcmNotification($member->id, 
+                        "Action Required for Monetization", 
+                        "You've met all requirements! Just verify your account now to enable monetization and start earning.",
+                        ['screen' => 'verification_page']
+                    );
+                } catch (\Exception $e) {
+                    Log::error("Monetization Pending FCM Error: " . $e->getMessage());
+                }
+            }
         }
     }
 
