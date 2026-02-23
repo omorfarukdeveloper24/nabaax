@@ -30,9 +30,11 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use Google\Client;
+use App\Traits\NotificationTrait;
 
 class MemberController extends Controller
 {
+    use NotificationTrait;
     function __construct()
     {
             $this->middleware("auth.jwt", [
@@ -773,9 +775,151 @@ class MemberController extends Controller
     
     
 
+    // public function pertnar_program(Request $request)
+    // {
+        
+    //     $request->validate([
+    //         'referrer_code' => 'required|string',
+    //     ]);
+
+    //     $memberId = Auth::guard('member')->id();
+    //     $settings = PaymentChargeSetting::first();
+
+    //     $minimum_limit   = $settings->partner_min_balance; 
+    //     $first_gen_bonus = $settings->first_gen_bonus;
+    //     $multi_gen_bonus = $settings->multi_gen_bonus;
+    //     $partner_cost    = $settings->partner_own_bonus;
+
+    //     $member = Member::find($memberId);
+
+    //     if (!$member) {
+    //         return response()->json(['error' => 'Unauthorized access.'], 401);
+    //     }
+
+    //     if (!is_null($member->referrer_id)) {
+    //         return response()->json(['error' => 'You are already enrolled in the partner program.'], 400);
+    //     }
+
+    //     if ($member->username === $request->referrer_code) {
+    //         return response()->json(['error' => 'You cannot use your own code as a referrer.'], 400);
+    //     }
+
+    //     if ($member->balance < $partner_cost) {
+    //         return response()->json(['error' => 'Insufficient balance. You need ' . $partner_cost . ' to join.'], 400);
+    //     }
+
+    //     $referrer_member = Member::where('username', $request->referrer_code)->first();
+    //     if (!$referrer_member) {
+    //         return response()->json(['error' => 'Invalid referrer code. User not found.'], 404);
+    //     }
+
+        
+    //     DB::beginTransaction();
+
+    //     try {
+            
+    //         $member->update([
+    //             'referrer_id' => $referrer_member->id,
+    //             'start_date'  => now(),
+    //             'expired_date'=> now()->addDays(365),
+    //         ]);
+
+    //         $member->decrement('balance', $partner_cost);
+    //         $member->refresh(); 
+
+    //         $join_tnx = 'PRT-' . strtoupper(Str::random(10));
+
+            
+    //         CustomerPayHistory::create([
+    //             'member_id'    => $member->id,
+    //             'payment_name' => 'Partner Program Joining Fee',
+    //             'tnx'          => $join_tnx,
+    //             'amount'       => $partner_cost,
+    //             'balance'      => $member->balance, 
+    //             'method'       => 'Wallet',
+    //             'type'         => 'debit',
+    //         ]);
+
+            
+    //         AdminPayHistory::create([
+    //             'member_id'    => $member->id,
+    //             'payment_name' => 'Partner Joining Fee from ' . $member->username,
+    //             'tnx'          => $join_tnx,
+    //             'amount'       => $partner_cost,
+    //             'balance'      => $member->balance,
+    //             'method'       => 'Wallet',
+    //             'type'         => 'credit',
+    //         ]);
+
+            
+    //         $currentReferrer = $referrer_member; 
+    //         $level = 1;
+
+            
+    //         while ($currentReferrer && $level <= 100) {
+    //             $amount = ($level === 1) ? $first_gen_bonus : $multi_gen_bonus;
+
+    //             if ($amount > 0) {
+    //                 $currentReferrer->increment('balance', $amount);
+    //                 $currentReferrer->refresh();
+
+    //                 $bonus_tnx = 'GEN' . $level . '-' . strtoupper(Str::random(10));
+
+                    
+    //                 CustomerPayHistory::create([
+    //                     'member_id'    => $currentReferrer->id,
+    //                     'payment_name' => "Generation Bonus (L-$level) from " . $member->username,
+    //                     'tnx'          => $bonus_tnx,
+    //                     'amount'       => $amount,
+    //                     'balance'      => $currentReferrer->balance,
+    //                     'method'       => 'Wallet',
+    //                     'type'         => 'credit',
+    //                 ]);
+
+                   
+    //                 AdminPayHistory::create([
+    //                     'member_id'    => $currentReferrer->id,
+    //                     'payment_name' => "Generation Bonus (L-$level) paid to " . $currentReferrer->username,
+    //                     'tnx'          => $bonus_tnx,
+    //                     'amount'       => $amount,
+    //                     'balance'      => $currentReferrer->balance,
+    //                     'method'       => 'Wallet',
+    //                     'type'         => 'debit',
+    //                 ]);
+    //             }
+
+                
+    //             if ($currentReferrer->referrer_id) {
+    //                 $currentReferrer = Member::find($currentReferrer->referrer_id);
+    //             } else {
+    //                 $currentReferrer = null; 
+    //             }
+                
+    //             $level++;
+    //         }
+
+    //         DB::commit();
+
+    //         return response()->json([
+    //             'status'  => 'success',
+    //             'message' => 'Successfully joined the partner program and commissions distributed.',
+    //         ]);
+
+    //     } catch (\Exception $e) {
+    //         // কোনো ভুল হলে সব আগের অবস্থায় ফিরে যাবে (Rollback)
+    //         DB::rollBack();
+    //         Log::error("Partner Joining Error: " . $e->getMessage());
+
+    //         return response()->json([
+    //             'error' => 'An error occurred during the process. Please try again later.'
+    //         ], 500);
+    //     }
+    // }
+
+
+
     public function pertnar_program(Request $request)
     {
-        
         $request->validate([
             'referrer_code' => 'required|string',
         ]);
@@ -783,10 +927,9 @@ class MemberController extends Controller
         $memberId = Auth::guard('member')->id();
         $settings = PaymentChargeSetting::first();
 
-        $minimum_limit   = $settings->partner_min_balance; 
+        $partner_cost = $settings->partner_own_bonus;
         $first_gen_bonus = $settings->first_gen_bonus;
         $multi_gen_bonus = $settings->multi_gen_bonus;
-        $partner_cost    = $settings->partner_own_bonus;
 
         $member = Member::find($memberId);
 
@@ -794,7 +937,8 @@ class MemberController extends Controller
             return response()->json(['error' => 'Unauthorized access.'], 401);
         }
 
-        if (!is_null($member->referrer_id)) {
+        // অলরেডি পার্টনার কি না চেক (নতুন ফিল্ড partner দিয়ে)
+        if ($member->partner == 1) {
             return response()->json(['error' => 'You are already enrolled in the partner program.'], 400);
         }
 
@@ -803,20 +947,25 @@ class MemberController extends Controller
         }
 
         if ($member->balance < $partner_cost) {
-            return response()->json(['error' => 'Insufficient balance. You need ' . $partner_cost . ' to join.'], 400);
+            return response()->json(['error' => 'Insufficient balance. You need ' . $partner_cost . ' TK to join.'], 400);
         }
 
+        // রেফারার চেক এবং তার partner == 1 কি না তা নিশ্চিত করা
         $referrer_member = Member::where('username', $request->referrer_code)->first();
+        
         if (!$referrer_member) {
             return response()->json(['error' => 'Invalid referrer code. User not found.'], 404);
         }
 
-        
-        DB::beginTransaction();
+        if ($referrer_member->partner != 1) {
+            return response()->json(['error' => 'The referrer is not a verified partner. You must use a verified partner code.'], 400);
+        }
 
+        DB::beginTransaction();
         try {
-            
+            // ১. মেম্বার টেবিল আপডেট (partner = 1)
             $member->update([
+                'partner'     => 1, // আপনার রিকোয়ারমেন্ট অনুযায়ী
                 'referrer_id' => $referrer_member->id,
                 'start_date'  => now(),
                 'expired_date'=> now()->addDays(365),
@@ -827,7 +976,7 @@ class MemberController extends Controller
 
             $join_tnx = 'PRT-' . strtoupper(Str::random(10));
 
-            
+            // পেমেন্ট হিস্ট্রি রেকর্ড
             CustomerPayHistory::create([
                 'member_id'    => $member->id,
                 'payment_name' => 'Partner Program Joining Fee',
@@ -838,7 +987,6 @@ class MemberController extends Controller
                 'type'         => 'debit',
             ]);
 
-            
             AdminPayHistory::create([
                 'member_id'    => $member->id,
                 'payment_name' => 'Partner Joining Fee from ' . $member->username,
@@ -849,11 +997,16 @@ class MemberController extends Controller
                 'type'         => 'credit',
             ]);
 
-            
+            // ২. প্রফেশনাল নোটিফিকেশন (জয়েন করা মেম্বারকে)
+            $this->sendFcmNotification($member->id, 
+                "Welcome to Partner Program! 🤝", 
+                "Congratulations! You are now a partner. $partner_cost TK has been deducted from your wallet."
+            );
+
+            // জেনারেশন বোনাস ডিস্ট্রিবিউশন
             $currentReferrer = $referrer_member; 
             $level = 1;
 
-            
             while ($currentReferrer && $level <= 100) {
                 $amount = ($level === 1) ? $first_gen_bonus : $multi_gen_bonus;
 
@@ -863,7 +1016,6 @@ class MemberController extends Controller
 
                     $bonus_tnx = 'GEN' . $level . '-' . strtoupper(Str::random(10));
 
-                    
                     CustomerPayHistory::create([
                         'member_id'    => $currentReferrer->id,
                         'payment_name' => "Generation Bonus (L-$level) from " . $member->username,
@@ -874,7 +1026,6 @@ class MemberController extends Controller
                         'type'         => 'credit',
                     ]);
 
-                   
                     AdminPayHistory::create([
                         'member_id'    => $currentReferrer->id,
                         'payment_name' => "Generation Bonus (L-$level) paid to " . $currentReferrer->username,
@@ -884,15 +1035,19 @@ class MemberController extends Controller
                         'method'       => 'Wallet',
                         'type'         => 'debit',
                     ]);
+
+                    // ৩. প্রফেশনাল নোটিফিকেশন (বোনাস প্রাপককে)
+                    $this->sendFcmNotification($currentReferrer->id, 
+                        "Commission Received! 💰", 
+                        "You received $amount TK as level $level generation bonus from " . $member->username
+                    );
                 }
 
-                
                 if ($currentReferrer->referrer_id) {
                     $currentReferrer = Member::find($currentReferrer->referrer_id);
                 } else {
                     $currentReferrer = null; 
                 }
-                
                 $level++;
             }
 
@@ -904,15 +1059,35 @@ class MemberController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            // কোনো ভুল হলে সব আগের অবস্থায় ফিরে যাবে (Rollback)
             DB::rollBack();
             Log::error("Partner Joining Error: " . $e->getMessage());
-
-            return response()->json([
-                'error' => 'An error occurred during the process. Please try again later.'
-            ], 500);
+            return response()->json(['error' => 'An error occurred. Please try again later.'], 500);
         }
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
