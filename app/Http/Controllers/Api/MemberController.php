@@ -31,6 +31,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use Google\Client;
 use App\Traits\NotificationTrait;
+use App\Jobs\DistributePartnerBonus;
 
 class MemberController extends Controller
 {
@@ -920,8 +921,9 @@ class MemberController extends Controller
 
     public function pertnar_program(Request $request)
     {
+        // ১. ভ্যালিডেশন (রেফার কোড এখন অপশনাল)
         $request->validate([
-            'referrer_code' => 'required|string',
+            'referrer_code' => 'nullable|string', 
         ]);
 
         $memberId = Auth::guard('member')->id();
@@ -937,12 +939,13 @@ class MemberController extends Controller
             return response()->json(['error' => 'Unauthorized access.'], 401);
         }
 
-        // অলরেডি পার্টনার কি না চেক (নতুন ফিল্ড partner দিয়ে)
+        // অলরেডি পার্টনার কি না চেক
         if ($member->partner == 1) {
             return response()->json(['error' => 'You are already enrolled in the partner program.'], 400);
         }
 
-        if ($member->username === $request->referrer_code) {
+        // নিজের কোড চেক
+        if ($request->filled('referrer_code') && $member->username === $request->referrer_code) {
             return response()->json(['error' => 'You cannot use your own code as a referrer.'], 400);
         }
 
@@ -950,22 +953,29 @@ class MemberController extends Controller
             return response()->json(['error' => 'Insufficient balance. You need ' . $partner_cost . ' TK to join.'], 400);
         }
 
-        // রেফারার চেক এবং তার partner == 1 কি না তা নিশ্চিত করা
-        $referrer_member = Member::where('username', $request->referrer_code)->first();
-        
-        if (!$referrer_member) {
-            return response()->json(['error' => 'Invalid referrer code. User not found.'], 404);
-        }
+        // ২. রেফারার লজিক (কোড না থাকলে ID 1 ধরা হবে)
+        if ($request->filled('referrer_code')) {
+            $referrer_member = Member::where('username', $request->referrer_code)->first();
+            
+            if (!$referrer_member) {
+                return response()->json(['error' => 'Invalid referrer code. User not found.'], 404);
+            }
 
-        if ($referrer_member->partner != 1) {
-            return response()->json(['error' => 'The referrer is not a verified partner. You must use a verified partner code.'], 400);
+            if ($referrer_member->partner != 1) {
+                return response()->json(['error' => 'The referrer is not a verified partner.'], 400);
+            }
+        } else {
+            $referrer_member = Member::find(1);
+            if (!$referrer_member) {
+                return response()->json(['error' => 'Default system referrer not found.'], 500);
+            }
         }
 
         DB::beginTransaction();
         try {
-            // ১. মেম্বার টেবিল আপডেট (partner = 1)
+            // ৩. মেম্বার ডাটা আপডেট
             $member->update([
-                'partner'     => 1, // আপনার রিকোয়ারমেন্ট অনুযায়ী
+                'partner'     => 1,
                 'referrer_id' => $referrer_member->id,
                 'start_date'  => now(),
                 'expired_date'=> now()->addDays(365),
@@ -997,65 +1007,15 @@ class MemberController extends Controller
                 'type'         => 'credit',
             ]);
 
-            // ২. প্রফেশনাল নোটিফিকেশন (জয়েন করা মেম্বারকে)
-            $this->sendFcmNotification($member->id, 
-                "Welcome to Partner Program! 🤝", 
-                "Congratulations! You are now a partner. $partner_cost TK has been deducted from your wallet."
-            );
-
-            // জেনারেশন বোনাস ডিস্ট্রিবিউশন
-            $currentReferrer = $referrer_member; 
-            $level = 1;
-
-            while ($currentReferrer && $level <= 100) {
-                $amount = ($level === 1) ? $first_gen_bonus : $multi_gen_bonus;
-
-                if ($amount > 0) {
-                    $currentReferrer->increment('balance', $amount);
-                    $currentReferrer->refresh();
-
-                    $bonus_tnx = 'GEN' . $level . '-' . strtoupper(Str::random(10));
-
-                    CustomerPayHistory::create([
-                        'member_id'    => $currentReferrer->id,
-                        'payment_name' => "Generation Bonus (L-$level) from " . $member->username,
-                        'tnx'          => $bonus_tnx,
-                        'amount'       => $amount,
-                        'balance'      => $currentReferrer->balance,
-                        'method'       => 'Wallet',
-                        'type'         => 'credit',
-                    ]);
-
-                    AdminPayHistory::create([
-                        'member_id'    => $currentReferrer->id,
-                        'payment_name' => "Generation Bonus (L-$level) paid to " . $currentReferrer->username,
-                        'tnx'          => $bonus_tnx,
-                        'amount'       => $amount,
-                        'balance'      => $currentReferrer->balance,
-                        'method'       => 'Wallet',
-                        'type'         => 'debit',
-                    ]);
-
-                    // ৩. প্রফেশনাল নোটিফিকেশন (বোনাস প্রাপককে)
-                    $this->sendFcmNotification($currentReferrer->id, 
-                        "Commission Received! 💰", 
-                        "You received $amount TK as level $level generation bonus from " . $member->username
-                    );
-                }
-
-                if ($currentReferrer->referrer_id) {
-                    $currentReferrer = Member::find($currentReferrer->referrer_id);
-                } else {
-                    $currentReferrer = null; 
-                }
-                $level++;
-            }
+            // ৪. কিউ (Queue) এর মাধ্যমে বোনাস ডিস্ট্রিবিউশন পাঠানো
+            // এটি ব্যাকগ্রাউন্ডে কাজ করবে, তাই ইউজারকে ওয়েট করতে হবে না
+            DistributePartnerBonus::dispatch($member, $referrer_member, $first_gen_bonus, $multi_gen_bonus);
 
             DB::commit();
 
             return response()->json([
                 'status'  => 'success',
-                'message' => 'Successfully joined the partner program and commissions distributed.',
+                'message' => 'Successfully joined the partner program. Commissions are being processed.',
             ]);
 
         } catch (\Exception $e) {
