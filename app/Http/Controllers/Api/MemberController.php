@@ -921,7 +921,7 @@ class MemberController extends Controller
 
     public function pertnar_program(Request $request)
     {
-        // ১. ভ্যালিডেশন (রেফার কোড এখন অপশনাল)
+        // ১. ভ্যালিডেশন
         $request->validate([
             'referrer_code' => 'nullable|string', 
         ]);
@@ -939,12 +939,10 @@ class MemberController extends Controller
             return response()->json(['error' => 'Unauthorized access.'], 401);
         }
 
-        // অলরেডি পার্টনার কি না চেক
         if ($member->partner == 1) {
             return response()->json(['error' => 'You are already enrolled in the partner program.'], 400);
         }
 
-        // নিজের কোড চেক
         if ($request->filled('referrer_code') && $member->username === $request->referrer_code) {
             return response()->json(['error' => 'You cannot use your own code as a referrer.'], 400);
         }
@@ -953,7 +951,7 @@ class MemberController extends Controller
             return response()->json(['error' => 'Insufficient balance. You need ' . $partner_cost . ' TK to join.'], 400);
         }
 
-        // ২. রেফারার লজিক (কোড না থাকলে ID 1 ধরা হবে)
+        // ২. রেফারার লজিক
         if ($request->filled('referrer_code')) {
             $referrer_member = Member::where('username', $request->referrer_code)->first();
             
@@ -1007,8 +1005,14 @@ class MemberController extends Controller
                 'type'         => 'credit',
             ]);
 
+            // --- নতুন সংযোজন: জয়েন করা মেম্বারকে নোটিফিকেশন পাঠানো ---
+            $this->sendFcmNotification(
+                $member->id, 
+                "Welcome to Partner Program! 🤝", 
+                "Congratulations! You are now a verified partner."
+            );
+
             // ৪. কিউ (Queue) এর মাধ্যমে বোনাস ডিস্ট্রিবিউশন পাঠানো
-            // এটি ব্যাকগ্রাউন্ডে কাজ করবে, তাই ইউজারকে ওয়েট করতে হবে না
             DistributePartnerBonus::dispatch($member, $referrer_member, $first_gen_bonus, $multi_gen_bonus);
 
             DB::commit();
