@@ -11,9 +11,11 @@ use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use App\Traits\NotificationTrait;
 
 class VerifyMemberController extends Controller
 {
+    use NotificationTrait;
     public function index(Request $request)
     {
         $status = $request->verified; // pending, approved, inactive
@@ -135,28 +137,89 @@ class VerifyMemberController extends Controller
     //     return redirect()->back();
     // }
 
+    // public function status(Request $request)
+    // {
+    //     try {
+    //         $member = Member::findOrFail($request->hidden_id);
+            
+    //         // রিজেক্ট করা হলে
+    //         if ($request->verified == '0' || $request->verified == '') {
+    //             $member->verified = null; 
+    //             $member->submit   = 0;    
+    //             $status_msg = "Rejected";
+    //         } 
+    //         else {
+    //             // ভেরিফাই (১) অথবা ব্লক (৩) এর জন্য
+    //             $member->verified = $request->verified;
+    //             $member->submit   = $request->submit;
+
+    //             if($request->verified == 1) {
+    //                 $member->status = 1; // আপনার চাহিদা অনুযায়ী স্ট্যাটাস ১ করে দেওয়া হলো
+    //                 $status_msg = "Verified Successfully";
+    //             } elseif($request->verified == 3) {
+    //                 $status_msg = "Blocked";
+    //             } else {
+    //                 $status_msg = "Updated";
+    //             }
+    //         }
+            
+    //         $member->save();
+
+    //         Toastr::success('Member status ' . $status_msg);
+    //         return redirect()->back();
+
+    //     } catch (\Exception $e) {
+    //         Toastr::error('Something went wrong!');
+    //         return redirect()->back();
+    //     }
+    // }
+
     public function status(Request $request)
     {
         try {
             $member = Member::findOrFail($request->hidden_id);
             
-            // রিজেক্ট করা হলে
+            // ১. রিজেক্ট করা হলে (Rejected)
             if ($request->verified == '0' || $request->verified == '') {
                 $member->verified = null; 
                 $member->submit   = 0;    
                 $status_msg = "Rejected";
+
+                // রিজেক্ট নোটিফিকেশন
+                $this->sendFcmNotification($member->id, 
+                    "Verification Rejected ❌", 
+                    "Your identity verification was rejected. Please resubmit with correct documents."
+                );
             } 
             else {
                 // ভেরিফাই (১) অথবা ব্লক (৩) এর জন্য
                 $member->verified = $request->verified;
                 $member->submit   = $request->submit;
 
+                // ২. সাকসেসফুল ভেরিফিকেশন (Verified)
                 if($request->verified == 1) {
-                    $member->status = 1; // আপনার চাহিদা অনুযায়ী স্ট্যাটাস ১ করে দেওয়া হলো
+                    $member->status = 1; 
                     $status_msg = "Verified Successfully";
-                } elseif($request->verified == 3) {
+
+                    $this->sendFcmNotification($member->id, 
+                        "Account Verified! ✅", 
+                        "Congratulations! Your account is now verified. You can now access all features."
+                    );
+
+                    // মনিটাইজেশন চেক: মেম্বার ভেরিফাইড হওয়ার সাথে সাথে মনিটাইজেশনের জন্য এলিজিবল কি না তা চেক করতে পারেন
+                    // app(MonetizationService::class)->processMember($member);
+
+                } 
+                // ৩. ব্লক করা হলে (Blocked)
+                elseif($request->verified == 3) {
                     $status_msg = "Blocked";
-                } else {
+
+                    $this->sendFcmNotification($member->id, 
+                        "Account Blocked! 🚫", 
+                        "Your account has been blocked for violating our terms of service."
+                    );
+                } 
+                else {
                     $status_msg = "Updated";
                 }
             }
@@ -167,6 +230,7 @@ class VerifyMemberController extends Controller
             return redirect()->back();
 
         } catch (\Exception $e) {
+            Log::error("Member Status Error: " . $e->getMessage());
             Toastr::error('Something went wrong!');
             return redirect()->back();
         }

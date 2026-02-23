@@ -11,6 +11,17 @@ trait NotificationTrait
     
     public function sendFcmNotification($memberId, $title, $body, $data = [])
     {
+        
+        DB::table('notifications')->insert([
+            'member_id'   => $memberId,
+            'title'       => $title,
+            'description' => $body,
+            'status'      => 0, 
+            'created_at'  => now(),
+            'updated_at'  => now(),
+        ]);
+
+        
         $deviceTokens = DB::table('device_tokens')
                         ->where('member_id', $memberId)
                         ->where('status', 1)
@@ -21,19 +32,26 @@ trait NotificationTrait
             return;
         }
 
+        
         $accessToken = $this->getFcmAccessToken();
         $projectId = "nabaax-1fdde"; 
 
+        
         foreach ($deviceTokens as $token) {
             $response = Http::withToken($accessToken)
                 ->post("https://fcm.googleapis.com/v1/projects/$projectId/messages:send", [
                     "message" => [
                         "token" => $token,
-                        "notification" => ["title" => $title, "body" => $body],
-                        "data" => empty($data) ? null : $data
+                        "notification" => [
+                            "title" => $title, 
+                            "body"  => $body
+                        ],
+                        
+                        "data" => empty($data) ? null : array_map('strval', $data)
                     ]
                 ]);
 
+            
             if ($response->failed()) {
                 $responseData = $response->json();
                 if (isset($responseData['error']['details'][0]['errorCode']) && 
@@ -44,7 +62,6 @@ trait NotificationTrait
         }
     }
 
-    
     private function getFcmAccessToken()
     {
         $client = new Client();
@@ -54,4 +71,6 @@ trait NotificationTrait
         $token = $client->getAccessToken();
         return $token['access_token'];
     }
+
+
 }
