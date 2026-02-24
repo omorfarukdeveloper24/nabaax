@@ -931,6 +931,9 @@ class MemberController extends Controller
 
         // ১. ভ্যালিডেশন
         if (!$member) return response()->json(['error' => 'Unauthorized access.'], 401);
+        if ($member->verified != 1) {
+            return response()->json(['error' => 'Your account must be verified to join.'], 400);
+        }
         if ($member->partner == 1) return response()->json(['error' => 'Already enrolled.'], 400);
         if ($request->filled('referrer_code') && $member->username === $request->referrer_code) {
             return response()->json(['error' => 'Cannot use own code.'], 400);
@@ -939,8 +942,8 @@ class MemberController extends Controller
 
         // ২. রেফারার লজিক
         if ($request->filled('referrer_code')) {
-            $referrer_member = Member::where('username', $request->referrer_code)->where('partner', 1)->first();
-            if (!$referrer_member) return response()->json(['error' => 'Invalid or unverified referrer.'], 404);
+            $referrer_member = Member::where('username', $request->referrer_code)->where('partner', 1)->where('verified', 1)->first();
+            if (!$referrer_member) return response()->json(['error' => 'Invalid, unverified, or non-partner referrer.'], 404);
         } else {
             $referrer_member = Member::find(1); // Default Admin Referrer
         }
