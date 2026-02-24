@@ -36,49 +36,58 @@ class DistributePartnerBonus implements ShouldQueue
     {
         Log::info("Partner Bonus Job Started for: " . $this->member->username);
 
-        $currentReferrer = $this->referrer_member; 
+        // Eager loading ব্যবহার করে প্রথম রেফারারকে লোড করুন
+        $currentReferrer = $this->referrer_member->load(['referrer' => function($query) {
+            $query->select('id', 'name', 'username', 'balance', 'referrer_id');
+        }]);
         $level = 1;
 
-        try {
-            while ($currentReferrer && $level <= 100) {
-                $amount = ($level === 1) ? $this->first_gen_bonus : $this->multi_gen_bonus;
+        while ($currentReferrer && $level <= 100) {
+            try {
+                // ট্রানজেকশন প্রতিটি মেম্বারের জন্য আলাদাভাবে নেওয়া হয়েছে (যাতে একজনের সমস্যায় সবারটা আটকে না যায়)
+                DB::transaction(function () use ($currentReferrer, $level) {
+                    
+                    $amount = ($level === 1) ? $this->first_gen_bonus : $this->multi_gen_bonus;
 
-                if ($amount > 0) {
+                    if ($amount <= 0) return;
+
+                    // ব্যালেন্স আপডেট
                     $currentReferrer->increment('balance', $amount);
-                    $bonus_tnx = 'GEN' . $level . '-' . strtoupper(Str::random(10));
 
+                    // পেমেন্ট হিস্ট্রি
                     CustomerPayHistory::create([
                         'member_id'    => $currentReferrer->id,
                         'payment_name' => "Generation Bonus (L-$level) from " . $this->member->username,
-                        'tnx'          => $bonus_tnx,
+                        'tnx'          => 'GEN' . $level . '-' . strtoupper(Str::random(10)),
                         'amount'       => $amount,
                         'balance'      => $currentReferrer->balance,
                         'method'       => 'Wallet',
                         'type'         => 'credit',
                     ]);
 
-                    // নোটিফিকেশন পাঠানো
+                    // নোটিফিকেশন
                     $this->sendFcmNotification(
                         $currentReferrer->id, 
                         "Commission Received! 💰", 
-                        "You received $amount TK as level $level bonus from " . $this->member->username
+                        "You received $amount TK bonus from " . $this->member->username
                     );
+                });
 
-                    Log::info("Bonus sent to Level $level: " . $currentReferrer->username);
-                }
+                Log::info("Level $level Bonus sent to: " . $currentReferrer->username);
 
-                if ($currentReferrer->referrer_id) {
-                    $currentReferrer = Member::find($currentReferrer->referrer_id);
-                } else {
-                    $currentReferrer = null; 
-                }
-                $level++;
+            } catch (\Exception $e) {
+                // যদি নির্দিষ্ট এই মেম্বারের ক্ষেত্রে কোনো এরর হয়, তবে সেটি লগে যাবে
+                Log::error("Failed to give bonus to Level $level (User: {$currentReferrer->username}): " . $e->getMessage());
+                
+                // এখানে আপনি চাইলে একটি 'Error Log' টেবিলে ডাটা সেভ করতে পারেন ভবিষ্যতে চেক করার জন্য
             }
-            Log::info("Partner Bonus Job Finished Successfully.");
-        } catch (\Exception $e) {
-            Log::error("Error in DistributePartnerBonus Job: " . $e->getMessage());
-            throw $e; // কিউ ফেইলড জব হিসেবে দেখানোর জন্য
+
+            // রিলেশনশিপ ব্যবহার করে পরের রেফারারকে সেট করা (বারবার DB::find না করে)
+            $currentReferrer = $currentReferrer->referrer; 
+            $level++;
         }
+
+        Log::info("Partner Bonus Job Processed up to Level " . ($level - 1));
     }
 
 

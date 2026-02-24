@@ -17,9 +17,9 @@ class Member extends Authenticatable implements JWTSubject
         'partner_code', 'only_reffer', 'balance', 'phoneverify', 'approved', 
         'gender', 'blood', 'religion', 'monthlyincome', 'profession', 
         'nationality', 'married', 'division', 'district', 'upazila', 
-        'verified', 'city', 'country', 'submit', 'status',
+        'verified', 'city', 'country','partner','submit', 'status',
 
-        // --- নতুন যোগ করা কলামগুলো নিচে দেওয়া হলো ---
+        // --- নতুন যোগ করা কলামগুলো নিচে দেওয়া হলো ---
         'monetization', 
         'total_earned', 
         'monetization_activated_at', 
@@ -57,10 +57,11 @@ class Member extends Authenticatable implements JWTSubject
         return [];
     }
 
-    // Relation: ja take refer korache
+    
+
     public function referrer()
     {
-        return $this->belongsTo(Member::class, 'referrer_id')->select('id','name','username','balance','referrer_id');
+        return $this->belongsTo(Member::class, 'referrer_id');
     }
 
     // Relation: jhade sa refer koreache
