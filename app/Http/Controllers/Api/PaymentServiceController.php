@@ -143,6 +143,13 @@ class PaymentServiceController extends Controller
             ]);
         }
 
+        if ($member->verified != 1) {
+            return response()->json([
+                'status'  => 'failed',
+                'message' => 'Your account must be verified to withdraw funds.'
+            ]);
+        }
+
         if ($request->amount < $withdrawlimit) {
             return response()->json([
                 'status'  => 'failed',
@@ -314,6 +321,13 @@ class PaymentServiceController extends Controller
 
         if (!$request->amount || $request->amount < $transferlimit) {
             return response()->json(['status' => 'failed', 'message' => "Minimum $transferlimit amount required."]);
+        }
+
+        if ($member->verified != 1) {
+            return response()->json([
+                'status'  => 'failed',
+                'message' => 'Your account must be verified to withdraw funds.'
+            ]);
         }
 
         if (!$request->username) {
