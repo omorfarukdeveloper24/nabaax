@@ -41,7 +41,7 @@ class ProcessImageUpload implements ShouldQueue
 
         // ৩. মেম্বার আইডিটি একটি ভেরিয়েবলে আগেভাগে নিয়ে নিন
         $memberId = $post->member_id;
-        
+
         try {
             $keyFileData = config('filesystems.disks.gcs.key_file');
 
@@ -57,7 +57,7 @@ class ProcessImageUpload implements ShouldQueue
             if ($safe->getAdult() >= 4 || $safe->getRacy() >= 4) {
                 \Log::warning("Inappropriate image detected for Post ID: {$this->postId}. Deleting post.");
                 $post->delete();
-                $this->sendFcmNotification($memberId, "Post Rejected ⚠️", "Your image post was removed for policy violations.");
+                $this->sendFcmNotification($memberId, "We removed your post ⚠️",  "Because it goes against our Community Standards.");
                 return;
 
             }
@@ -89,7 +89,7 @@ class ProcessImageUpload implements ShouldQueue
             $post = Post::find($this->postId);
             if ($post) {
                 $post->update(['status' => 'active']);
-                $this->sendFcmNotification($post->member_id, "Post Published", "Your image post is now live!");
+                $this->sendFcmNotification($post->member_id, "Your post is ready to view ✅",  "Your upload was successful " );
             }
 
         } catch (\Exception $e) {

@@ -149,7 +149,7 @@ class ProcessVideoSafetyCheck implements ShouldQueue
                     
                     $post->update(['status' => 'active']);
                     Log::info("Video successfully processed and saved for Post ID: {$this->postId}");
-                    $this->sendFcmNotification($post->member_id, "Video Live! 🎬", "Your video has been processed and published successfully.");
+                    $this->sendFcmNotification($post->member_id,  "Your video is ready 🎬",  "Your video is now available for viewing.");
                     // --- পরিবর্তন এখানে শেষ ---
 
                     
@@ -163,7 +163,7 @@ class ProcessVideoSafetyCheck implements ShouldQueue
                     
                     Log::warning("Inappropriate video deleted for Post ID: {$this->postId}");
                     
-                    $this->sendFcmNotification($memberId, "Video Rejected! ❌", "Your video was removed due to restricted content.");
+                    $this->sendFcmNotification($memberId, "Video removed ⚠️", "It goes against our Community Standards.");
 
                 }
             }
