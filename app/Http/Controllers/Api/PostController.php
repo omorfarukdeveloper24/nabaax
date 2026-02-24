@@ -22,10 +22,15 @@ use Illuminate\Support\Facades\Storage;
 use Google\Cloud\Storage\StorageClient;
 use Google\Cloud\Vision\V1\ImageAnnotatorClient;
 use Google\Cloud\VideoIntelligence\V1\VideoIntelligenceServiceClient;
+use App\Traits\NotificationTrait;
+use Brian2694\Toastr\Facades\Toastr;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 
 class PostController extends Controller
 {
+    use NotificationTrait;
     function __construct()
     {
         $this->middleware("auth.jwt", [

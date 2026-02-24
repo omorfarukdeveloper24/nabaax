@@ -12,10 +12,11 @@ use Google\Cloud\VideoIntelligence\V1\Feature;
 use App\Models\Post;
 use App\Models\Post_media;
 use Illuminate\Support\Facades\Log;
+use \App\Traits\NotificationTrait;
 
 class ProcessVideoSafetyCheck implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, NotificationTrait;
 
     protected $postId;
     protected $videoPath;
@@ -32,6 +33,16 @@ class ProcessVideoSafetyCheck implements ShouldQueue
 
     public function handle()
     {
+        // ১. শুরুতে পোস্টটি খুঁজে নিন (Guard Clause)
+        $post = Post::find($this->postId);
+        if (!$post) {
+            if (file_exists($this->videoPath)) unlink($this->videoPath);
+            Log::info("Post ID {$this->postId} not found. Skipping video job.");
+            return;
+        }
+
+        
+        
         $keyFileData = config('filesystems.disks.gcs.key_file');
         $fileName = "posts/videos/" . basename($this->videoPath);
         
@@ -112,8 +123,9 @@ class ProcessVideoSafetyCheck implements ShouldQueue
                 }
             }
 
-            $post = Post::find($this->postId);
+            
             if ($post) {
+                $memberId = $post->member_id;
                 if ($isSafe) {
                     $mediaPath = "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $fileName;
 
@@ -137,13 +149,22 @@ class ProcessVideoSafetyCheck implements ShouldQueue
                     
                     $post->update(['status' => 'active']);
                     Log::info("Video successfully processed and saved for Post ID: {$this->postId}");
+                    $this->sendFcmNotification($post->member_id, "Video Live! 🎬", "Your video has been processed and published successfully.");
                     // --- পরিবর্তন এখানে শেষ ---
 
                     
                 } else {
+
                     $bucket->object($fileName)->delete();
+                    
+                    
+                    
                     $post->delete(); 
+                    
                     Log::warning("Inappropriate video deleted for Post ID: {$this->postId}");
+                    
+                    $this->sendFcmNotification($memberId, "Video Rejected! ❌", "Your video was removed due to restricted content.");
+
                 }
             }
             

@@ -12,10 +12,11 @@ use Google\Cloud\Storage\StorageClient;
 use Google\Cloud\Vision\V1\ImageAnnotatorClient;
 use App\Models\Post;
 use App\Models\Post_media;
+use App\Traits\NotificationTrait;
 
 class ProcessImageUpload implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, NotificationTrait;
 
     protected $postId, $tempPath, $fileNameBase;
 
@@ -28,6 +29,19 @@ class ProcessImageUpload implements ShouldQueue
 
     public function handle()
     {
+        // ১. শুরুতেই পোস্টটি ডাটাবেস থেকে খুঁজে নিন
+        $post = Post::find($this->postId);
+
+        // ২. সুরক্ষা চেক: যদি কোনো কারণে পোস্টটি না থাকে, তবে জবটি বন্ধ করে দিন
+        if (!$post) {
+            if (file_exists($this->tempPath)) unlink($this->tempPath);
+            \Log::info("Post not found, skipping job: " . $this->postId);
+            return;
+        }
+
+        // ৩. মেম্বার আইডিটি একটি ভেরিয়েবলে আগেভাগে নিয়ে নিন
+        $memberId = $post->member_id;
+        
         try {
             $keyFileData = config('filesystems.disks.gcs.key_file');
 
@@ -37,17 +51,15 @@ class ProcessImageUpload implements ShouldQueue
             $response = $imageAnnotator->safeSearchDetection($content);
             $safe = $response->getSafeSearchAnnotation();
             $imageAnnotator->close();
-
+            
+            
             // যদি অ্যাডাল্ট বা আপত্তিজনক কিছু পাওয়া যায় (Likelihood 4 = Likely, 5 = Very Likely)
             if ($safe->getAdult() >= 4 || $safe->getRacy() >= 4) {
                 \Log::warning("Inappropriate image detected for Post ID: {$this->postId}. Deleting post.");
-                
-                // পোস্টটি ডিলিট করে দিন (ভিডিও জবের মতো)
-                $post = Post::find($this->postId);
-                if ($post) {
-                    $post->delete();
-                }
-                return; // কাজ এখানেই শেষ
+                $post->delete();
+                $this->sendFcmNotification($memberId, "Post Rejected ⚠️", "Your image post was removed for policy violations.");
+                return;
+
             }
 
             // ২. ইমেজ প্রসেসিং ও রিসাইজ
@@ -77,6 +89,7 @@ class ProcessImageUpload implements ShouldQueue
             $post = Post::find($this->postId);
             if ($post) {
                 $post->update(['status' => 'active']);
+                $this->sendFcmNotification($post->member_id, "Post Published", "Your image post is now live!");
             }
 
         } catch (\Exception $e) {

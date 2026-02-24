@@ -921,52 +921,28 @@ class MemberController extends Controller
 
     public function pertnar_program(Request $request)
     {
-        // ১. ভ্যালিডেশন
-        $request->validate([
-            'referrer_code' => 'nullable|string', 
-        ]);
+        $request->validate(['referrer_code' => 'nullable|string']);
 
         $memberId = Auth::guard('member')->id();
         $settings = PaymentChargeSetting::first();
-
         $partner_cost = $settings->partner_own_bonus;
-        $first_gen_bonus = $settings->first_gen_bonus;
-        $multi_gen_bonus = $settings->multi_gen_bonus;
 
         $member = Member::find($memberId);
 
-        if (!$member) {
-            return response()->json(['error' => 'Unauthorized access.'], 401);
-        }
-
-        if ($member->partner == 1) {
-            return response()->json(['error' => 'You are already enrolled in the partner program.'], 400);
-        }
-
+        // ১. ভ্যালিডেশন
+        if (!$member) return response()->json(['error' => 'Unauthorized access.'], 401);
+        if ($member->partner == 1) return response()->json(['error' => 'Already enrolled.'], 400);
         if ($request->filled('referrer_code') && $member->username === $request->referrer_code) {
-            return response()->json(['error' => 'You cannot use your own code as a referrer.'], 400);
+            return response()->json(['error' => 'Cannot use own code.'], 400);
         }
-
-        if ($member->balance < $partner_cost) {
-            return response()->json(['error' => 'Insufficient balance. You need ' . $partner_cost . ' TK to join.'], 400);
-        }
+        if ($member->balance < $partner_cost) return response()->json(['error' => 'Insufficient balance.'], 400);
 
         // ২. রেফারার লজিক
         if ($request->filled('referrer_code')) {
-            $referrer_member = Member::where('username', $request->referrer_code)->first();
-            
-            if (!$referrer_member) {
-                return response()->json(['error' => 'Invalid referrer code. User not found.'], 404);
-            }
-
-            if ($referrer_member->partner != 1) {
-                return response()->json(['error' => 'The referrer is not a verified partner.'], 400);
-            }
+            $referrer_member = Member::where('username', $request->referrer_code)->where('partner', 1)->first();
+            if (!$referrer_member) return response()->json(['error' => 'Invalid or unverified referrer.'], 404);
         } else {
-            $referrer_member = Member::find(1);
-            if (!$referrer_member) {
-                return response()->json(['error' => 'Default system referrer not found.'], 500);
-            }
+            $referrer_member = Member::find(1); // Default Admin Referrer
         }
 
         DB::beginTransaction();
@@ -981,10 +957,9 @@ class MemberController extends Controller
 
             $member->decrement('balance', $partner_cost);
             $member->refresh(); 
-
             $join_tnx = 'PRT-' . strtoupper(Str::random(10));
 
-            // পেমেন্ট হিস্ট্রি রেকর্ড
+            // পেমেন্ট হিস্ট্রি (মেম্বার থেকে টাকা কাটলো)
             CustomerPayHistory::create([
                 'member_id'    => $member->id,
                 'payment_name' => 'Partner Program Joining Fee',
@@ -995,6 +970,7 @@ class MemberController extends Controller
                 'type'         => 'debit',
             ]);
 
+            // অ্যাডমিন হিস্ট্রি (অ্যাডমিন জয়েনিং ফি পেলো)
             AdminPayHistory::create([
                 'member_id'    => $member->id,
                 'payment_name' => 'Partner Joining Fee from ' . $member->username,
@@ -1005,27 +981,18 @@ class MemberController extends Controller
                 'type'         => 'credit',
             ]);
 
-            // --- নতুন সংযোজন: জয়েন করা মেম্বারকে নোটিফিকেশন পাঠানো ---
-            $this->sendFcmNotification(
-                $member->id, 
-                "Welcome to Partner Program! 🤝", 
-                "Congratulations! You are now a verified partner."
-            );
+            $this->sendFcmNotification($member->id, "Welcome! 🤝", "You are now a verified partner.");
 
-            // ৪. কিউ (Queue) এর মাধ্যমে বোনাস ডিস্ট্রিবিউশন পাঠানো
-            DistributePartnerBonus::dispatch($member, $referrer_member, $first_gen_bonus, $multi_gen_bonus);
+            // ৪. কিউ (Queue) এ পাঠানো
+            DistributePartnerBonus::dispatch($member, $referrer_member, $settings->first_gen_bonus, $settings->multi_gen_bonus);
 
             DB::commit();
-
-            return response()->json([
-                'status'  => 'success',
-                'message' => 'Successfully joined the partner program. Commissions are being processed.',
-            ]);
+            return response()->json(['status' => 'success', 'message' => 'Successfully joined.']);
 
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error("Partner Joining Error: " . $e->getMessage());
-            return response()->json(['error' => 'An error occurred. Please try again later.'], 500);
+            return response()->json(['error' => 'An error occurred.'], 500);
         }
     }
 
