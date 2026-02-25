@@ -1219,6 +1219,8 @@ class MemberController extends Controller
         
         
         // $member = Auth::guard('member')->user();
+        $authMember = Auth::guard('member')->user();
+        $authId = $authMember ? $authMember->id : null;
         
     
         $memberId = $request->id;
@@ -1240,6 +1242,15 @@ class MemberController extends Controller
             
         $member = Member::where(['id' =>$request->id])->first();
         // return $member;
+
+        if ($authId && $authId != $memberId) {
+            $checkFollow = Follow::where('follower_id', $authId)
+                                ->where('following_id', $memberId)
+                                ->exists();
+            $member->is_following = $checkFollow; // ফলো করলে true, না করলে false
+        } else {
+            $member->is_following = false; // নিজের প্রোফাইল হলে বা লগইন না থাকলে false
+        }
         
         
          $district = DB::table('districts')
@@ -1379,6 +1390,7 @@ class MemberController extends Controller
             'followers_count' => $followers_count, 
             'following_count' => $following_count, 
             'friends_count'   => $friends_count,
+            "is_following" => $member->is_following,
             'member'   => $member,
             'data'   => $posts,
             
