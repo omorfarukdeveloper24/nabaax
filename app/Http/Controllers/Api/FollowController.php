@@ -161,47 +161,138 @@ class FollowController extends Controller
     }
 
     
-    public function following()
+    // public function following()
+    // {
+    //     $member = Auth::guard('member')->user();
+
+    //     $following = Follow::where('follower_id', $member->id)
+    //         ->with('following:id,name,username,image')
+    //         ->get()
+    //         ->map(function ($follow) {
+    //             return [
+    //                 'id' => $follow->following->id,
+    //                 'name' => $follow->following->name,
+    //                 'is_friend' => $follow->is_friend,
+    //                 'username' => $follow->following->username,
+    //                 'image' => $follow->following->image,
+    //             ];
+    //         });
+
+    //     return response()->json(['data' => $following]);
+    // }
+
+    public function following(Request $request) // ১. Request $request যোগ করা হয়েছে
     {
-        $member = Auth::guard('member')->user();
+        // ২. লগইন করা মেম্বারের আইডি নেওয়া
+        $authId = Auth::guard('member')->id();
+
+        // ৩. রিকোয়েস্ট আইডি অনুযায়ী মেম্বারকে খুঁজে বের করা 
+        // (যাতে নিজের এবং অন্যের—উভয়ের ফলোয়িং লিস্ট দেখা যায়)
+        $memberId = $request->id ?? $authId; 
+        $member = Member::find($memberId);
+
+        if (!$member) {
+            return response()->json(['status' => 'failed', 'message' => 'Member not found'], 404);
+        }
 
         $following = Follow::where('follower_id', $member->id)
             ->with('following:id,name,username,image')
             ->get()
-            ->map(function ($follow) {
+            ->map(function ($follow) use ($authId) { // ৪. 'use ($authId)' যোগ করা হয়েছে
+                
+                // ৫. চেক করা হচ্ছে: লিস্টের মানুষগুলোকে আপনি (লগইন ইউজার) ফলো করছেন কি না
+                $isFollowing = 0;
+                if ($authId) {
+                    $check = Follow::where('follower_id', $authId)
+                                ->where('following_id', $follow->following->id)
+                                ->exists();
+                    $isFollowing = $check ? 1 : 0;
+                }
+
                 return [
                     'id' => $follow->following->id,
                     'name' => $follow->following->name,
-                    'is_friend' => $follow->is_friend,
                     'username' => $follow->following->username,
+                    'is_friend' => $follow->is_friend,
                     'image' => $follow->following->image,
+                    'login_flow' => $isFollowing, // আপনার চাওয়া অনুযায়ী ১ অথবা ০
                 ];
             });
 
-        return response()->json(['data' => $following]);
+        return response()->json([
+            'status' => 'success',
+            'data' => $following
+        ]);
     }
 
 
-    public function flowfriend()
-    {
-        $member = Auth::guard('member')->user();
+    // public function flowfriend()
+    // {
+    //     $member = Auth::guard('member')->user();
 
-        $friends = Follow::where('follower_id', $member->id)
+    //     $friends = Follow::where('follower_id', $member->id)
+    //         ->where('is_friend', 1) 
+    //         ->with('following:id,name,username,image') 
+    //         ->get()
+    //         ->map(function ($follow) {
+    //             return [
+    //                 'id'       => $follow->following->id,
+    //                 'name'     => $follow->following->name,
+    //                 'username' => $follow->following->username,
+    //                 'is_friend'=> $follow->is_friend,
+    //                 'image'    => $follow->following->image,
+    //             ];
+    //         });
+
+    //     return response()->json(['data' => $friends]);
+    // }
+
+    public function flowfriend(Request $request) // Request ইনজেক্ট করা হয়েছে
+    {
+        // ১. লগইন করা মেম্বারের আইডি নেওয়া
+        $authId = Auth::guard('member')->id();
+
+        // ২. যার ফ্রেন্ড লিস্ট দেখা হচ্ছে তাকে খুঁজে বের করা 
+        // যদি রিকোয়েস্টে আইডি না থাকে, তবে লগইন ইউজারের আইডি নেওয়া হবে
+        $memberId = $request->id ?? $authId;
+        
+        if (!$memberId) {
+            return response()->json(['status' => 'failed', 'message' => 'No member id found'], 400);
+        }
+
+        // ৩. ফ্রেন্ড লিস্ট কুয়েরি করা
+        $friends = Follow::where('follower_id', $memberId)
             ->where('is_friend', 1) 
             ->with('following:id,name,username,image') 
             ->get()
-            ->map(function ($follow) {
+            ->map(function ($follow) use ($authId) { // $authId ব্যবহারের জন্য use ব্যবহার করা হয়েছে
+                
+                // ৪. চেক করা হচ্ছে: লিস্টের এই ফ্রেন্ডকে আপনি (Auth User) ফলো করছেন কি না
+                $isFollowing = 0;
+                if ($authId) {
+                    $check = Follow::where('follower_id', $authId)
+                                ->where('following_id', $follow->following->id)
+                                ->exists();
+                    $isFollowing = $check ? 1 : 0;
+                }
+
                 return [
                     'id'       => $follow->following->id,
                     'name'     => $follow->following->name,
                     'username' => $follow->following->username,
                     'is_friend'=> $follow->is_friend,
                     'image'    => $follow->following->image,
+                    'login_flow' => $isFollowing, // আপনার চাওয়া অনুযায়ী ১ অথবা ০
                 ];
             });
 
-        return response()->json(['data' => $friends]);
+        return response()->json([
+            'status' => 'success',
+            'data'   => $friends
+        ]);
     }
+
+
 
 
     public function suggestions()
@@ -230,6 +321,10 @@ class FollowController extends Controller
 
         return response()->json(['data' => $suggestions]);
     }
+
+
+
+
     
    
     
