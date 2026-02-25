@@ -339,11 +339,11 @@ class PostController extends Controller
 
         $memberId = $member->id;
 
-        // ১. রিকোয়েস্ট থেকে 'id' এবং 'page' নেওয়া
+        // ১. রিকোয়েস্ট থেকে Post_media টেবিলের id এবং page নেওয়া
         $targetVideoId = request()->query('id'); 
         $currentPage = request()->query('page', 1);
 
-        // ২. সিড (Seed) ম্যানেজমেন্ট যাতে পেজ পরিবর্তন হলেও ভিডিওর অর্ডার ঠিক থাকে
+        // ২. সিড (Seed) ম্যানেজমেন্ট
         $seed = request()->has('page') ? session()->get('video_seed') : rand(1, 9999);
         if (!request()->has('page')) {
             session()->put('video_seed', $seed);
@@ -367,30 +367,32 @@ class PostController extends Controller
             ->where('media_type', 'video')
             ->whereHas('post', fn($q) => $q->where('visibility', 'public'))
             
-            // ৩. ফেসবুক লজিক: শুধুমাত্র প্রথম পেজে নির্দিষ্ট আইডিকে প্রায়োরিটি দেওয়া
+            // ৩. প্রধান পরিবর্তন: CASE WHEN ব্যবহার করে সুনির্দিষ্ট আইডিকে সবার উপরে আনা
+            // যদি পেজ ১ হয় এবং আইডি পাঠানো হয়, তবেই এটি কাজ করবে
             ->when(($targetVideoId && $currentPage == 1), function ($query) use ($targetVideoId) {
-                return $query->orderByRaw("id = ? DESC", [$targetVideoId]);
+                return $query->orderByRaw("CASE WHEN id = ? THEN 0 ELSE 1 END ASC", [$targetVideoId]);
             })
             
+            // ৪. দ্বিতীয় প্রায়োরিটি হিসেবে র‍্যান্ডম অর্ডার কাজ করবে
             ->inRandomOrder($seed) 
             ->paginate(5); 
 
-        // ৪. কালেকশন ট্রান্সফর্ম (ফলো এবং বুস্ট স্ট্যাটাস চেক)
+        // ৫. ডাটা ট্রান্সফর্মেশন
         $videos->getCollection()->transform(function ($video) use ($memberId) {
             $post = $video->post;
             
             if ($post) {
-                // ফলো চেক
-                $post->is_following = Follow::where('follower_id', $memberId)
+                // ফলো স্ট্যাটাস চেক
+                $post->is_following = \App\Models\Follow::where('follower_id', $memberId)
                     ->where('following_id', $post->member_id)
                     ->exists();
 
                 // ফলো বুস্ট চেক
-                $followBoost = FollowBoost::where('member_id', $post->member_id)->first();
+                $followBoost = \App\Models\FollowBoost::where('member_id', $post->member_id)->first();
                 $post->follow_boost_status = ($followBoost && $followBoost->status === 'active') ? 'active' : 'inactive';
 
                 // পোস্ট বুস্ট চেক
-                $postBoost = PostBoost::where('post_id', $post->id)->latest()->first();
+                $postBoost = \App\Models\PostBoost::where('post_id', $post->id)->latest()->first();
                 if ($postBoost && $postBoost->status === 'active') {
                     $post->post_boost = [
                         'id' => $postBoost->id,
