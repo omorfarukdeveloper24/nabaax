@@ -338,18 +338,17 @@ class PostController extends Controller
         }
 
         $memberId = $member->id;
-        
-        // ১. রিকোয়েস্ট থেকে ডাটা নেওয়া
-        $targetVideoId = request()->query('id'); // অথবা 'video_id', আপনার পাঠানো কী অনুযায়ী
-        $page = request()->query('page', 1);
 
-        // ২. র‍্যান্ডম অর্ডারের জন্য সিড (Seed) ম্যানেজমেন্ট
+        // ১. রিকোয়েস্ট থেকে 'id' এবং 'page' নেওয়া
+        $targetVideoId = request()->query('id'); 
+        $currentPage = request()->query('page', 1);
+
+        // ২. সিড (Seed) ম্যানেজমেন্ট যাতে পেজ পরিবর্তন হলেও ভিডিওর অর্ডার ঠিক থাকে
         $seed = request()->has('page') ? session()->get('video_seed') : rand(1, 9999);
         if (!request()->has('page')) {
             session()->put('video_seed', $seed);
         }
 
-        // ৩. মূল কুয়েরি
         $videos = Post_media::with([
                 'post' => function ($q) use ($memberId) {
                     $q->select('id', 'member_id', 'content', 'visibility', 'created_at')
@@ -362,46 +361,47 @@ class PostController extends Controller
                         ->withExists([
                             'likes as liked_by_me' => fn($q) => $q->where('member_id', $memberId)->where('type', 1),
                             'likes as disliked_by_me' => fn($q) => $q->where('member_id', $memberId)->where('type', 2),
-                            // অপ্টিমাইজেশন: ফলো চেক এখানেই করে ফেলা (লুপের চাপ কমবে)
-                            'post_follows as is_following' => fn($q) => $q->where('follower_id', $memberId)
                         ]);
                 }
             ])
             ->where('media_type', 'video')
             ->whereHas('post', fn($q) => $q->where('visibility', 'public'))
             
-            // ফেসবুক স্টাইল লজিক: শুধুমাত্র ১ম পেজে টার্গেট আইডি সবার উপরে থাকবে
-            ->when(($targetVideoId && $page == 1), function ($query) use ($targetVideoId) {
+            // ৩. ফেসবুক লজিক: শুধুমাত্র প্রথম পেজে নির্দিষ্ট আইডিকে প্রায়োরিটি দেওয়া
+            ->when(($targetVideoId && $currentPage == 1), function ($query) use ($targetVideoId) {
                 return $query->orderByRaw("id = ? DESC", [$targetVideoId]);
             })
             
             ->inRandomOrder($seed) 
             ->paginate(5); 
 
-        // ৪. ডাটা ট্র্যান্সফর্মেশন (Professional Way)
+        // ৪. কালেকশন ট্রান্সফর্ম (ফলো এবং বুস্ট স্ট্যাটাস চেক)
         $videos->getCollection()->transform(function ($video) use ($memberId) {
             $post = $video->post;
             
-            // if ($post) {
-            //     // ফলো স্ট্যাটাস (withExists থেকে পাওয়া)
-            //     $post->is_following = (bool) $post->is_following_exists;
+            if ($post) {
+                // ফলো চেক
+                $post->is_following = Follow::where('follower_id', $memberId)
+                    ->where('following_id', $post->member_id)
+                    ->exists();
 
-            //     // Follow Boost চেক
-            //     $followBoost = FollowBoost::where('member_id', $post->member_id)->first();
-            //     $post->follow_boost_status = ($followBoost && $followBoost->status === 'active') ? 'active' : 'inactive';
+                // ফলো বুস্ট চেক
+                $followBoost = FollowBoost::where('member_id', $post->member_id)->first();
+                $post->follow_boost_status = ($followBoost && $followBoost->status === 'active') ? 'active' : 'inactive';
 
-            //     // Post Boost চেক
-            //     $postBoost = PostBoost::where('post_id', $post->id)->latest()->first();
-            //     $post->post_boost = ($postBoost && $postBoost->status === 'active') ? [
-            //         'id' => $postBoost->id,
-            //         'message_link' => $postBoost->message_link,
-            //         'website_link' => $postBoost->website_link,
-            //         'status' => 'active'
-            //     ] : [
-            //         'id' => null, 
-            //         'status' => 'inactive'
-            //     ];
-            // }
+                // পোস্ট বুস্ট চেক
+                $postBoost = PostBoost::where('post_id', $post->id)->latest()->first();
+                if ($postBoost && $postBoost->status === 'active') {
+                    $post->post_boost = [
+                        'id' => $postBoost->id,
+                        'message_link' => $postBoost->message_link,
+                        'website_link' => $postBoost->website_link,
+                        'status' => 'active'
+                    ];
+                } else {
+                    $post->post_boost = ['id' => null, 'status' => 'inactive'];
+                }
+            }
 
             return $video;
         });
