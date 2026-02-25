@@ -103,8 +103,9 @@ class PostController extends Controller
         if (!request()->has('page')) {
             session()->put('post_seed', $seed);
         }
+        $justPostedId = session()->get('just_posted_id');
 
-        $posts = Post::select('id', 'member_id', 'content', 'visibility', 'created_at', 'total_views', 'status')
+        $query = Post::select('id', 'member_id', 'content', 'visibility', 'created_at', 'total_views', 'status')
             ->where('status', 'active') 
             ->with([
                 'member' => function($q) {
@@ -130,10 +131,17 @@ class PostController extends Controller
                 'likes as disliked_by_me' => function ($q) use ($memberId) {
                     $q->where('member_id', $memberId)->where('type', 2);
                 },
-            ])
-            ->orderByRaw("CASE WHEN member_id = ? AND created_at >= NOW() - INTERVAL 1 DAY THEN 0 ELSE 1 END", [$memberId])
-            ->inRandomOrder($seed)
-            ->paginate(5);
+            ]);
+
+        
+        if ($justPostedId && !request()->has('page')) {
+            $query->orderByRaw("CASE WHEN id = ? THEN 0 ELSE 1 END", [$justPostedId]);
+            session()->forget('just_posted_id');
+        } else {
+            $query->orderByRaw("CASE WHEN member_id = ? AND created_at >= NOW() - INTERVAL 1 DAY THEN 0 ELSE 1 END", [$memberId]);
+        }
+
+        $posts = $query->inRandomOrder($seed)->paginate(5);
 
         $posts->getCollection()->transform(function ($post, $index) use ($memberId, $miniAds) {
 
@@ -347,6 +355,7 @@ class PostController extends Controller
             'visibility' => $request->visibility,
             'status' => 'pending', 
         ]);
+        session()->put('just_posted_id', $post->id);
 
         if ($request->hasFile('media')) {
             foreach ($request->file('media') as $file) {
