@@ -131,7 +131,8 @@ class PostController extends Controller
                     $q->where('member_id', $memberId)->where('type', 2);
                 },
             ])
-            ->inRandomOrder($seed) 
+            ->orderByRaw("CASE WHEN member_id = ? AND created_at >= NOW() - INTERVAL 1 DAY THEN 0 ELSE 1 END", [$memberId])
+            ->inRandomOrder($seed)
             ->paginate(5);
 
         $posts->getCollection()->transform(function ($post, $index) use ($memberId, $miniAds) {
@@ -287,7 +288,7 @@ class PostController extends Controller
             ->whereHas('post', fn($q) => $q->where('visibility', 'public'))
             // ->whereNotIn('id', $watchedVideos)
             ->inRandomOrder($seed) 
-            ->paginate(15); 
+            ->paginate(5); 
 
         
         $videos->getCollection()->transform(function ($video) use ($memberId) {
