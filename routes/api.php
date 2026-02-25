@@ -136,6 +136,7 @@ Route::group(['namespace' => 'Api','prefix'=>'v1','middleware' => 'api'], functi
         
         Route::get('/list', [PostController::class, 'list']);   
         Route::get('/postvideo', [PostController::class, 'postvideo']);   
+        Route::get('/personalpostvideo', [PostController::class, 'personalpostvideo']);   
         Route::get('/prosearch', [PostController::class, 'prosearch']); 
         Route::get('/details/{id}', [PostController::class, 'details']);   
         Route::post('/store', [PostController::class, 'store']);  

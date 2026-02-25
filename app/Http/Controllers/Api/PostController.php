@@ -324,6 +324,83 @@ class PostController extends Controller
             'data' => $videos
         ]);
     }
+
+
+
+    public function personalpostvideo()
+    {
+        $member = Auth::guard('member')->user();
+        if (!$member) {
+            return response()->json([
+                'status' => 'failed',
+                'message' => 'Unauthorized user'
+            ], 401);
+        }
+
+        $memberId = $member->id;
+        // রিকোয়েস্ট থেকে ভিডিও আইডি নিচ্ছি যা প্রথমে দেখাতে হবে
+        $targetVideoId = request()->get('video_id'); 
+
+        $seed = request()->has('page') ? session()->get('video_seed') : rand(1, 9999);
+        if (!request()->has('page')) {
+            session()->put('video_seed', $seed);
+        }
+
+        $videos = Post_media::with([
+                'post' => function ($q) use ($memberId) {
+                    $q->select('id', 'member_id', 'content', 'visibility', 'created_at')
+                        ->with(['member'])
+                        ->withCount([
+                            'likes as like_count' => fn($q) => $q->where('type', 1),
+                            'likes as dislike_count' => fn($q) => $q->where('type', 2),
+                            'comments as comment_count',
+                        ])
+                        ->withExists([
+                            'likes as liked_by_me' => fn($q) => $q->where('member_id', $memberId)->where('type', 1),
+                            'likes as disliked_by_me' => fn($q) => $q->where('member_id', $memberId)->where('type', 2),
+                        ]);
+                }
+            ])
+            ->where('media_type', 'video')
+            ->whereHas('post', fn($q) => $q->where('visibility', 'public'))
+            // এখানে আইডি অনুযায়ী সর্টিং হচ্ছে: টার্গেট আইডি সবার আগে আসবে
+            ->orderByRaw("id = ? DESC", [$targetVideoId])
+            ->inRandomOrder($seed) 
+            ->paginate(5); 
+
+        $videos->getCollection()->transform(function ($video) use ($memberId) {
+            $post = $video->post;
+            
+            if ($post) {
+                $isFollowing = Follow::where('follower_id', $memberId)
+                    ->where('following_id', $post->member_id)
+                    ->exists();
+                $post->is_following = $isFollowing;
+
+                $followBoost = FollowBoost::where('member_id', $post->member_id)->first();
+                $post->follow_boost_status = ($followBoost && $followBoost->status === 'active') ? 'active' : 'inactive';
+
+                $postBoost = PostBoost::where('post_id', $post->id)->latest()->first();
+                if ($postBoost && $postBoost->status === 'active') {
+                    $post->post_boost = [
+                        'id' => $postBoost->id,
+                        'message_link' => $postBoost->message_link,
+                        'website_link' => $postBoost->website_link,
+                        'status' => 'active'
+                    ];
+                } else {
+                    $post->post_boost = ['id' => null, 'status' => 'inactive'];
+                }
+            }
+
+            return $video;
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $videos
+        ]);
+    }
     
     
 
