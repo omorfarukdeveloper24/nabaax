@@ -28,6 +28,7 @@ Route::group(['namespace' => 'Api','prefix'=>'v1'], function() {
    Route::get('professions', [FrontendController::class, 'getProfessions']);
    
    Route::post('send-notification', [MemberController::class, 'sendNotification']); 
+   Route::post('save-notification', [MemberController::class, 'saveNotification']); 
    Route::post('message-notification', [MemberController::class, 'messageWithNotification']); 
    
 });
