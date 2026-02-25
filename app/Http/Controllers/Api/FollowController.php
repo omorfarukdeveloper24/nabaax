@@ -96,9 +96,32 @@ class FollowController extends Controller
     }
 
   
-    public function followers()
+    // public function followers()
+    // {
+    //     $member = Auth::guard('member')->user();
+    //     $member = Member::where('id', $request->id)->first();
+
+    //     $followers = Follow::where('following_id', $member->id)
+    //         ->with('follower:id,name,username,image')
+    //         ->get()
+    //         ->map(function ($follow) {
+    //             return [
+    //                 'id' => $follow->follower->id,
+    //                 'name' => $follow->follower->name,
+    //                 'username' => $follow->follower->username,
+    //                 'is_friend' => $follow->is_friend,
+    //                 'image' => $follow->follower->image,
+    //             ];
+    //         });
+
+    //     return response()->json(['data' => $followers]);
+    // }
+
+    public function followers(Request $request)
     {
-        $member = Auth::guard('member')->user();
+        // $member = Auth::guard('member')->user();
+        // $authId = Auth::guard('member')->id();
+        $member = Member::where('id', $request->id)->first();
 
         $followers = Follow::where('following_id', $member->id)
             ->with('follower:id,name,username,image')
