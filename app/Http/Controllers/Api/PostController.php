@@ -338,14 +338,18 @@ class PostController extends Controller
         }
 
         $memberId = $member->id;
-        // রিকোয়েস্ট থেকে ভিডিও আইডি নিচ্ছি যা প্রথমে দেখাতে হবে
-        $targetVideoId = request()->get('video_id'); 
+        
+        // ১. রিকোয়েস্ট থেকে ডাটা নেওয়া
+        $targetVideoId = request()->query('id'); // অথবা 'video_id', আপনার পাঠানো কী অনুযায়ী
+        $page = request()->query('page', 1);
 
+        // ২. র‍্যান্ডম অর্ডারের জন্য সিড (Seed) ম্যানেজমেন্ট
         $seed = request()->has('page') ? session()->get('video_seed') : rand(1, 9999);
         if (!request()->has('page')) {
             session()->put('video_seed', $seed);
         }
 
+        // ৩. মূল কুয়েরি
         $videos = Post_media::with([
                 'post' => function ($q) use ($memberId) {
                     $q->select('id', 'member_id', 'content', 'visibility', 'created_at')
@@ -358,40 +362,46 @@ class PostController extends Controller
                         ->withExists([
                             'likes as liked_by_me' => fn($q) => $q->where('member_id', $memberId)->where('type', 1),
                             'likes as disliked_by_me' => fn($q) => $q->where('member_id', $memberId)->where('type', 2),
+                            // অপ্টিমাইজেশন: ফলো চেক এখানেই করে ফেলা (লুপের চাপ কমবে)
+                            'post_follows as is_following' => fn($q) => $q->where('follower_id', $memberId)
                         ]);
                 }
             ])
             ->where('media_type', 'video')
             ->whereHas('post', fn($q) => $q->where('visibility', 'public'))
-            // এখানে আইডি অনুযায়ী সর্টিং হচ্ছে: টার্গেট আইডি সবার আগে আসবে
-            ->orderByRaw("id = ? DESC", [$targetVideoId])
+            
+            // ফেসবুক স্টাইল লজিক: শুধুমাত্র ১ম পেজে টার্গেট আইডি সবার উপরে থাকবে
+            ->when(($targetVideoId && $page == 1), function ($query) use ($targetVideoId) {
+                return $query->orderByRaw("id = ? DESC", [$targetVideoId]);
+            })
+            
             ->inRandomOrder($seed) 
             ->paginate(5); 
 
+        // ৪. ডাটা ট্র্যান্সফর্মেশন (Professional Way)
         $videos->getCollection()->transform(function ($video) use ($memberId) {
             $post = $video->post;
             
-            if ($post) {
-                $isFollowing = Follow::where('follower_id', $memberId)
-                    ->where('following_id', $post->member_id)
-                    ->exists();
-                $post->is_following = $isFollowing;
+            // if ($post) {
+            //     // ফলো স্ট্যাটাস (withExists থেকে পাওয়া)
+            //     $post->is_following = (bool) $post->is_following_exists;
 
-                $followBoost = FollowBoost::where('member_id', $post->member_id)->first();
-                $post->follow_boost_status = ($followBoost && $followBoost->status === 'active') ? 'active' : 'inactive';
+            //     // Follow Boost চেক
+            //     $followBoost = FollowBoost::where('member_id', $post->member_id)->first();
+            //     $post->follow_boost_status = ($followBoost && $followBoost->status === 'active') ? 'active' : 'inactive';
 
-                $postBoost = PostBoost::where('post_id', $post->id)->latest()->first();
-                if ($postBoost && $postBoost->status === 'active') {
-                    $post->post_boost = [
-                        'id' => $postBoost->id,
-                        'message_link' => $postBoost->message_link,
-                        'website_link' => $postBoost->website_link,
-                        'status' => 'active'
-                    ];
-                } else {
-                    $post->post_boost = ['id' => null, 'status' => 'inactive'];
-                }
-            }
+            //     // Post Boost চেক
+            //     $postBoost = PostBoost::where('post_id', $post->id)->latest()->first();
+            //     $post->post_boost = ($postBoost && $postBoost->status === 'active') ? [
+            //         'id' => $postBoost->id,
+            //         'message_link' => $postBoost->message_link,
+            //         'website_link' => $postBoost->website_link,
+            //         'status' => 'active'
+            //     ] : [
+            //         'id' => null, 
+            //         'status' => 'inactive'
+            //     ];
+            // }
 
             return $video;
         });
