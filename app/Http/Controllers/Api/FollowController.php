@@ -119,24 +119,45 @@ class FollowController extends Controller
 
     public function followers(Request $request)
     {
-        // $member = Auth::guard('member')->user();
-        // $authId = Auth::guard('member')->id();
+        // ১. লগইন করা মেম্বারের আইডি নেওয়া
+        $authId = Auth::guard('member')->id(); 
+
+        // ২. যার প্রোফাইলের ফলোয়ার লিস্ট দেখা হচ্ছে তাকে খুঁজে বের করা
         $member = Member::where('id', $request->id)->first();
+
+        if (!$member) {
+            return response()->json(['status' => 'failed', 'message' => 'Member not found'], 404);
+        }
 
         $followers = Follow::where('following_id', $member->id)
             ->with('follower:id,name,username,image')
             ->get()
-            ->map(function ($follow) {
+            ->map(function ($follow) use ($authId) { // 'use ($authId)' অবশ্যই দিতে হবে
+                
+                // ৩. লগইন করা মেম্বার কি এই ফলোয়ারকে ফলো করছে?
+                $isFollowing = 0; 
+                if ($authId) {
+                    // চেক করা হচ্ছে: ফলোয়ার আইডির সাথে আপনার আইডি'র ফলো রিলেশন আছে কি না
+                    $check = Follow::where('follower_id', $authId)
+                                ->where('following_id', $follow->follower->id)
+                                ->exists();
+                    $isFollowing = $check ? 1 : 0;
+                }
+
                 return [
                     'id' => $follow->follower->id,
                     'name' => $follow->follower->name,
                     'username' => $follow->follower->username,
                     'is_friend' => $follow->is_friend,
                     'image' => $follow->follower->image,
+                    'login_flow' => $isFollowing, // আপনার চাওয়া অনুযায়ী ১ অথবা ০ দেখাবে
                 ];
             });
 
-        return response()->json(['data' => $followers]);
+        return response()->json([
+            'status' => 'success',
+            'data' => $followers
+        ]);
     }
 
     
