@@ -26,6 +26,7 @@ use App\Traits\NotificationTrait;
 use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Cache;
 
 
 class PostController extends Controller
@@ -78,76 +79,147 @@ class PostController extends Controller
 
 
 
+    // public function list()
+    // {
+    //     $member = Auth::guard("member")->user();
+
+    //     if (!$member) {
+    //         return response()->json([
+    //             'status' => 'failed',
+    //             'message' => 'Unauthorized user'
+    //         ], 401);
+    //     }
+
+    //     $memberId = $member->id;
+
+    //     $miniAds = Miniad::where('status', 1)
+    //         ->select('id', 'image')
+    //         ->get();
+
+    //     if ($miniAds->isEmpty()) {
+    //         $miniAds = collect([]);
+    //     }
+
+    //     $seed = request()->has('page') ? session()->get('post_seed') : rand(1, 9999);
+    //     if (!request()->has('page')) {
+    //         session()->put('post_seed', $seed);
+    //     }
+
+    //     $posts = Post::select('id', 'member_id', 'content', 'visibility', 'created_at', 'total_views', 'status')
+    //         ->where('status', 'active') 
+    //         ->with([
+    //             'member' => function($q) {
+    //                 $q->select('id', 'name', 'image');
+    //             },
+    //             'media' => function($q) {
+    //                 $q->select('id', 'post_id', 'media_type', 'path', 'duration');
+    //             }
+    //         ])
+    //         ->withCount([
+    //             'likes as like_count' => function ($q) {
+    //                 $q->where('type', 1);
+    //             },
+    //             'likes as dislike_count' => function ($q) {
+    //                 $q->where('type', 2);
+    //             },
+    //             'comments as comment_count'
+    //         ])
+    //         ->withExists([
+    //             'likes as liked_by_me' => function ($q) use ($memberId) {
+    //                 $q->where('member_id', $memberId)->where('type', 1);
+    //             },
+    //             'likes as disliked_by_me' => function ($q) use ($memberId) {
+    //                 $q->where('member_id', $memberId)->where('type', 2);
+    //             },
+    //         ])
+    //         ->orderByRaw("CASE WHEN member_id = ? AND created_at >= NOW() - INTERVAL 1 DAY THEN 0 ELSE 1 END", [$memberId])
+    //         ->inRandomOrder($seed)
+    //         ->paginate(5);
+
+    //     $posts->getCollection()->transform(function ($post, $index) use ($memberId, $miniAds) {
+
+    //         $isFollowing = Follow::where('follower_id', $memberId)
+    //             ->where('following_id', $post->member_id)
+    //             ->exists();
+
+    //         $post->is_following = $isFollowing;
+
+    //         if ($miniAds->count() > 0) {
+    //             $adIndex = $index % $miniAds->count();
+    //             $post->mini_ads = $miniAds[$adIndex]; 
+    //         } else {
+    //             $post->mini_ads = null; 
+    //         }
+
+    //         return $post;
+    //     });
+
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'data' => $posts
+    //     ]);
+    // }
+
+
     public function list()
     {
         $member = Auth::guard("member")->user();
-
         if (!$member) {
-            return response()->json([
-                'status' => 'failed',
-                'message' => 'Unauthorized user'
-            ], 401);
+            return response()->json(['status' => 'failed', 'message' => 'Unauthorized user'], 401);
         }
 
         $memberId = $member->id;
+        $page = request()->get('page', 1);
 
-        $miniAds = Miniad::where('status', 1)
-            ->select('id', 'image')
-            ->get();
+        // ১. অ্যাডস ক্যাশ করা (১০ মিনিটের জন্য)
+        $miniAds = Cache::remember('mini_ads_active', 600, function () {
+            return Miniad::where('status', 1)->select('id', 'image')->get();
+        });
 
-        if ($miniAds->isEmpty()) {
-            $miniAds = collect([]);
-        }
-
+        // ২. সিড (Seed) ম্যানেজমেন্ট - র‍্যান্ডম অর্ডারের জন্য
         $seed = request()->has('page') ? session()->get('post_seed') : rand(1, 9999);
         if (!request()->has('page')) {
             session()->put('post_seed', $seed);
         }
 
-        $posts = Post::select('id', 'member_id', 'content', 'visibility', 'created_at', 'total_views', 'status')
-            ->where('status', 'active') 
-            ->with([
-                'member' => function($q) {
-                    $q->select('id', 'name', 'image');
-                },
-                'media' => function($q) {
-                    $q->select('id', 'post_id', 'media_type', 'path', 'duration');
-                }
-            ])
-            ->withCount([
-                'likes as like_count' => function ($q) {
-                    $q->where('type', 1);
-                },
-                'likes as dislike_count' => function ($q) {
-                    $q->where('type', 2);
-                },
-                'comments as comment_count'
-            ])
-            ->withExists([
-                'likes as liked_by_me' => function ($q) use ($memberId) {
-                    $q->where('member_id', $memberId)->where('type', 1);
-                },
-                'likes as disliked_by_me' => function ($q) use ($memberId) {
-                    $q->where('member_id', $memberId)->where('type', 2);
-                },
-            ])
-            ->orderByRaw("CASE WHEN member_id = ? AND created_at >= NOW() - INTERVAL 1 DAY THEN 0 ELSE 1 END", [$memberId])
-            ->inRandomOrder($seed)
-            ->paginate(5);
+        // ৩. ক্যাশ কী (Cache Key) তৈরি
+        // এখানে পেজ এবং সিড অনুযায়ী ক্যাশ করা হচ্ছে যাতে পেজিনেশন ঠিক থাকে
+        $cacheKey = "posts_list_p{$page}_s{$seed}_u{$memberId}";
 
+        $posts = Cache::remember($cacheKey, 300, function () use ($memberId, $seed) {
+            return Post::select('id', 'member_id', 'content', 'visibility', 'created_at', 'total_views', 'status')
+                ->where('status', 'active')
+                ->with([
+                    'member' => fn($q) => $q->select('id', 'name', 'image'),
+                    'media' => fn($q) => $q->select('id', 'post_id', 'media_type', 'path', 'duration')
+                ])
+                ->withCount([
+                    'likes as like_count' => fn($q) => $q->where('type', 1),
+                    'likes as dislike_count' => fn($q) => $q->where('type', 2),
+                    'comments as comment_count'
+                ])
+                ->withExists([
+                    'likes as liked_by_me' => fn($q) => $q->where('member_id', $memberId)->where('type', 1),
+                    'likes as disliked_by_me' => fn($q) => $q->where('member_id', $memberId)->where('type', 2),
+                ])
+                ->inRandomOrder($seed) // শুধুমাত্র র‍্যান্ডম অর্ডারে পোস্ট আসবে
+                ->paginate(5);
+        });
+
+        // ৪. ডাইনামিক ডাটা প্রসেসিং (ফলো চেক এবং অ্যাডস)
         $posts->getCollection()->transform(function ($post, $index) use ($memberId, $miniAds) {
-
-            $isFollowing = Follow::where('follower_id', $memberId)
+            
+            // রিয়েল-টাইম ফলো চেক (এটি ক্যাশ করা যাবে না)
+            $post->is_following = Follow::where('follower_id', $memberId)
                 ->where('following_id', $post->member_id)
                 ->exists();
 
-            $post->is_following = $isFollowing;
-
-            if ($miniAds->count() > 0) {
+            // অ্যাডস সিরিয়াল অনুযায়ী বসানো
+            if ($miniAds->isNotEmpty()) {
                 $adIndex = $index % $miniAds->count();
-                $post->mini_ads = $miniAds[$adIndex]; 
+                $post->mini_ads = $miniAds[$adIndex];
             } else {
-                $post->mini_ads = null; 
+                $post->mini_ads = null;
             }
 
             return $post;
