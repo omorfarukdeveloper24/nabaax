@@ -161,6 +161,76 @@ class PostController extends Controller
     // }
 
 
+    // public function list()
+    // {
+    //     $member = Auth::guard("member")->user();
+    //     if (!$member) {
+    //         return response()->json(['status' => 'failed', 'message' => 'Unauthorized user'], 401);
+    //     }
+
+    //     $memberId = $member->id;
+    //     $page = request()->get('page', 1);
+
+    //     // ১. অ্যাডস ক্যাশ করা (১০ মিনিটের জন্য)
+    //     $miniAds = Cache::remember('mini_ads_active', 600, function () {
+    //         return Miniad::where('status', 1)->select('id', 'image')->get();
+    //     });
+
+    //     // ২. সিড (Seed) ম্যানেজমেন্ট - র‍্যান্ডম অর্ডারের জন্য
+    //     $seed = request()->has('page') ? session()->get('post_seed') : rand(1, 9999);
+    //     if (!request()->has('page')) {
+    //         session()->put('post_seed', $seed);
+    //     }
+
+    //     // ৩. ক্যাশ কী (Cache Key) তৈরি
+    //     // এখানে পেজ এবং সিড অনুযায়ী ক্যাশ করা হচ্ছে যাতে পেজিনেশন ঠিক থাকে
+    //     $cacheKey = "posts_list_p{$page}_s{$seed}_u{$memberId}";
+
+    //     $posts = Cache::remember($cacheKey, 300, function () use ($memberId, $seed) {
+    //         return Post::select('id', 'member_id', 'content', 'visibility', 'created_at', 'total_views', 'status')
+    //             ->where('status', 'active')
+    //             ->with([
+    //                 'member' => fn($q) => $q->select('id', 'name', 'image'),
+    //                 'media' => fn($q) => $q->select('id', 'post_id', 'media_type', 'path', 'duration')
+    //             ])
+    //             ->withCount([
+    //                 'likes as like_count' => fn($q) => $q->where('type', 1),
+    //                 'likes as dislike_count' => fn($q) => $q->where('type', 2),
+    //                 'comments as comment_count'
+    //             ])
+    //             ->withExists([
+    //                 'likes as liked_by_me' => fn($q) => $q->where('member_id', $memberId)->where('type', 1),
+    //                 'likes as disliked_by_me' => fn($q) => $q->where('member_id', $memberId)->where('type', 2),
+    //             ])
+    //             ->inRandomOrder($seed) // শুধুমাত্র র‍্যান্ডম অর্ডারে পোস্ট আসবে
+    //             ->paginate(5);
+    //     });
+
+    //     // ৪. ডাইনামিক ডাটা প্রসেসিং (ফলো চেক এবং অ্যাডস)
+    //     $posts->getCollection()->transform(function ($post, $index) use ($memberId, $miniAds) {
+            
+    //         // রিয়েল-টাইম ফলো চেক (এটি ক্যাশ করা যাবে না)
+    //         $post->is_following = Follow::where('follower_id', $memberId)
+    //             ->where('following_id', $post->member_id)
+    //             ->exists();
+
+    //         // অ্যাডস সিরিয়াল অনুযায়ী বসানো
+    //         if ($miniAds->isNotEmpty()) {
+    //             $adIndex = $index % $miniAds->count();
+    //             $post->mini_ads = $miniAds[$adIndex];
+    //         } else {
+    //             $post->mini_ads = null;
+    //         }
+
+    //         return $post;
+    //     });
+
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'data' => $posts
+    //     ])->header('X-Cache', Cache::has($cacheKey) ? 'HIT' : 'MISS');
+    // }
+
     public function list()
     {
         $member = Auth::guard("member")->user();
@@ -169,29 +239,29 @@ class PostController extends Controller
         }
 
         $memberId = $member->id;
-        $page = request()->get('page', 1);
 
-        // ১. অ্যাডস ক্যাশ করা (১০ মিনিটের জন্য)
+        // ১. অ্যাডস ক্যাশ করা (খুবই লাইটওয়েট ডাটা)
         $miniAds = Cache::remember('mini_ads_active', 600, function () {
             return Miniad::where('status', 1)->select('id', 'image')->get();
         });
 
-        // ২. সিড (Seed) ম্যানেজমেন্ট - র‍্যান্ডম অর্ডারের জন্য
-        $seed = request()->has('page') ? session()->get('post_seed') : rand(1, 9999);
-        if (!request()->has('page')) {
+        // ২. সিড (Seed) ম্যানেজমেন্ট
+        // আপনি যেহেতু রিলোড দিলে রেন্ডম দেখতে চান, তাই প্রতি রিকোয়েস্টেই নতুন সিড জেনারেট হবে যদি পেজ নং না থাকে।
+        $seed = request()->has('cursor') ? session()->get('post_seed') : rand(1, 9999);
+        if (!request()->has('cursor')) {
             session()->put('post_seed', $seed);
         }
 
-        // ৩. ক্যাশ কী (Cache Key) তৈরি
-        // এখানে পেজ এবং সিড অনুযায়ী ক্যাশ করা হচ্ছে যাতে পেজিনেশন ঠিক থাকে
-        $cacheKey = "posts_list_p{$page}_s{$seed}_u{$memberId}";
+        // ৩. ক্যাশ লজিক (৩০ সেকেন্ডের জন্য ক্যাশ - যা পারফরম্যান্স এবং ফ্রেশ ডাটার ব্যালেন্স রাখবে)
+        $cursor = request()->get('cursor', 'first');
+        $cacheKey = "posts_feed_u{$memberId}_s{$seed}_c{$cursor}";
 
-        $posts = Cache::remember($cacheKey, 300, function () use ($memberId, $seed) {
+        $posts = Cache::remember($cacheKey, 30, function () use ($memberId, $seed) {
             return Post::select('id', 'member_id', 'content', 'visibility', 'created_at', 'total_views', 'status')
                 ->where('status', 'active')
                 ->with([
-                    'member' => fn($q) => $q->select('id', 'name', 'image'),
-                    'media' => fn($q) => $q->select('id', 'post_id', 'media_type', 'path', 'duration')
+                    'member:id,name,image',
+                    'media:id,post_id,media_type,path,duration'
                 ])
                 ->withCount([
                     'likes as like_count' => fn($q) => $q->where('type', 1),
@@ -201,27 +271,21 @@ class PostController extends Controller
                 ->withExists([
                     'likes as liked_by_me' => fn($q) => $q->where('member_id', $memberId)->where('type', 1),
                     'likes as disliked_by_me' => fn($q) => $q->where('member_id', $memberId)->where('type', 2),
+                    // প্রফেশনাল ওয়েতে ফলো চেক (N+1 সমস্যা সমাধান)
+                    'member as is_following' => fn($q) => $q->whereHas('followers', fn($f) => $f->where('follower_id', $memberId))
                 ])
-                ->inRandomOrder($seed) // শুধুমাত্র র‍্যান্ডম অর্ডারে পোস্ট আসবে
-                ->paginate(5);
+                ->inRandomOrder($seed)
+                ->cursorPaginate(10); // ১০টি করে পোস্ট আসবে
         });
 
-        // ৪. ডাইনামিক ডাটা প্রসেসিং (ফলো চেক এবং অ্যাডস)
-        $posts->getCollection()->transform(function ($post, $index) use ($memberId, $miniAds) {
-            
-            // রিয়েল-টাইম ফলো চেক (এটি ক্যাশ করা যাবে না)
-            $post->is_following = Follow::where('follower_id', $memberId)
-                ->where('following_id', $post->member_id)
-                ->exists();
-
-            // অ্যাডস সিরিয়াল অনুযায়ী বসানো
+        // ৪. অ্যাডস ইনজেকশন (এটি মেমোরিতে হচ্ছে, ডাটাবেজে নয়)
+        $posts->getCollection()->transform(function ($post, $index) use ($miniAds) {
             if ($miniAds->isNotEmpty()) {
                 $adIndex = $index % $miniAds->count();
                 $post->mini_ads = $miniAds[$adIndex];
             } else {
                 $post->mini_ads = null;
             }
-
             return $post;
         });
 
@@ -230,6 +294,9 @@ class PostController extends Controller
             'data' => $posts
         ])->header('X-Cache', Cache::has($cacheKey) ? 'HIT' : 'MISS');
     }
+
+
+
     
 
     public function miniads(Request $request)
