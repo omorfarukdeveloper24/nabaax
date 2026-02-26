@@ -228,7 +228,7 @@ class PostController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => $posts
-        ]);
+        ])->header('X-Cache', Cache::has($cacheKey) ? 'HIT' : 'MISS');
     }
     
 
