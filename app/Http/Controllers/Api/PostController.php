@@ -300,20 +300,20 @@ class PostController extends Controller
                     ->exists();
                 $post->is_following = $isFollowing;
 
-                $followBoost = FollowBoost::where('member_id', $post->member_id)->first();
-                $post->follow_boost_status = ($followBoost && $followBoost->status === 'active') ? 'active' : 'inactive';
+                // $followBoost = FollowBoost::where('member_id', $post->member_id)->first();
+                // $post->follow_boost_status = ($followBoost && $followBoost->status === 'active') ? 'active' : 'inactive';
 
-                $postBoost = PostBoost::where('post_id', $post->id)->latest()->first();
-                if ($postBoost && $postBoost->status === 'active') {
-                    $post->post_boost = [
-                        'id' => $postBoost->id,
-                        'message_link' => $postBoost->message_link,
-                        'website_link' => $postBoost->website_link,
-                        'status' => 'active'
-                    ];
-                } else {
-                    $post->post_boost = ['id' => null, 'status' => 'inactive'];
-                }
+                // $postBoost = PostBoost::where('post_id', $post->id)->latest()->first();
+                // if ($postBoost && $postBoost->status === 'active') {
+                //     $post->post_boost = [
+                //         'id' => $postBoost->id,
+                //         'message_link' => $postBoost->message_link,
+                //         'website_link' => $postBoost->website_link,
+                //         'status' => 'active'
+                //     ];
+                // } else {
+                //     $post->post_boost = ['id' => null, 'status' => 'inactive'];
+                // }
             }
 
             return $video;

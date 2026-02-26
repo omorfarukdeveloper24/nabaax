@@ -7,9 +7,11 @@ use Illuminate\Http\Request;
 use App\Models\Comment;
 use App\Models\Post;
 use Illuminate\Support\Facades\Auth;
+use App\Traits\NotificationTrait;
 
 class CommentController extends Controller
 {
+    use NotificationTrait;
     function __construct()
     {
         $this->middleware("auth.jwt", [
@@ -127,34 +129,105 @@ class CommentController extends Controller
         ], 200);
     }
 
+    // public function store(Request $request)
+    // {
+    //     // return $request;
+        
+    //     $member = Auth::guard('member')->user();
+    //     if (!$member) {
+    //         return response()->json([
+    //             'status' => 'failed',
+    //             'message' => 'Unauthorized user'
+    //         ], 401);
+    //     }
+    
+    //     $validated = $request->validate([
+    //         'post_id'   => 'required',
+    //         'content'   => 'required',
+    //         'parent_id' => 'nullable',
+    //     ]);
+
+    //     $validated['member_id'] = $member->id;
+        
+    //     // return $validated;
+        
+    //     $comment = Comment::create($validated);
+    //     return response()->json([
+    //         'status'  => 'success',
+    //         'message' => 'Comment submitted successfully',
+    //         'data'    => $comment,
+    //     ], 200);
+    // }
+
     public function store(Request $request)
     {
-        // return $request;
-        
+        // ১. মেম্বার অথেন্টিকেশন চেক
         $member = Auth::guard('member')->user();
         if (!$member) {
-            return response()->json([
-                'status' => 'failed',
-                'message' => 'Unauthorized user'
-            ], 401);
+            return response()->json(['status' => 'failed', 'message' => 'Unauthorized user'], 401);
         }
-    
-        $validated = $request->validate([
-            'post_id'   => 'required',
-            'content'   => 'required',
-            'parent_id' => 'nullable',
+
+        // ২. ইনপুট ভ্যালিডেশন
+        $request->validate([
+            'post_id'   => 'required|exists:posts,id',
+            'content'   => 'required|string', // ফরম্যাট: "Hello @[Siam](10)"
+            'parent_id' => 'nullable|exists:comments,id',
         ]);
 
-        $validated['member_id'] = $member->id;
-        
-        // return $validated;
-        
-        $comment = Comment::create($validated);
-        return response()->json([
-            'status'  => 'success',
-            'message' => 'Comment submitted successfully',
-            'data'    => $comment,
-        ], 200);
+        try {
+            DB::beginTransaction(); // ডাটা সেফটির জন্য ট্রানজ্যাকশন শুরু
+
+            // ৩. কমেন্ট সেভ করা
+            $comment = Comment::create([
+                'post_id'   => $request->post_id,
+                'content'   => $request->content,
+                'parent_id' => $request->parent_id,
+                'member_id' => $member->id,
+            ]);
+
+            // ৪. মেনশন আইডি খুঁজে বের করা (Regex)
+            preg_match_all('/@\[.*?\]\((\d+)\)/', $request->content, $matches);
+            $mentionedIds = array_unique($matches[1]);
+
+            if (!empty($mentionedIds)) {
+                // ৫. নোটিফিকেশন পাঠানোর প্রস্তুতি
+                $title = "New Mention";
+                $body  = "{$member->name} mentioned you in a comment.";
+                
+                // ডাটা হিসেবে আইডি পাঠিয়ে রাখা যাতে অ্যাপে ক্লিক করলে ঐ পোস্টে নিয়ে যায়
+                $notifData = [
+                    'type'    => 'mention',
+                    'post_id' => (string)$request->post_id,
+                    'comment_id' => (string)$comment->id
+                ];
+
+                foreach ($mentionedIds as $id) {
+                    // নিজেকে নিজে মেনশন করলে নোটিফিকেশন পাঠানোর দরকার নেই
+                    if ($id != $member->id) {
+                        // আপনার Trait এর ফাংশনটি এখানে কল করা হচ্ছে
+                        $this->sendFcmNotification($id, $title, $body, $notifData);
+                    }
+                }
+            }
+
+            DB::commit(); // সব ঠিক থাকলে ডাটাবেজে পার্মানেন্ট সেভ হবে
+
+            return response()->json([
+                'status'  => 'success',
+                'message' => 'Comment submitted successfully',
+                'data'    => $comment->load('member'),
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack(); // কোনো এরর হলে আগের সবকিছু বাতিল হয়ে যাবে
+            \Log::error("Comment Store Error: " . $e->getMessage());
+            
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Something went wrong!',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
 
