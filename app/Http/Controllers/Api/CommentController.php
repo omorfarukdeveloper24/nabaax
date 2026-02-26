@@ -8,6 +8,8 @@ use App\Models\Comment;
 use App\Models\Post;
 use Illuminate\Support\Facades\Auth;
 use App\Traits\NotificationTrait;
+use App\Models\Member; 
+use Illuminate\Support\Facades\DB;
 
 class CommentController extends Controller
 {
