@@ -984,7 +984,16 @@ class MemberController extends Controller
                 'type'         => 'credit',
             ]);
 
-            $this->sendFcmNotification($member->id, "Welcome! 🤝", "You are now a verified partner.");
+            $this->sendFcmNotification(
+                $member->id, 
+                "Welcome! 🤝", 
+                "You are now a verified partner.",
+                [
+                    'status' => 'partner_active',
+                    'start_date' => now()->toDateString()
+                ],
+                'partner_enroll' // ৫ নম্বর প্যারামিটার (Type)
+            );
 
             // ৪. কিউ (Queue) এ পাঠানো
             DistributePartnerBonus::dispatch($member, $referrer_member, $settings->first_gen_bonus, $settings->multi_gen_bonus);

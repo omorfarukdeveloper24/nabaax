@@ -224,6 +224,8 @@ class WithdrawController extends Controller
             // --- নোটিফিকেশন লজিক ---
             try {
                 $title = "Withdraw Update";
+                
+                // ১. স্ট্যাটাস অনুযায়ী মেসেজ সেট করা
                 if ($new_status === 'approved') {
                     $body = "Congratulations! Your withdraw of {$withdraw->amount} has been approved.";
                 } elseif ($new_status === 'rejected') {
@@ -232,12 +234,21 @@ class WithdrawController extends Controller
                     $body = "Your withdraw status is now " . ucfirst($new_status);
                 }
 
-                $this->sendFcmNotification($withdraw->member_id, $title, $body, [
-                    'withdraw_id' => (string)$withdraw->id,
-                    'status' => (string)$new_status
-                ]);
+                // ২. Trait এর মেথড কল করা
+                $this->sendFcmNotification(
+                    $withdraw->member_id,               // মেম্বার আইডি
+                    $title,                             // টাইটেল
+                    $body,                              // মেসেজ বডি
+                    [                                   // কাস্টম ডাটা
+                        'withdraw_id' => (string)$withdraw->id,
+                        'status'      => (string)$new_status,
+                    ],
+                    'withdraw'                          // নোটিফিকেশন টাইপ (৫ম প্যারামিটার)
+                );
+
             } catch (\Exception $e) {
-                \Log::error("Withdraw FCM Error: " . $e->getMessage());
+                // এরর লগ রাখা
+                \Log::error("Withdraw FCM Error for Member ID {$withdraw->member_id}: " . $e->getMessage());
             }
 
             Toastr::success('Withdraw marked as ' . $new_status . ' successfully');

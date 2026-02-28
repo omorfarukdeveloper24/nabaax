@@ -43,7 +43,7 @@ class DistributePartnerBonus implements ShouldQueue
 
         while ($currentReferrer && $level <= $maxLevel) {
             try {
-                DB::transaction(function () use ($currentReferrer, $level) {
+                DB::transaction(function () use ($currentReferrer, $level, $amount) {
                     
                     $amount = ($level === 1) ? $this->first_gen_bonus : $this->multi_gen_bonus;
 
@@ -78,7 +78,13 @@ class DistributePartnerBonus implements ShouldQueue
                         $this->sendFcmNotification(
                             $currentReferrer->id, 
                             "Commission Received! 💰", 
-                            "You received $amount TK bonus from " . $this->member->username
+                            "You received $amount TK bonus from " . $this->member->username,
+                            [
+                                'bonus_amount' => (string)$amount,
+                                'from_user'    => (string)$this->member->username,
+                                'level'        => (string)$level
+                            ],
+                            'generation_bonus' // ৫ নম্বর প্যারামিটার (Type)
                         );
                     }
                 });

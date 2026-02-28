@@ -389,18 +389,35 @@ class PaymentServiceController extends Controller
                 // ১. প্রেরকের জন্য নোটিফিকেশন (Debit)
                 $senderTitle = "Balance Sent Successfully";
                 $senderBody  = "You have successfully sent {$request->amount} TK to {$childMember->username}.";
-                $this->sendFcmNotification($member->id, $senderTitle, $senderBody, [
-                    'type' => 'balance_transfer',
-                    'action' => 'sent'
-                ]);
+                
+                $this->sendFcmNotification(
+                    $member->id,           // প্রেরকের আইডি
+                    $senderTitle, 
+                    $senderBody, 
+                    [
+                        'amount' => (string)$request->amount,
+                        'to_user' => (string)$childMember->username,
+                        'action' => 'sent'
+                    ],
+                    'balance_transfer'     // ৫ নম্বর প্যারামিটার (Type)
+                );
 
                 // ২. প্রাপকের জন্য নোটিফিকেশন (Credit)
                 $receiverTitle = "Balance Received";
                 $receiverBody  = "You have received {$request->amount} TK from {$member->username}.";
-                $this->sendFcmNotification($childMember->id, $receiverTitle, $receiverBody, [
-                    'type' => 'balance_transfer',
-                    'action' => 'received'
-                ]);
+                
+                $this->sendFcmNotification(
+                    $childMember->id,      // প্রাপকের আইডি
+                    $receiverTitle, 
+                    $receiverBody, 
+                    [
+                        'amount' => (string)$request->amount,
+                        'from_user' => (string)$member->username,
+                        'action' => 'received'
+                    ],
+                    'balance_transfer'     // ৫ নম্বর প্যারামিটার (Type)
+                );
+
             } catch (\Exception $e) {
                 \Log::error("Transfer FCM Error: " . $e->getMessage());
             }
