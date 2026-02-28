@@ -56,7 +56,7 @@ class ProcessVideoSafetyCheck implements ShouldQueue
                 ->open('temp_videos/' . basename($this->videoPath))
                 ->export()
                 ->toDisk('local')
-                ->inFormat(new X264('libx264', 'aac'))
+                ->inFormat(new X264())
                 ->addFilter('-crf', 24) 
                 ->save('temp_videos/' . basename($compressedPath));
             
