@@ -25,7 +25,6 @@ class ProcessVideoSafetyCheck implements ShouldQueue
     protected $videoPath;
     protected $customThumbPath;
 
-    // বড় ভিডিওর জন্য টাইমআউট ২০ মিনিট
     public $timeout = 1200; 
     public $tries = 2;
 
@@ -34,6 +33,7 @@ class ProcessVideoSafetyCheck implements ShouldQueue
         $this->postId = $postId;
         $this->videoPath = $videoPath;
         $this->customThumbPath = $customThumbPath;
+        Log::info("Job Initialized for Post ID: {$this->postId}. Custom Thumb Path: " . ($this->customThumbPath ?? 'None'));
     }
 
     public function handle()
@@ -50,8 +50,8 @@ class ProcessVideoSafetyCheck implements ShouldQueue
         $thumbnailPath = storage_path('app/temp_videos/' . $fileNameBase . '_thumb.jpg');
 
         try {
-            // --- ১. FFmpeg ব্যবহার করে ভিডিও কম্প্রেশন ও থাম্বনেইল জেনারেশন ---
-            // ভিডিও কম্প্রেশন (Quality maintain করে সাইজ কমানো)
+            Log::info("Starting FFmpeg Compression for Post ID: {$this->postId}");
+            
             FFMpeg::fromDisk('local')
                 ->open('temp_videos/' . basename($this->videoPath))
                 ->export()
@@ -59,15 +59,15 @@ class ProcessVideoSafetyCheck implements ShouldQueue
                 ->inFormat(new X264('libx264', 'aac'))
                 ->addFilter('-crf', 24) 
                 ->save('temp_videos/' . basename($compressedPath));
-
-            // অটো থাম্বনেইল জেনারেশন (৩ সেকেন্ড থেকে)
             
+            Log::info("Compression Finished. Path: {$compressedPath}");
 
+            // --- থাম্বনেইল লজিক ডিবাগিং ---
             if ($this->customThumbPath && file_exists($this->customThumbPath)) {
-                // ইউজার যদি কাস্টম থাম্বনেইল দেয়, সেটা কপি করে নিয়ে আসা
+                Log::info("Using Custom Thumbnail for Post ID: {$this->postId}");
                 copy($this->customThumbPath, $thumbnailPath);
             } else {
-                // ইউজার থাম্বনেইল না দিলে ভিডিও থেকে জেনারেট করা
+                Log::info("Generating Auto Thumbnail from Video for Post ID: {$this->postId}");
                 FFMpeg::fromDisk('local')
                     ->open('temp_videos/' . basename($this->videoPath))
                     ->getFrameFromSeconds(3)
@@ -76,7 +76,13 @@ class ProcessVideoSafetyCheck implements ShouldQueue
                     ->save('temp_videos/' . basename($thumbnailPath));
             }
 
-            // --- ২. GCS আপলোড (কম্প্রেসড ভিডিও এবং থাম্বনেইল) ---
+            if (file_exists($thumbnailPath)) {
+                Log::info("Thumbnail successfully created at: {$thumbnailPath}");
+            } else {
+                Log::error("Thumbnail FAILED to create for Post ID: {$this->postId}");
+            }
+
+            // --- GCS আপলোড ডিবাগিং ---
             $keyFileData = config('filesystems.disks.gcs.key_file');
             $videoName = "posts/videos/" . basename($compressedPath);
             $thumbName = "posts/thumbnails/" . basename($thumbnailPath);
@@ -87,15 +93,15 @@ class ProcessVideoSafetyCheck implements ShouldQueue
             ]);
             $bucket = $storage->bucket(config('filesystems.disks.gcs.bucket'));
 
-            // কম্প্রেসড ভিডিও আপলোড
+            Log::info("Uploading Video and Thumbnail to GCS for Post ID: {$this->postId}");
             $bucket->upload(fopen($compressedPath, 'r'), ['name' => $videoName]);
-            // থাম্বনেইল আপলোড
             $bucket->upload(fopen($thumbnailPath, 'r'), ['name' => $thumbName]);
+            Log::info("GCS Upload Complete.");
 
-            // --- ৩. আপনার আগের ভিডিও ইন্টেলিজেন্স চেক (অপরিবর্তিত) ---
             $videoClient = new VideoIntelligenceServiceClient(['credentials' => $keyFileData]);
             $gcsUri = 'gs://' . config('filesystems.disks.gcs.bucket') . '/' . $videoName;
 
+            Log::info("Starting Google Video Intelligence for Post ID: {$this->postId}");
             $operation = $videoClient->annotateVideo([
                 'inputUri' => $gcsUri,
                 'features' => [
@@ -112,7 +118,6 @@ class ProcessVideoSafetyCheck implements ShouldQueue
             if ($operation->operationSucceeded()) {
                 $results = $operation->getResult()->getAnnotationResults()[0];
 
-                // Duration Calculation (আপনার আগের লজিক)
                 if ($results->getSegment()) {
                     $endTime = $results->getSegment()->getEndTimeOffset();
                     $durationSeconds = (int)$endTime->getSeconds() + ((int)$endTime->getNanos() / 1000000000);
@@ -125,9 +130,6 @@ class ProcessVideoSafetyCheck implements ShouldQueue
                     }
                 }
 
-                Log::info("Post ID: {$this->postId} - Raw Duration: " . $durationSeconds);
-
-                // Explicit Content Check (আপনার আগের লজিক)
                 $explicitAnnotation = $results->getExplicitAnnotation();
                 if ($explicitAnnotation) {
                     foreach ($explicitAnnotation->getFrames() as $frame) {
@@ -139,12 +141,13 @@ class ProcessVideoSafetyCheck implements ShouldQueue
                 }
             }
 
-            // --- ৪. ডাটাবেস আপডেট ও নোটিফিকেশন ---
             if ($post) {
                 $memberId = $post->member_id;
                 if ($isSafe) {
                     $mediaPath = "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $videoName;
                     $thumbnailUrl = "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $thumbName;
+
+                    Log::info("Saving to Database. Post ID: {$this->postId}, Thumb URL: {$thumbnailUrl}");
 
                     if ($durationSeconds <= 0) $durationSeconds = 1;
 
@@ -153,19 +156,19 @@ class ProcessVideoSafetyCheck implements ShouldQueue
                         [
                             'media_type' => 'video',
                             'duration'   => round($durationSeconds),
-                            'thumbnail_path' => $thumbnailUrl // নতুন থাম্বনেইল পাথ
+                            'thumbnail_path' => $thumbnailUrl 
                         ]
                     );
                     
                     $post->update(['status' => 'active']);
-                    Log::info("Video processed and saved for Post ID: {$this->postId}");
+                    Log::info("Database Updated Successfully for Post ID: {$this->postId}");
                     $this->sendFcmNotification($memberId, "Your video is ready 🎬", "Your video is now available for viewing.");
 
                 } else {
                     $bucket->object($videoName)->delete();
                     $bucket->object($thumbName)->delete();
                     $post->delete(); 
-                    Log::warning("Inappropriate video deleted for Post ID: {$this->postId}");
+                    Log::warning("Inappropriate content detected. Post ID {$this->postId} Deleted.");
                     $this->sendFcmNotification($memberId, "Video removed ⚠️", "It goes against our Community Standards.");
                 }
             }
@@ -173,10 +176,10 @@ class ProcessVideoSafetyCheck implements ShouldQueue
             $videoClient->close();
 
         } catch (\Exception $e) {
-            Log::error("Video Job Error (Post ID {$this->postId}): " . $e->getMessage());
+            Log::error("CRITICAL ERROR in Video Job (Post ID {$this->postId}): " . $e->getMessage());
             throw $e; 
         } finally {
-            // সকল টেম্পোরারি ফাইল ক্লিনআপ
+            Log::info("Cleaning up temporary files for Post ID: {$this->postId}");
             if (file_exists($this->videoPath)) unlink($this->videoPath);
             if (isset($compressedPath) && file_exists($compressedPath)) unlink($compressedPath);
             if (isset($thumbnailPath) && file_exists($thumbnailPath)) unlink($thumbnailPath);
