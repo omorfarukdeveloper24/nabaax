@@ -556,12 +556,59 @@ class PostController extends Controller
     
 
 // ========= THIS IS OUR POST STORE FUNCTION WITH 18+ CONTENT FILTER START==============
+    // public function store(Request $request)
+    // {
+    //     $request->validate([
+    //         'content' => 'nullable|string',
+    //         'visibility' => 'required',
+    //         'media.*' => 'nullable|file|max:102400',
+    //     ]);
+
+    //     $member = Auth::guard("member")->user();
+    //     if (!$member) return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
+
+    //     $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+    //     $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
+    //     $post = \App\Models\Post::create([
+    //         'member_id' => $member->id,
+    //         'content' => $request->content,
+    //         'visibility' => $request->visibility,
+    //         'status' => 'pending', 
+    //     ]);
+
+    //     if ($request->hasFile('media')) {
+    //         foreach ($request->file('media') as $file) {
+    //             $extension = strtolower($file->getClientOriginalExtension());
+    //             $fileNameBase = time() . '-' . uniqid();
+
+    //             if (in_array($extension, $imageExtensions)) {
+    //                 $tempPath = $file->storeAs('temp_images', $fileNameBase . '.' . $extension, 'local');
+    //                 \App\Jobs\ProcessImageUpload::dispatch($post->id, storage_path('app/' . $tempPath), $fileNameBase);
+    //             } 
+    //             elseif (in_array($extension, $videoExtensions)) {
+    //                 $tempPath = $file->storeAs('temp_videos', $fileNameBase . '.' . $extension, 'local');
+    //                 \App\Jobs\ProcessVideoSafetyCheck::dispatch($post->id, storage_path('app/' . $tempPath), $extension);
+    //             }
+    //         }
+    //     } else {
+    //         $post->update(['status' => 'active']);
+    //     }
+
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'message' => 'Your post is being processed and will be published shortly.',
+    //         'post' => $post->load('media')
+    //     ]);
+    // }
+// ========= THIS IS OUR POST STORE FUNCTION WITH 18+ CONTENT FILTER END ==============
+
     public function store(Request $request)
     {
         $request->validate([
             'content' => 'nullable|string',
             'visibility' => 'required',
             'media.*' => 'nullable|file|max:102400',
+            'custom_thumbnail' => 'nullable|image|max:5120', // ইউজার চাইলে নিজের ইমেজ দিতে পারে
         ]);
 
         $member = Auth::guard("member")->user();
@@ -569,12 +616,19 @@ class PostController extends Controller
 
         $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
         $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
+        
         $post = \App\Models\Post::create([
             'member_id' => $member->id,
             'content' => $request->content,
             'visibility' => $request->visibility,
             'status' => 'pending', 
         ]);
+
+        // যদি ইউজার কাস্টম থাম্বনেইল পাঠায়, সেটি সেভ করা
+        $customThumbnailPath = null;
+        if ($request->hasFile('custom_thumbnail')) {
+            $customThumbnailPath = $request->file('custom_thumbnail')->store('temp_thumbnails', 'local');
+        }
 
         if ($request->hasFile('media')) {
             foreach ($request->file('media') as $file) {
@@ -587,7 +641,13 @@ class PostController extends Controller
                 } 
                 elseif (in_array($extension, $videoExtensions)) {
                     $tempPath = $file->storeAs('temp_videos', $fileNameBase . '.' . $extension, 'local');
-                    \App\Jobs\ProcessVideoSafetyCheck::dispatch($post->id, storage_path('app/' . $tempPath), $extension);
+                    
+                    // জবে এখন কাস্টম থাম্বনেইল পাথটিও পাঠিয়ে দিচ্ছি (যদি থাকে)
+                    \App\Jobs\ProcessVideoSafetyCheck::dispatch(
+                        $post->id, 
+                        storage_path('app/' . $tempPath),
+                        $customThumbnailPath ? storage_path('app/' . $customThumbnailPath) : null
+                    );
                 }
             }
         } else {
@@ -600,7 +660,6 @@ class PostController extends Controller
             'post' => $post->load('media')
         ]);
     }
-// ========= THIS IS OUR POST STORE FUNCTION WITH 18+ CONTENT FILTER END ==============
 
 
 public function trackView(Request $request) {
