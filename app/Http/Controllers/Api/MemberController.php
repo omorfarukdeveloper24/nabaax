@@ -2843,17 +2843,101 @@ public function incomeHistory()
     //     ]);
     // }
 
+    // public function sendNotification(Request $request)
+    // {
+    //     $memberId = $request->member_id;
+    //     $title = $request->title;
+    //     $body = $request->body;
+    //     $data = $request->data ?? [];
+
+    //     $formattedData = [];
+    //     foreach ($data as $key => $value) {
+    //         $formattedData[(string)$key] = (string)$value;
+    //     }
+
+    //     // ইউনিক টোকেনগুলো সংগ্রহ করা
+    //     $deviceTokens = DB::table('device_tokens')
+    //                     ->where('member_id', $memberId)
+    //                     ->where('status', 1)
+    //                     ->pluck('token')
+    //                     ->unique();
+
+    //     if ($deviceTokens->isEmpty()) {
+    //         return response()->json(['message' => 'No active tokens found.'], 404);
+    //     }
+
+    //     $accessToken = $this->getAccessToken();
+    //     $projectId = "nabaax-1fdde";
+    //     $responses = [];
+    //     $isSent = false; // ট্র্যাক করার জন্য যে নোটিফিকেশন সফল হয়েছে কি না
+
+    //     foreach ($deviceTokens as $token) {
+    //         $response = Http::withToken($accessToken)
+    //             ->post("https://fcm.googleapis.com/v1/projects/$projectId/messages:send", [
+    //                 "message" => [
+    //                     "token" => $token,
+    //                     "notification" => [
+    //                         "title" => $title,
+    //                         "body" => $body
+    //                     ],
+    //                     "data" => empty($formattedData) ? null : $formattedData
+    //                 ]
+    //             ]);
+
+    //         $responseData = $response->json();
+
+    //         if ($response->successful()) {
+    //             $isSent = true; // অন্তত একটি সফল হলে ট্রু হবে
+    //         }
+
+    //         if ($response->failed() && isset($responseData['error']['details'][0]['errorCode'])) {
+    //             if ($responseData['error']['details'][0]['errorCode'] == 'UNREGISTERED') {
+    //                 DB::table('device_tokens')->where('token', $token)->update(['status' => 0]);
+    //             }
+    //         }
+
+    //         $responses[] = [
+    //             'token' => substr($token, 0, 15) . '...',
+    //             'status' => $response->successful() ? 'Success' : 'Failed', 
+    //             'error_code' => $response->failed() ? ($responseData['error']['status'] ?? 'ERROR') : null
+    //         ];
+    //     }
+
+    //     // --- ডাটাবেসে নোটিফিকেশন সেভ করা ---
+    //     // যদি আপনি চান নোটিফিকেশন পাঠানোর চেষ্টা করা হয়েছে এমন রেকর্ড রাখতে, তবে এই কন্ডিশন ছাড়াও সেভ করতে পারেন
+    //     if ($isSent) {
+    //         DB::table('notifications')->insert([
+    //             'member_id'   => $memberId,
+    //             'firebase_id' => null, // প্রোজেক্ট আইডি বা মেসেজ আইডি চাইলে এখানে দিতে পারেন
+    //             'title'       => $title,
+    //             'description' => $body,
+    //             'status'      => 0, // ডিফল্ট আনরিড
+    //             'created_at'  => now(),
+    //             'updated_at'  => now(),
+    //         ]);
+    //     }
+
+    //     return response()->json([
+    //         'total_unique_tokens' => count($deviceTokens),
+    //         'results' => $responses
+    //     ]);
+    // }
+
+
     public function sendNotification(Request $request)
     {
         $memberId = $request->member_id;
         $title = $request->title;
         $body = $request->body;
         $data = $request->data ?? [];
+        $notificationType = $request->notification_type ?? 'notype';
 
         $formattedData = [];
         foreach ($data as $key => $value) {
             $formattedData[(string)$key] = (string)$value;
         }
+        $formattedData['notification_type'] = (string)$notificationType;
+        $formattedData['click_action'] = 'FLUTTER_NOTIFICATION_CLICK';
 
         // ইউনিক টোকেনগুলো সংগ্রহ করা
         $deviceTokens = DB::table('device_tokens')
@@ -2899,7 +2983,8 @@ public function incomeHistory()
             $responses[] = [
                 'token' => substr($token, 0, 15) . '...',
                 'status' => $response->successful() ? 'Success' : 'Failed', 
-                'error_code' => $response->failed() ? ($responseData['error']['status'] ?? 'ERROR') : null
+                'error_code' => $response->failed() ? ($responseData['error']['status'] ?? 'ERROR') : null,
+                'sent_data' => $formattedData
             ];
         }
 
@@ -2911,6 +2996,7 @@ public function incomeHistory()
                 'firebase_id' => null, // প্রোজেক্ট আইডি বা মেসেজ আইডি চাইলে এখানে দিতে পারেন
                 'title'       => $title,
                 'description' => $body,
+                'notification_type' => $notificationType,
                 'status'      => 0, // ডিফল্ট আনরিড
                 'created_at'  => now(),
                 'updated_at'  => now(),
@@ -2948,12 +3034,14 @@ public function incomeHistory()
             'member_id' => 'required',
             'title' => 'required',
             'body' => 'required',
+            'type' => 'required',
             'notification_id' => 'nullable' 
         ]);
 
         $memberId = $request->member_id;
         $title = $request->title;
         $body = $request->body;
+        $type = $request->type;
         $notificationId = $request->notification_id ?? null;
 
         try {
@@ -2963,6 +3051,7 @@ public function incomeHistory()
                 'firebase_id'     => null, 
                 'title'           => $title,
                 'description'     => $body,
+                'type'            => $type,
                 'status'          => 0, 
                 'created_at'      => now(),
                 'updated_at'      => now(),

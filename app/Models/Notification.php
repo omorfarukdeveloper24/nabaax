@@ -11,6 +11,7 @@ class Notification extends Model
         'title',
         'description',
         'firebase_id',
+        'notification_type',
         'status',
     ];
 }
