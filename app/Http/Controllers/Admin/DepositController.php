@@ -148,12 +148,24 @@ class DepositController extends Controller
                 $title = "Deposit Update";
                 $body = "Your deposit of {$deposit->amount} has been " . ucfirst($new_status);
                 
-                $this->sendFcmNotification($deposit->member_id, $title, $body, [
-                    'deposit_id' => (string)$deposit->id,
-                    'status' => (string)$new_status
-                ]);
+                // ১. মেম্বার আইডি (কার কাছে যাবে)
+                // ২. টাইটেল (নোটিফিকেশন হেডলাইন)
+                // ৩. বডি (মূল মেসেজ)
+                // ৪. ডাটা অ্যারে (অ্যাপের ভেতর লজিক হ্যান্ডেল করার জন্য)
+                // ৫. নোটিফিকেশন টাইপ (ডাটাবেসে সেভ করার জন্য এবং ফিল্টার করার জন্য)
+
+                $this->sendFcmNotification(
+                    $deposit->member_id,               // ১
+                    $title,                            // ২
+                    $body,                             // ৩
+                    [                                  // ৪ (অ্যারে)
+                        'deposit_id' => (string)$deposit->id,
+                        'status'     => (string)$new_status,
+                    ],
+                    'deposit'                          // ৫ (টাইপ: উদা: deposit, withdraw, message)
+                );
+
             } catch (\Exception $e) {
-                // নোটিফিকেশন না গেলে লগ রাখতে পারেন, কিন্তু ইউজারকে এরর দেখানোর দরকার নেই
                 \Log::error("FCM Error: " . $e->getMessage());
             }
 
