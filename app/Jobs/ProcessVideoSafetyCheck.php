@@ -25,8 +25,8 @@ class ProcessVideoSafetyCheck implements ShouldQueue
     protected $videoPath;
     protected $customThumbPath;
 
-    public $timeout = 1200; 
-    public $tries = 2;
+    public $timeout = 3600; 
+    public $tries = 1;
 
     public function __construct($postId, $videoPath, $customThumbPath = null)
     {
