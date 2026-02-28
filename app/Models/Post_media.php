@@ -14,6 +14,7 @@ class Post_media extends Model
         'media_type',
         'path',
         'duration',
+        'thumbnail_path',
         'total_views',
     ];
 
