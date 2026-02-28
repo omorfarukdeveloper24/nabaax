@@ -43,7 +43,7 @@ class DistributePartnerBonus implements ShouldQueue
 
         while ($currentReferrer && $level <= $maxLevel) {
             try {
-                DB::transaction(function () use ($currentReferrer, $level, $amount) {
+                DB::transaction(function () use ($currentReferrer, $level) {
                     
                     $amount = ($level === 1) ? $this->first_gen_bonus : $this->multi_gen_bonus;
 

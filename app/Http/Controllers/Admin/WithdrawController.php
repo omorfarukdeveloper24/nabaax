@@ -223,14 +223,17 @@ class WithdrawController extends Controller
 
             // --- নোটিফিকেশন লজিক ---
             try {
-                $title = "Withdraw Update";
+                
                 
                 // ১. স্ট্যাটাস অনুযায়ী মেসেজ সেট করা
                 if ($new_status === 'approved') {
+                    $title = "Withdraw Approved";
                     $body = "Congratulations! Your withdraw of {$withdraw->amount} has been approved.";
                 } elseif ($new_status === 'rejected') {
+                    $title = "Withdraw Rejected";
                     $body = "Your withdraw request of {$withdraw->amount} was rejected and the amount has been refunded.";
                 } else {
+                    $title = "Withdraw Status Updated";
                     $body = "Your withdraw status is now " . ucfirst($new_status);
                 }
 

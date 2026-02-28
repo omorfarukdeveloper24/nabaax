@@ -145,7 +145,7 @@ class DepositController extends Controller
             // লেনদেন সফল হওয়ার পর নোটিফিকেশন পাঠান
             // যেন নোটিফিকেশন সার্ভারে কোনো সমস্যা হলে ইউজারের ব্যালেন্স আপডেট রোলব্যাক না হয়
             try {
-                $title = "Deposit Update";
+                $title = "Deposit ($new_status)";
                 $body = "Your deposit of {$deposit->amount} has been " . ucfirst($new_status);
                 
                 // ১. মেম্বার আইডি (কার কাছে যাবে)
