@@ -3028,6 +3028,35 @@ public function incomeHistory()
 
     }
 
+    public function readNotification(Request $request)
+    {
+        $request->validate([
+            'notification_id' => 'required|exists:notifications,id'
+        ]);
+
+        $memberId = Auth::guard('member')->user()->id; 
+
+        $updated = DB::table('notifications')
+                    ->where('id', $request->notification_id)
+                    ->where('member_id', $memberId) 
+                    ->update([
+                        'status' => 1,
+                        'updated_at' => now()
+                    ]);
+
+        if ($updated) {
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Notification marked as read.'
+            ], 200);
+        }
+
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Notification not found or unauthorized.'
+        ], 404);
+    }
+
     public function saveNotification(Request $request)
     {
         $request->validate([
