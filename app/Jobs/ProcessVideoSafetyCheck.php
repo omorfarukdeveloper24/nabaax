@@ -15,7 +15,6 @@ use Illuminate\Support\Facades\Log;
 use \App\Traits\NotificationTrait;
 use ProtoneMedia\LaravelFFMpeg\Support\FFMpeg;
 use FFMpeg\Format\Video\X264;
-use Illuminate\Support\Facades\Storage;
 
 class ProcessVideoSafetyCheck implements ShouldQueue
 {
@@ -26,22 +25,20 @@ class ProcessVideoSafetyCheck implements ShouldQueue
     protected $customThumbPath;
 
     public $timeout = 3600; 
-    public $tries = 3;
+    public $tries = 2;
 
     public function __construct($postId, $videoPath, $customThumbPath = null)
     {
         $this->postId = $postId;
         $this->videoPath = $videoPath;
         $this->customThumbPath = $customThumbPath;
-        Log::info("Job Initialized for Post ID: {$this->postId}. Custom Thumb Path: " . ($this->customThumbPath ?? 'None'));
     }
 
     public function handle()
     {
         $post = Post::find($this->postId);
         if (!$post) {
-            if (file_exists($this->videoPath)) unlink($this->videoPath);
-            Log::info("Post ID {$this->postId} not found. Skipping video job.");
+            $this->cleanupFiles();
             return;
         }
 
@@ -50,89 +47,70 @@ class ProcessVideoSafetyCheck implements ShouldQueue
         $thumbnailPath = storage_path('app/temp_videos/' . $fileNameBase . '_thumb.jpg');
 
         try {
-            Log::info("Starting FFmpeg Compression for Post ID: {$this->postId}");
+            Log::info("Starting Optimized Compression for Post ID: {$this->postId}");
             
-            FFMpeg::fromDisk('local')
-                ->open('temp_videos/' . basename($this->videoPath))
-                ->export()
+            // ১. ভিডিওর ডিউরেশন বের করা (Duration Extraction)
+            // এটি ভিডিও কম্প্রেস হওয়ার আগেই অরিজিনাল ফাইল থেকে ডিউরেশন নিয়ে নেবে
+            $ffmpegData = FFMpeg::fromDisk('local')->open('temp_videos/' . basename($this->videoPath));
+            $durationInSeconds = $ffmpegData->getDurationInSeconds();
+            Log::info("Video Duration detected: {$durationInSeconds} seconds.");
+
+            // ২. অপ্টিমাইজড কম্প্রেশন (Messenger/WhatsApp Style)
+            $format = (new X264('libmp3lame', 'libx264'))->setKiloBitrate(1000); 
+            
+            $ffmpegData->export()
                 ->toDisk('local')
-                ->inFormat(new X264())
-                ->addFilter('-crf', 24) 
+                ->inFormat($format)
+                ->addFilter('-crf', 28) 
+                ->addFilter('-preset', 'veryfast') 
+                ->addFilter('-vf', 'scale=-2:720') 
                 ->save('temp_videos/' . basename($compressedPath));
             
-            Log::info("Compression Finished. Path: {$compressedPath}");
-
-            // --- থাম্বনেইল লজিক ডিবাগিং ---
+            // ৩. থাম্বনেইল লজিক
             if ($this->customThumbPath && file_exists($this->customThumbPath)) {
-                Log::info("Using Custom Thumbnail for Post ID: {$this->postId}");
                 copy($this->customThumbPath, $thumbnailPath);
             } else {
-                Log::info("Generating Auto Thumbnail from Video for Post ID: {$this->postId}");
-                FFMpeg::fromDisk('local')
-                    ->open('temp_videos/' . basename($this->videoPath))
-                    ->getFrameFromSeconds(3)
+                $ffmpegData->getFrameFromSeconds(min(2, $durationInSeconds))
                     ->export()
                     ->toDisk('local')
                     ->save('temp_videos/' . basename($thumbnailPath));
             }
 
-            if (file_exists($thumbnailPath)) {
-                Log::info("Thumbnail successfully created at: {$thumbnailPath}");
-            } else {
-                Log::error("Thumbnail FAILED to create for Post ID: {$this->postId}");
-            }
-
-            // --- GCS আপলোড ডিবাগিং ---
-            $keyFileData = config('filesystems.disks.gcs.key_file');
-            $videoName = "posts/videos/" . basename($compressedPath);
-            $thumbName = "posts/thumbnails/" . basename($thumbnailPath);
-
+            // ৪. GCS আপলোড (Resumable Mode)
             $storage = new \Google\Cloud\Storage\StorageClient([
                 'projectId' => config('filesystems.disks.gcs.project_id'),
-                'keyFile'    => $keyFileData,
+                'keyFile'    => config('filesystems.disks.gcs.key_file'),
             ]);
             $bucket = $storage->bucket(config('filesystems.disks.gcs.bucket'));
 
-            Log::info("Uploading Video and Thumbnail to GCS for Post ID: {$this->postId}");
-            $bucket->upload(fopen($compressedPath, 'r'), ['name' => $videoName]);
-            $bucket->upload(fopen($thumbnailPath, 'r'), ['name' => $thumbName]);
-            Log::info("GCS Upload Complete.");
+            $videoName = "posts/videos/" . basename($compressedPath);
+            $thumbName = "posts/thumbnails/" . basename($thumbnailPath);
 
-            $videoClient = new VideoIntelligenceServiceClient(['credentials' => $keyFileData]);
+            $bucket->upload(fopen($compressedPath, 'r'), [
+                'name' => $videoName,
+                'resumable' => true, 
+                'chunkSize' => 262144 * 4 
+            ]);
+
+            $bucket->upload(fopen($thumbnailPath, 'r'), ['name' => $thumbName]);
+
+            // ৫. ভিডিও ইন্টেলিজেন্স চেক
+            $videoClient = new VideoIntelligenceServiceClient(['credentials' => config('filesystems.disks.gcs.key_file')]);
             $gcsUri = 'gs://' . config('filesystems.disks.gcs.bucket') . '/' . $videoName;
 
-            Log::info("Starting Google Video Intelligence for Post ID: {$this->postId}");
             $operation = $videoClient->annotateVideo([
                 'inputUri' => $gcsUri,
-                'features' => [
-                    Feature::EXPLICIT_CONTENT_DETECTION, 
-                    Feature::LABEL_DETECTION 
-                ],
+                'features' => [Feature::EXPLICIT_CONTENT_DETECTION],
             ]);
 
             $operation->pollUntilComplete(['pollingIntervalSeconds' => 5]);
 
             $isSafe = true;
-            $durationSeconds = 0;
-
             if ($operation->operationSucceeded()) {
                 $results = $operation->getResult()->getAnnotationResults()[0];
-
-                if ($results->getSegment()) {
-                    $endTime = $results->getSegment()->getEndTimeOffset();
-                    $durationSeconds = (int)$endTime->getSeconds() + ((int)$endTime->getNanos() / 1000000000);
-                } 
-                elseif ($results->getExplicitAnnotation()) {
-                    $frames = $results->getExplicitAnnotation()->getFrames();
-                    if (count($frames) > 0) {
-                        $timeOffset = $frames[count($frames) - 1]->getTimeOffset();
-                        $durationSeconds = (int)$timeOffset->getSeconds() + ((int)$timeOffset->getNanos() / 1000000000);
-                    }
-                }
-
-                $explicitAnnotation = $results->getExplicitAnnotation();
-                if ($explicitAnnotation) {
-                    foreach ($explicitAnnotation->getFrames() as $frame) {
+                $explicit = $results->getExplicitAnnotation();
+                if ($explicit) {
+                    foreach ($explicit->getFrames() as $frame) {
                         if ($frame->getPornographyLikelihood() >= 5) { 
                             $isSafe = false; 
                             break;
@@ -141,49 +119,43 @@ class ProcessVideoSafetyCheck implements ShouldQueue
                 }
             }
 
-            if ($post) {
-                $memberId = $post->member_id;
-                if ($isSafe) {
-                    $mediaPath = "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $videoName;
-                    $thumbnailUrl = "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $thumbName;
+            // ৬. ডাটাবেজ আপডেট (With Duration)
+            if ($isSafe) {
+                $mediaUrl = "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $videoName;
+                $thumbUrl = "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $thumbName;
 
-                    Log::info("Saving to Database. Post ID: {$this->postId}, Thumb URL: {$thumbnailUrl}");
-
-                    if ($durationSeconds <= 0) $durationSeconds = 1;
-
-                    Post_media::updateOrCreate(
-                        ['post_id' => $post->id, 'path' => $mediaPath],
-                        [
-                            'media_type' => 'video',
-                            'duration'   => round($durationSeconds),
-                            'thumbnail_path' => $thumbnailUrl 
-                        ]
-                    );
-                    
-                    $post->update(['status' => 'active']);
-                    Log::info("Database Updated Successfully for Post ID: {$this->postId}");
-                    $this->sendFcmNotification($memberId, "Your video is ready 🎬", "Your video is now available for viewing.");
-
-                } else {
-                    $bucket->object($videoName)->delete();
-                    $bucket->object($thumbName)->delete();
-                    $post->delete(); 
-                    Log::warning("Inappropriate content detected. Post ID {$this->postId} Deleted.");
-                    $this->sendFcmNotification($memberId, "Video removed ⚠️", "It goes against our Community Standards.");
-                }
+                Post_media::updateOrCreate(
+                    ['post_id' => $post->id],
+                    [
+                        'path' => $mediaUrl,
+                        'media_type' => 'video',
+                        'thumbnail_path' => $thumbUrl,
+                        'duration' => round($durationInSeconds), // এখানে ডিউরেশন সেভ হচ্ছে
+                    ]
+                );
+                $post->update(['status' => 'active']);
+                $this->sendFcmNotification($post->member_id, "Your video is ready 🎬", "Your video is now available for viewing.");
+            } else {
+                $bucket->object($videoName)->delete();
+                $post->delete();
+                Log::warning("SafeSearch: Content not safe. Post ID: {$this->postId} deleted.");
             }
-            
+
             $videoClient->close();
 
         } catch (\Exception $e) {
-            Log::error("CRITICAL ERROR in Video Job (Post ID {$this->postId}): " . $e->getMessage());
+            Log::error("Job Error (Post ID {$this->postId}): " . $e->getMessage());
             throw $e; 
         } finally {
-            Log::info("Cleaning up temporary files for Post ID: {$this->postId}");
-            if (file_exists($this->videoPath)) unlink($this->videoPath);
-            if (isset($compressedPath) && file_exists($compressedPath)) unlink($compressedPath);
-            if (isset($thumbnailPath) && file_exists($thumbnailPath)) unlink($thumbnailPath);
-            if ($this->customThumbPath && file_exists($this->customThumbPath)) unlink($this->customThumbPath);
+            $this->cleanupFiles($compressedPath, $thumbnailPath);
         }
+    }
+
+    protected function cleanupFiles($compressedPath = null, $thumbnailPath = null)
+    {
+        if (file_exists($this->videoPath)) @unlink($this->videoPath);
+        if ($compressedPath && file_exists($compressedPath)) @unlink($compressedPath);
+        if ($thumbnailPath && file_exists($thumbnailPath)) @unlink($thumbnailPath);
+        if ($this->customThumbPath && file_exists($this->customThumbPath)) @unlink($this->customThumbPath);
     }
 }
