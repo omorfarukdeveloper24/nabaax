@@ -2938,6 +2938,7 @@ public function incomeHistory()
         $memberId = $request->member_id;
         $title = $request->title;
         $body = $request->body;
+        $uid = $request->uid ?? null;  
         $data = $request->data ?? [];
         $notificationType = $request->notification_type ?? 'notype';
 
@@ -2947,6 +2948,7 @@ public function incomeHistory()
         }
         $formattedData['notification_type'] = (string)$notificationType;
         $formattedData['click_action'] = 'FLUTTER_NOTIFICATION_CLICK';
+        $formattedData['uid'] = (string)$uid;
 
         // ইউনিক টোকেনগুলো সংগ্রহ করা
         $deviceTokens = DB::table('device_tokens')
