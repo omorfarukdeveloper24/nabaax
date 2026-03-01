@@ -7,8 +7,6 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Google\Cloud\VideoIntelligence\V1\VideoIntelligenceServiceClient;
-use Google\Cloud\VideoIntelligence\V1\Feature;
 use App\Models\Post;
 use App\Models\Post_media;
 use Illuminate\Support\Facades\Log;
@@ -24,8 +22,10 @@ class ProcessVideoSafetyCheck implements ShouldQueue
     protected $videoPath;
     protected $customThumbPath;
 
-    public $timeout = 3600; 
-    public $tries = 1; // ৪ জিবি র‍্যামের জন্য ১ বার চেষ্টা করাই নিরাপদ, নাহলে মেমরি জ্যাম হবে
+    // টাইমআউট ০ মানে লারাভেল নিজ থেকে জব বন্ধ করবে না
+    public $timeout = 0; 
+    // ৩ বার চেষ্টা করবে
+    public $tries = 3;
 
     public function __construct($postId, $videoPath, $customThumbPath = null)
     {
@@ -37,25 +37,24 @@ class ProcessVideoSafetyCheck implements ShouldQueue
     public function handle()
     {
         $post = Post::find($this->postId);
-        // অরিজিনাল ফাইল আছে কি না চেক
+        
+        // ফাইল আছে কি না চেক
         if (!$post || !file_exists($this->videoPath)) {
-            Log::error("Job Aborted: Post not found or Video file missing at " . $this->videoPath);
+            Log::error("Job Aborted: File missing at " . $this->videoPath);
             return;
         }
 
         $fileNameBase = pathinfo($this->videoPath, PATHINFO_FILENAME);
-        $videoBaseName = basename($this->videoPath);
         $compressedPath = storage_path('app/temp_videos/' . $fileNameBase . '_low.mp4');
         $thumbnailPath = storage_path('app/temp_videos/' . $fileNameBase . '_thumb.jpg');
 
         try {
             Log::info("Starting Video Processing: Post ID {$this->postId}");
 
-            // ১. ডিউরেশন বের করা
-            $ffmpeg = FFMpeg::fromDisk('local')->open('temp_videos/' . $videoBaseName);
+            $ffmpeg = FFMpeg::fromDisk('local')->open('temp_videos/' . basename($this->videoPath));
             $durationInSeconds = $ffmpeg->getDurationInSeconds();
             
-            // ২. থাম্বনেইল তৈরি (কম্প্রেশনের আগে করলে এরর কম হয়)
+            // থাম্বনেইল
             if ($this->customThumbPath && file_exists($this->customThumbPath)) {
                 copy($this->customThumbPath, $thumbnailPath);
             } else {
@@ -65,7 +64,7 @@ class ProcessVideoSafetyCheck implements ShouldQueue
                     ->save('temp_videos/' . basename($thumbnailPath));
             }
 
-            // ৩. ভিডিও কম্প্রেশন (threads কমিয়ে ২ করা হয়েছে যাতে ৪জিবি র‍্যামে হ্যাং না হয়)
+            // কম্প্রেশন (Threads ২ রাখা হয়েছে সার্ভারের সুরক্ষায়)
             $format = (new X264('libmp3lame', 'libx264'))->setKiloBitrate(1000); 
             $ffmpeg->export()
                 ->toDisk('local')
@@ -78,7 +77,7 @@ class ProcessVideoSafetyCheck implements ShouldQueue
             
             Log::info("Compression Done for ID: {$this->postId}");
 
-            // ৪. GCS আপলোড
+            // GCS আপলোড
             $storage = new \Google\Cloud\Storage\StorageClient([
                 'projectId' => config('filesystems.disks.gcs.project_id'),
                 'keyFile'    => config('filesystems.disks.gcs.key_file'),
@@ -88,48 +87,44 @@ class ProcessVideoSafetyCheck implements ShouldQueue
             $videoName = "posts/videos/" . basename($compressedPath);
             $thumbName = "posts/thumbnails/" . basename($thumbnailPath);
 
-            // রিসুমেবল আপলোড
-            $bucket->upload(fopen($compressedPath, 'r'), [
-                'name' => $videoName,
-                'resumable' => true
-            ]);
+            $bucket->upload(fopen($compressedPath, 'r'), ['name' => $videoName, 'resumable' => true]);
             $bucket->upload(fopen($thumbnailPath, 'r'), ['name' => $thumbName]);
 
-            // ৫. ডাটাবেজ আপডেট (ইন্টেলিজেন্স চেক এখানে অপশনাল বা পরে করতে পারেন)
-            $mediaUrl = "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $videoName;
-            $thumbUrl = "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $thumbName;
-
+            // আপডেট ডাটাবেজ
             Post_media::updateOrCreate(
                 ['post_id' => $post->id],
                 [
-                    'path' => $mediaUrl,
+                    'path' => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $videoName,
                     'media_type' => 'video',
-                    'thumbnail_path' => $thumbUrl,
+                    'thumbnail_path' => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $thumbName,
                     'duration' => round($durationInSeconds),
                 ]
             );
+            
             $post->update(['status' => 'active']);
-            $this->sendFcmNotification($post->member_id, "Video Ready!", "Your video is live now.");
+            $this->sendFcmNotification($post->member_id, "Video Ready!", "Your video is live.");
 
-            // সব সফল হলে ফাইল ক্লিয়ার করুন
+            // কাজ সফল হলে ফাইল ডিলিট
             $this->cleanupFiles($compressedPath, $thumbnailPath);
 
         } catch (\Exception $e) {
-            Log::error("Job Failed (Post ID {$this->postId}): " . $e->getMessage());
-            // এখানে ডিলিট করবেন না, যাতে পরের বার ট্রাই করলে ফাইল পায়
-            throw $e; 
+            Log::error("Job Attempt Failed (ID {$this->postId}): " . $e->getMessage());
+            throw $e; // আবার ট্রাই করার জন্য এরর থ্রো করতে হবে
         }
+    }
+
+    // যদি সব চেষ্টার পরও জব ফেইল করে তবেই অরিজিনাল ফাইল ডিলিট হবে
+    public function failed(\Throwable $exception)
+    {
+        Log::error("Job Permanently Failed: " . $exception->getMessage());
+        $this->cleanupFiles();
     }
 
     protected function cleanupFiles($compressedPath = null, $thumbnailPath = null)
     {
-        // অরিজিনাল ফাইল
         if (file_exists($this->videoPath)) @unlink($this->videoPath);
-        // কম্প্রেসড ফাইল
         if ($compressedPath && file_exists($compressedPath)) @unlink($compressedPath);
-        // থাম্বনেইল ফাইল
         if ($thumbnailPath && file_exists($thumbnailPath)) @unlink($thumbnailPath);
-        // কাস্টম থাম্ব সোর্স
         if ($this->customThumbPath && file_exists($this->customThumbPath)) @unlink($this->customThumbPath);
     }
 }
