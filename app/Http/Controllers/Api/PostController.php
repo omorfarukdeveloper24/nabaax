@@ -1262,15 +1262,52 @@ public function trackView(Request $request) {
     
     
 
-    public function details($id)
+    public function details(Request $request, $id) 
     {
-        $post = Post::with('member','media')->find($id);
+        $member = Auth::guard("member")->user();
+        $memberId = $member ? $member->id : null;
 
+        // ১. ক্যাশ কি (মেম্বার আইডি সহ যাতে লাইক/ফলো স্ট্যাটাস সঠিক থাকে)
+        $cacheKey = "post_details_{$id}_u" . ($memberId ?? 'guest');
+
+        // ২. ক্যাশ থেকে ডাটা নেওয়া (৬০ সেকেন্ডের জন্য)
+        $post = Cache::remember($cacheKey, 60, function () use ($id, $memberId) {
+            return Post::select('id', 'member_id', 'content', 'visibility', 'created_at', 'total_views', 'status')
+                ->with([
+                    'member:id,name,image,username', // ইউজারনেম প্রয়োজন হতে পারে
+                    'media:id,post_id,media_type,path,duration'
+                ])
+                ->withCount([
+                    'likes as like_count' => fn($q) => $q->where('type', 1),
+                    'likes as dislike_count' => fn($q) => $q->where('type', 2),
+                    'comments as comment_count'
+                ])
+                ->withExists([
+                    // ইউজার লগইন থাকলে লাইক/ডিসলাইক/ফলো চেক
+                    'likes as liked_by_me' => fn($q) => $q->where('member_id', $memberId)->where('type', 1),
+                    'likes as disliked_by_me' => fn($q) => $q->where('member_id', $memberId)->where('type', 2),
+                    'member as is_following' => fn($q) => $q->whereHas('followers', fn($f) => $f->where('follower_id', $memberId))
+                ])
+                ->where('status', 'active')
+                ->find($id);
+        });
+
+        // ৩. পোস্ট না পাওয়া গেলে এরর
         if (!$post) {
-            return response()->json(['status' => 'Failed', 'message' => 'Post not found'], 404);
+            return response()->json([
+                'status' => 'failed', 
+                'message' => 'Post not found or inactive'
+            ], 404);
         }
 
-        return response()->json($post);
+        // ৪. ভিউ কাউন্ট বাড়ানো (অপশনাল কিন্তু প্রফেশনাল অ্যাপে থাকে)
+        // এটি কিউ বা ফায়ার অ্যান্ড ফরগেট পদ্ধতিতে করা ভালো
+        $post->increment('total_views');
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $post
+        ])->header('X-Cache', Cache::has($cacheKey) ? 'HIT' : 'MISS');
     }
     
     
