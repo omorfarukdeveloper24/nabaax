@@ -36,34 +36,38 @@ class DistributePartnerBonus implements ShouldQueue
     {
         Log::info("Partner Bonus Job Started for: " . $this->member->username);
 
-        // পরবর্তী রেফারারদের দ্রুত লোড করতে রিলেশনশিপ ব্যবহার
-        $currentReferrer = $this->referrer_member->load('referrer'); 
+        // পরবর্তী রেফারারদের লোড করা
+        $currentReferrer = $this->referrer_member; 
         $level = 1;
-        $maxLevel = 7; // ৭ জেনারেশন লিমিট
+        $maxLevel = 7; 
 
         while ($currentReferrer && $level <= $maxLevel) {
-            try {
-                DB::transaction(function () use ($currentReferrer, $level) {
-                    
-                    $amount = ($level === 1) ? $this->first_gen_bonus : $this->multi_gen_bonus;
+            // ১. ট্রানজ্যাকশনের আগেই অ্যামাউন্ট নির্ধারণ করুন
+            $amount = ($level === 1) ? $this->first_gen_bonus : $this->multi_gen_bonus;
 
-                    if ($amount > 0) {
-                        // ব্যালেন্স আপডেট
+            if ($amount > 0) {
+                try {
+                    // ২. এখন 'use' এর ভেতর $amount কাজ করবে
+                    DB::transaction(function () use ($currentReferrer, $level, $amount) {
+                        
+                        // ৩. ব্যালেন্স আপডেট
                         $currentReferrer->increment('balance', $amount);
+                        $currentReferrer->refresh(); // ডাটাবেস থেকে লেটেস্ট ব্যালেন্স (decimal সহ) নিয়ে আসা
+
                         $bonus_tnx = 'GEN' . $level . '-' . strtoupper(Str::random(10));
 
-                        // কাস্টমার হিস্ট্রি (মেম্বার কমিশন পেলো)
+                        // কাস্টমার হিস্ট্রি
                         CustomerPayHistory::create([
                             'member_id'    => $currentReferrer->id,
                             'payment_name' => "Generation Bonus (L-$level) from " . $this->member->username,
                             'tnx'          => $bonus_tnx,
                             'amount'       => $amount,
-                            'balance'      => $currentReferrer->balance,
+                            'balance'      => $currentReferrer->balance, // এখানে ডেসিম্যাল ভ্যালু সেভ হবে
                             'method'       => 'Wallet',
                             'type'         => 'credit',
                         ]);
 
-                        // অ্যাডমিন হিস্ট্রি (সিস্টেম থেকে কমিশন দেওয়া হলো)
+                        // অ্যাডমিন হিস্ট্রি
                         AdminPayHistory::create([
                             'member_id'    => $currentReferrer->id,
                             'payment_name' => "Generation Bonus (L-$level) paid to " . $currentReferrer->username,
@@ -74,7 +78,7 @@ class DistributePartnerBonus implements ShouldQueue
                             'type'         => 'debit',
                         ]);
 
-                        // নোটিফিকেশন
+                        // নোটিফিকেশন পাঠানো
                         $this->sendFcmNotification(
                             $currentReferrer->id, 
                             "Commission Received! 💰", 
@@ -84,25 +88,19 @@ class DistributePartnerBonus implements ShouldQueue
                                 'from_user'    => (string)$this->member->username,
                                 'level'        => (string)$level
                             ],
-                            'generation_bonus' // ৫ নম্বর প্যারামিটার (Type)
+                            'generation_bonus'
                         );
-                    }
-                });
+                    });
 
-                Log::info("Level $level Bonus sent to: " . $currentReferrer->username);
+                    Log::info("Level $level Bonus sent to: " . $currentReferrer->username);
 
-            } catch (\Exception $e) {
-                Log::error("Failed at Level $level for {$currentReferrer->username}: " . $e->getMessage());
+                } catch (\Exception $e) {
+                    Log::error("Failed at Level $level for {$currentReferrer->username}: " . $e->getMessage());
+                }
             }
 
-            // ৭ লেভেল শেষ হলে লুপ ব্রেক করবে
-            if ($level == $maxLevel) {
-                Log::info("7th Generation reached. Stopping bonus distribution.");
-                break;
-            }
-
-            // পরের রেফারারকে সেট করা
-            $currentReferrer = $currentReferrer->referrer; 
+            // ৪. পরের রেফারার লোড করা (ID ধরে লোড করা নিরাপদ)
+            $currentReferrer = Member::find($currentReferrer->referrer_id); 
             $level++;
         }
 
