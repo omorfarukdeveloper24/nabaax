@@ -32,14 +32,16 @@ use Illuminate\Support\Facades\Cache;
 class PostController extends Controller
 {
     use NotificationTrait;
+    
+
     function __construct()
     {
         $this->middleware("auth.jwt", [
             "except" => [
-                "list",    
-                "details", 
-            ]
-        ]);
+                "list",
+                "details",
+            ],
+     ]);
     }
 
     public function testApi() {
@@ -300,8 +302,12 @@ class PostController extends Controller
 
     public function list()
     {
-        // মেম্বার লগইন থাকলে অবজেক্ট পাবে, না থাকলে null (অ্যাপ ক্র্যাশ করবে না)
-        $member = Auth::guard("member")->user();
+        try {
+            $member = Auth::guard("member")->user();
+        } catch (\Exception $e) {
+            $member = null;
+        }
+        
         $memberId = $member ? $member->id : null;
 
         // ১. অ্যাডস ক্যাশ করা
