@@ -135,13 +135,12 @@ Route::group(['namespace' => 'Api','prefix'=>'v1','middleware' => 'api'], functi
         Route::get('/list', [PostController::class, 'list']); 
         Route::get('/details/{id}', [PostController::class, 'details']); 
         Route::get('/prosearch', [PostController::class, 'prosearch']); 
+        Route::get('/postvideo', [PostController::class, 'postvideo']);   
+        Route::get('/personalpostvideo', [PostController::class, 'personalpostvideo']);   
     });
         
     // Post Routes
-    Route::prefix('post')->middleware('member')->group(function () {
-         
-        Route::get('/postvideo', [PostController::class, 'postvideo']);   
-        Route::get('/personalpostvideo', [PostController::class, 'personalpostvideo']);    
+    Route::prefix('post')->middleware('member')->group(function () { 
         Route::post('/store', [PostController::class, 'store']);  
         Route::post('/miniads', [PostController::class, 'miniads']);  
         Route::post('/update/{id}', [PostController::class, 'update']); 

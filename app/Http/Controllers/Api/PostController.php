@@ -40,6 +40,8 @@ class PostController extends Controller
             "except" => [
                 "list",
                 "details",
+                "postvideo",
+                "personalpostvideo"
             ],
      ]);
     }
@@ -473,15 +475,21 @@ class PostController extends Controller
 
     public function postvideo()
     {
-        $member = Auth::guard('member')->user();
-        if (!$member) {
-            return response()->json([
-                'status' => 'failed',
-                'message' => 'Unauthorized user'
-            ], 401);
+        // $member = Auth::guard('member')->user();
+        // if (!$member) {
+        //     return response()->json([
+        //         'status' => 'failed',
+        //         'message' => 'Unauthorized user'
+        //     ], 401);
+        // }
+        // $memberId = $member->id;
+        try {
+            $member = Auth::guard("member")->user();
+        } catch (\Exception $e) {
+            $member = null;
         }
-
-        $memberId = $member->id;
+        
+        $memberId = $member ? $member->id : null;
 
         $seed = request()->has('page') ? session()->get('video_seed') : rand(1, 9999);
         if (!request()->has('page')) {
@@ -548,21 +556,23 @@ class PostController extends Controller
 
     public function personalpostvideo()
     {
-        $member = Auth::guard('member')->user();
-        if (!$member) {
-            return response()->json([
-                'status' => 'failed',
-                'message' => 'Unauthorized user'
-            ], 401);
+        // $member = Auth::guard('member')->user();
+        // if (!$member) {
+        //     return response()->json([
+        //         'status' => 'failed',
+        //         'message' => 'Unauthorized user'
+        //     ], 401);
+        // }
+        // $memberId = $member->id;
+        try {
+            $member = Auth::guard("member")->user();
+        } catch (\Exception $e) {
+            $member = null;
         }
-
-        $memberId = $member->id;
-
-        // ১. রিকোয়েস্ট থেকে Post_media টেবিলের id এবং page নেওয়া
+        
+        $memberId = $member ? $member->id : null;
         $targetVideoId = request()->query('id'); 
         $currentPage = request()->query('page', 1);
-
-        // ২. সিড (Seed) ম্যানেজমেন্ট
         $seed = request()->has('page') ? session()->get('video_seed') : rand(1, 9999);
         if (!request()->has('page')) {
             session()->put('video_seed', $seed);
