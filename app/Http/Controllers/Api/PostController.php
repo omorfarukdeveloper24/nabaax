@@ -596,8 +596,7 @@ class PostController extends Controller
             ->where('media_type', 'video')
             ->whereHas('post', fn($q) => $q->where('visibility', 'public'))
             
-            // ৩. প্রধান পরিবর্তন: CASE WHEN ব্যবহার করে সুনির্দিষ্ট আইডিকে সবার উপরে আনা
-            // যদি পেজ ১ হয় এবং আইডি পাঠানো হয়, তবেই এটি কাজ করবে
+            
             ->when(($targetVideoId && $currentPage == 1), function ($query) use ($targetVideoId) {
                 return $query->orderByRaw("CASE WHEN id = ? THEN 0 ELSE 1 END ASC", [$targetVideoId]);
             })
