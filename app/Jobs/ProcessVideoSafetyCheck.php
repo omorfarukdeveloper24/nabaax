@@ -24,8 +24,8 @@ class ProcessVideoSafetyCheck implements ShouldQueue
     protected $videoPath;
     protected $customThumbPath;
 
-    public $timeout = 1800; // ৩০ মিনিট সময় দেওয়া হলো
-    public $tries = 1;      // ২ জিবি র‍্যামের জন্য ১ বার ট্রাই করা নিরাপদ
+    public $timeout = 1800; 
+    public $tries = 1;      
 
     public function __construct($postId, $videoPath, $customThumbPath = null)
     {
@@ -42,7 +42,6 @@ class ProcessVideoSafetyCheck implements ShouldQueue
             return;
         }
 
-        // কনফিগ থেকে ডাটা নেওয়া
         $keyFileData = config('filesystems.disks.gcs.key_file');
         $bucketName = config('filesystems.disks.gcs.bucket');
         $projectId = config('filesystems.disks.gcs.project_id');
@@ -50,10 +49,9 @@ class ProcessVideoSafetyCheck implements ShouldQueue
         try {
             Log::info("Safety Check Started for Post ID: {$this->postId}");
 
-            // ১. ভিডিও ইন্টেলিজেন্স চেক (আপনার সফল হওয়া কোডের স্টাইল)
+            // ১. ভিডিও ইন্টেলিজেন্স চেক (Permission error fix করার জন্য credentials ব্যবহার করা হয়েছে)
             $videoClient = new VideoIntelligenceServiceClient(['credentials' => $keyFileData]);
             
-            // লোকাল ফাইল রিড করে সরাসরি চেক করা (তাড়াতাড়ি হয়)
             $operation = $videoClient->annotateVideo([
                 'inputContent' => file_get_contents($this->videoPath),
                 'features' => [Feature::EXPLICIT_CONTENT_DETECTION],
@@ -68,7 +66,7 @@ class ProcessVideoSafetyCheck implements ShouldQueue
 
                 if ($explicitAnnotation) {
                     foreach ($explicitAnnotation->getFrames() as $frame) {
-                        // আপনার চাহিদা মতো শুধু Pornography এবং Very Likely (5) চেক
+                        // ৫ (Very Likely) পর্নোগ্রাফি চেক
                         if ($frame->getPornographyLikelihood() >= 5) { 
                             $isSafe = false; 
                             break;
@@ -78,7 +76,6 @@ class ProcessVideoSafetyCheck implements ShouldQueue
             }
             $videoClient->close();
 
-            // ২. যদি সেফ না হয় তবে ডিলিট
             if (!$isSafe) {
                 Log::warning("Inappropriate video deleted. Post ID: {$this->postId}");
                 $post->delete();
@@ -86,33 +83,42 @@ class ProcessVideoSafetyCheck implements ShouldQueue
                 return;
             }
 
-            // ৩. ভিডিও কম্প্রেশন এবং থাম্বনেইল (২ জিবি র‍্যামের জন্য অপ্টিমাইজড)
+            // ২. ফাইল পাথ সেট করা
             $fileNameBase = pathinfo($this->videoPath, PATHINFO_FILENAME);
+            $videoBaseName = basename($this->videoPath);
             $compressedPath = storage_path('app/temp_videos/' . $fileNameBase . '_low.mp4');
             $thumbnailPath = storage_path('app/temp_videos/' . $fileNameBase . '_thumb.jpg');
 
-            $ffmpeg = FFMpeg::fromDisk('local')->open('temp_videos/' . basename($this->videoPath));
-            $durationSeconds = $ffmpeg->getDurationInSeconds();
+            // ভিডিওর ডিউরেশন বের করা
+            $media = FFMpeg::fromDisk('local')->open('temp_videos/' . $videoBaseName);
+            $durationSeconds = $media->getDurationInSeconds();
 
-            // অটো থাম্বনেইল
+            // ৩. থাম্বনেইল জেনারেশন (আলাদা অপারেশন হিসেবে রাখা হয়েছে এরর এড়াতে)
             if ($this->customThumbPath && file_exists($this->customThumbPath)) {
                 copy($this->customThumbPath, $thumbnailPath);
             } else {
-                $ffmpeg->getFrameFromSeconds(min(1, $durationSeconds))
-                    ->export()->toDisk('local')->save('temp_videos/' . basename($thumbnailPath));
+                FFMpeg::fromDisk('local')
+                    ->open('temp_videos/' . $videoBaseName)
+                    ->getFrameFromSeconds(min(1, $durationSeconds))
+                    ->export()
+                    ->toDisk('local')
+                    ->save('temp_videos/' . basename($thumbnailPath));
             }
 
-            // কম্প্রেশন (Ultrafast preset ২ জিবি র‍্যামের জন্য)
+            // ৪. ভিডিও কম্প্রেশন (আলাদা ওপেন করা হয়েছে যাতে 'Not a video file' এরর না আসে)
             $format = (new X264('aac', 'libx264'))->setKiloBitrate(700); 
-            $ffmpeg->export()
+
+            FFMpeg::fromDisk('local')
+                ->open('temp_videos/' . $videoBaseName)
+                ->export()
                 ->toDisk('local')
                 ->inFormat($format)
-                ->addFilter('-preset', 'ultrafast') 
+                ->addFilter('-preset', 'ultrafast') // ২ জিবি র‍্যামের জন্য সুপার ফাস্ট
                 ->addFilter('-threads', 1) 
-                ->addFilter('-vf', 'scale=-2:480') // রেজোলিউশন ৪৮০পি যাতে ফাস্ট হয়
+                ->addFilter('-vf', 'scale=-2:480') // ফাস্ট প্রসেসিং রেজোলিউশন
                 ->save('temp_videos/' . basename($compressedPath));
 
-            // ৪. GCS আপলোড
+            // ৫. GCS আপলোড
             $storage = new \Google\Cloud\Storage\StorageClient([
                 'projectId' => $projectId,
                 'keyFile'    => $keyFileData,
@@ -125,16 +131,13 @@ class ProcessVideoSafetyCheck implements ShouldQueue
             $bucket->upload(fopen($compressedPath, 'r'), ['name' => $gcsVideoName, 'resumable' => true]);
             $bucket->upload(fopen($thumbnailPath, 'r'), ['name' => $gcsThumbName]);
 
-            // ৫. ডাটাবেজ আপডেট
-            $mediaUrl = "https://storage.googleapis.com/{$bucketName}/{$gcsVideoName}";
-            $thumbUrl = "https://storage.googleapis.com/{$bucketName}/{$gcsThumbName}";
-
+            // ৬. ডাটাবেজ আপডেট
             Post_media::updateOrCreate(
                 ['post_id' => $post->id],
                 [
-                    'path' => $mediaUrl,
+                    'path' => "https://storage.googleapis.com/{$bucketName}/{$gcsVideoName}",
                     'media_type' => 'video',
-                    'thumbnail_path' => $thumbUrl,
+                    'thumbnail_path' => "https://storage.googleapis.com/{$bucketName}/{$gcsThumbName}",
                     'duration' => round($durationSeconds),
                 ]
             );
@@ -142,11 +145,12 @@ class ProcessVideoSafetyCheck implements ShouldQueue
             $post->update(['status' => 'active']);
             $this->sendFcmNotification($post->member_id, "Video Ready! 🎬", "Your video is live now.");
 
-            // লোকাল ফাইল ক্লিয়ার
+            // ৭. ক্লিনিং
             $this->cleanupFiles($compressedPath, $thumbnailPath);
 
         } catch (\Exception $e) {
             Log::error("Video Job Error (Post ID {$this->postId}): " . $e->getMessage());
+            $this->cleanupFiles(); // এরর হলে টেম্প ফাইল ডিলিট করে র‍্যাম খালি করা
             throw $e; 
         }
     }
