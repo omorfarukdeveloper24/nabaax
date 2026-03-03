@@ -332,7 +332,7 @@ class PostController extends Controller
             $query = Post::select('id', 'member_id', 'content', 'visibility', 'created_at', 'total_views', 'status')
                 ->where('status', 'active')
                 ->with([
-                    'member:id,name,image',
+                    'member:id,name,image,partner,verified',
                     'media:id,post_id,media_type,path,duration'
                 ])
                 ->withCount([
