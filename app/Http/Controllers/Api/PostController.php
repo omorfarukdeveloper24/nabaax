@@ -39,6 +39,7 @@ class PostController extends Controller
         $this->middleware("auth.jwt", [
             "except" => [
                 "list",
+                'prosearch',
                 "details",
                 "postvideo",
                 "personalpostvideo"
