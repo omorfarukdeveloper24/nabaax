@@ -43,6 +43,7 @@ class MemberController extends Controller
                     "store",
                     "verify",
                     "checkLogin",
+                    "membersearch",
                     "forgot_password",
                     "forgot_verify",
                     "resendotp",
