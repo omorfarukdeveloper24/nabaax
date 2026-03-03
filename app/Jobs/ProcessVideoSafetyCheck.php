@@ -118,7 +118,7 @@ class ProcessVideoSafetyCheck implements ShouldQueue
 
             // ৪. ভিডিও কম্প্রেশন (Medium Quality - 720p)
             $format = (new X264('aac', 'libx264'))
-                        ->setKiloBitrate(1500) 
+                        ->setKiloBitrate(1000) 
                         ->setPasses(1); 
 
             FFMpeg::fromDisk('local')
