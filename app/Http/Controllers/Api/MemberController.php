@@ -43,6 +43,7 @@ class MemberController extends Controller
                 "except" => [
                     "store",
                     "verify",
+                    "profile",
                     "checkLogin",
                     "membersearch",
                     "forgot_password",
@@ -707,7 +708,7 @@ class MemberController extends Controller
             }
 
             // ৬. ওটিপি সফলভাবে পাঠানোর পর ২৪ ঘণ্টার জন্য লক করে দেওয়া
-            cache()->put($phoneCacheKey, true, 300); // ৮৬৪০০ সেকেন্ড = ২৪ ঘণ্টা
+            cache()->put($phoneCacheKey, true, 864000); // ৮৬৪০০ সেকেন্ড = ২৪ ঘণ্টা
 
             Log::info("OTP sent successfully", [
                 'phone' => $user->phone,
