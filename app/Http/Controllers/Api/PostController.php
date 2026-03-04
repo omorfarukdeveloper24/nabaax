@@ -732,12 +732,13 @@ class PostController extends Controller
                 elseif (in_array($extension, $videoExtensions)) {
                     $tempPath = $file->storeAs('temp_videos', $fileNameBase . '.' . $extension, 'local');
                     
-                    // জবে এখন কাস্টম থাম্বনেইল পাথটিও পাঠিয়ে দিচ্ছি (যদি থাকে)
+                    // --- মূল পরিবর্তন এখানে: ১০ সেকেন্ড ডিলে যুক্ত করা হয়েছে ---
                     \App\Jobs\ProcessVideoSafetyCheck::dispatch(
                         $post->id, 
                         storage_path('app/' . $tempPath),
                         $customThumbnailPath ? storage_path('app/' . $customThumbnailPath) : null
-                    );
+                    )->delay(now()->addSeconds(10)); // এই লাইনটি ১০ সেকেন্ড সময় দেবে ফাইল রাইট হতে
+                    // ------------------------------------------------------
                 }
             }
         } else {
