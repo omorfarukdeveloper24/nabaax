@@ -632,34 +632,62 @@ class MemberController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'status' => 'failed',
-                'type' => 'validation_error',
                 'message' => $validator->errors()->first(),
-                'errors' => $validator->errors(),
             ], 422);
         }
 
-        // ২. হ্যাকার ট্র্যাক করার জন্য ডাটা সংগ্রহ
         $ip = $request->ip();
-        $userAgent = $request->header('User-Agent');
 
-        // ৩. মেম্বার চেক (name সহ সিলেক্ট করা হয়েছে কারণ মেসেজে name ব্যবহার করেছেন)
+        // ২. লোকেশন ডাটা সংগ্রহ (ip-api ব্যবহার করে)
+        $locationData = [
+            'ip' => $ip,
+            'city' => 'Unknown',
+            'country' => 'Unknown',
+            'isp' => 'Unknown'
+        ];
+
+        try {
+            // ৩ সেকেন্ডের বেশি সময় নিলে স্কিপ করবে যাতে আপনার সাইট স্লো না হয়
+            $ctx = stream_context_create(['http' => ['timeout' => 3]]);
+            $response = file_get_contents("http://ip-api.com/json/{$ip}", false, $ctx);
+            if ($response) {
+                $apiData = json_decode($response);
+                if ($apiData->status == 'success') {
+                    $locationData['city']    = $apiData->city;
+                    $locationData['region']  = $apiData->regionName;
+                    $locationData['country'] = $apiData->country;
+                    $locationData['isp']     = $apiData->isp;
+                }
+            }
+        } catch (\Exception $e) {
+            // লোকেশন না পাওয়া গেলে সমস্যা নেই, লগ চলবে
+        }
+
+        // ৩. মেম্বার চেক
         $user = Member::where('phone', $request->phone)
                     ->select('id', 'phone', 'forgot', 'name') 
                     ->first();
 
-        // ৪. যদি ইউজার না পাওয়া যায় (Security Tip: হ্যাকারকে সরাসরি বলবেন না যে নাম্বার নেই)
         if (!$user) {
-            Log::warning("Suspicious hit: Phone not found", [
-                'ip' => $ip,
-                'phone_tried' => $request->phone,
-                'device' => $userAgent
-            ]);
-            
+            Log::warning("Suspicious hit: User not found", $locationData);
             return response()->json([
                 'status' => 'failed',
                 'message' => 'If this number is registered, you will receive an OTP.',
             ], 404);
         }
+
+        // ৪. রেট লিমিটিং চেক (একই আইপি থেকে ১ মিনিটে ৩ বারের বেশি হিট বন্ধ)
+        $cacheKey = 'otp_limit_' . $ip;
+        $attempts = cache()->get($cacheKey, 0);
+
+        if ($attempts >= 3) {
+            Log::alert("Hacker/Bot Alert: Too many attempts from this IP", $locationData);
+            return response()->json([
+                'status' => 'failed',
+                'message' => 'Too many attempts. Please try again after 1 minute.',
+            ], 429);
+        }
+        cache()->put($cacheKey, $attempts + 1, 60); // ১ মিনিটের জন্য রেকর্ড রাখবে
 
         // ৫. OTP জেনারেট ও সেভ
         $otp = mt_rand(100000, 999999);
@@ -667,56 +695,43 @@ class MemberController extends Controller
         $user->save();
 
         try {
-            $site_setting = GeneralSetting::where('status', 1)
-                ->select('name', 'white_logo', 'status')
-                ->first();
-
+            $site_setting = GeneralSetting::where('status', 1)->first();
             $sms_gateway = SmsGateway::where('status', 1)->first();
 
             if ($sms_gateway) {
-                $url = $sms_gateway->url;
                 $site_name = $site_setting->name ?? 'our service';
-                
                 $data = [
                     'api_key'  => $sms_gateway->api_key,
                     'number'   => $user->phone,
                     'type'     => 'text',
                     'senderid' => $sms_gateway->senderid,
-                    'message'  => "Dear {$user->name},\r\nYour Forget verification code (OTP) is: {$otp}\r\nThank you for using {$site_name}!",
+                    'message'  => "Dear {$user->name},\r\nYour Forget verification code (OTP) is: {$otp}\nThank you!",
                 ];
 
                 $ch = curl_init();
-                curl_setopt($ch, CURLOPT_URL, $url);
+                curl_setopt($ch, CURLOPT_URL, $sms_gateway->url);
                 curl_setopt($ch, CURLOPT_POST, 1);
-                curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data)); // Better practice
+                curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
                 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                $response = curl_exec($ch);
-
-                if (curl_errno($ch)) {
-                    Log::error("SMS Gateway Error: " . curl_error($ch));
-                    curl_close($ch);
-                    return response()->json(['status' => 'failed', 'message' => 'SMS delivery failed'], 500);
-                }
+                curl_exec($ch);
                 curl_close($ch);
             }
 
-            // সাকসেস হলে আইপি লগ করে রাখা (ঐচ্ছিক)
-            Log::info("OTP sent successfully", ['phone' => $user->phone, 'ip' => $ip]);
+            // ৬. সফল হলে ফুল লোকেশন ডাটা লগ করা
+            Log::info("OTP sent successfully", [
+                'phone' => $user->phone,
+                'location' => $locationData
+            ]);
 
             return response()->json([
                 'status' => 'success',
-                'message' => 'OTP sent to your phone number',
-                'phone' => $user->phone,
+                'message' => 'OTP sent successfully',
             ], 200);
 
         } catch (\Exception $e) {
-            Log::error('Forgot password error: '.$e->getMessage(), ['ip' => $ip]);
-            return response()->json([
-                'status' => 'failed',
-                'message' => 'Something went wrong!',
-                'error' => $e->getMessage(),
-            ], 500);
+            Log::error('Forgot password error: '.$e->getMessage(), $locationData);
+            return response()->json(['status' => 'failed', 'message' => 'Failed to send OTP'], 500);
         }
     }
 
