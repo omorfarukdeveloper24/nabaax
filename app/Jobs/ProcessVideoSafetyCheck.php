@@ -46,6 +46,7 @@ class ProcessVideoSafetyCheck implements ShouldQueue
             $keyFileData = config('filesystems.disks.gcs.key_file');
             $videoBaseName = basename($this->videoPath);
             
+            // ভিডিও ওপেন
             $ffmpeg = FFMpeg::fromDisk('local')->open('temp_videos/' . $videoBaseName);
             $duration = $ffmpeg->getDurationInSeconds();
 
@@ -54,18 +55,14 @@ class ProcessVideoSafetyCheck implements ShouldQueue
 
             $imageAnnotator = new ImageAnnotatorClient(['credentials' => $keyFileData]);
 
-            // ১. সেফটি চেক লুপ
+            // ১. ফ্রেম কাটার নতুন এবং নিরাপদ পদ্ধতি
             for ($i = 1; $i <= $frameCount; $i++) {
                 $time = ($duration / ($frameCount + 1)) * $i;
                 $frameName = "frame_{$this->postId}_{$i}.jpg";
                 $framePath = storage_path('app/temp_videos/' . $frameName);
                 
-                // এখানে সঠিক export মেথড ব্যবহার করা হয়েছে
-                $ffmpeg->getFrameFromSeconds($time)
-                       ->export()
-                       ->toDisk('local')
-                       ->save('temp_videos/' . $frameName);
-                
+                // এখানে export() এর বদলে সরাসরি save() ব্যবহার করা হয়েছে
+                $ffmpeg->getFrameFromSeconds($time)->save('temp_videos/' . $frameName);
                 $tempFiles[] = $framePath;
 
                 if (file_exists($framePath)) {
@@ -82,13 +79,13 @@ class ProcessVideoSafetyCheck implements ShouldQueue
             $imageAnnotator->close();
 
             if (!$isSafe) {
-                Log::warning("Unsafe content: Post ID {$this->postId}");
+                Log::warning("Unsafe Video! Post ID: {$this->postId}");
                 $post->delete();
-                $this->sendFcmNotification($memberId, "Post Removed ⚠️", "Community standards violation.");
+                $this->sendFcmNotification($memberId, "Post Removed ⚠️", "Your video violates community standards.");
                 return;
             }
 
-            // ২. কম্প্রেশন ও থাম্বনেইল
+            // ২. থাম্বনেইল এবং কম্প্রেশন (১০০০ বিটরেট)
             $fileNameBase = pathinfo($this->videoPath, PATHINFO_FILENAME);
             $compressedName = $fileNameBase . '_processed.mp4';
             $compressedPath = storage_path('app/temp_videos/' . $compressedName);
@@ -99,14 +96,11 @@ class ProcessVideoSafetyCheck implements ShouldQueue
             if ($this->customThumbPath && file_exists($this->customThumbPath)) {
                 copy($this->customThumbPath, $thumbnailPath);
             } else {
-                $ffmpeg->getFrameFromSeconds(min(2, $duration))
-                       ->export()
-                       ->toDisk('local')
-                       ->save('temp_videos/' . $thumbName);
+                $ffmpeg->getFrameFromSeconds(min(2, $duration))->save('temp_videos/' . $thumbName);
             }
             $tempFiles[] = $thumbnailPath;
 
-            // ভিডিও কম্প্রেশন (১০০০ বিটরেট)
+            // কম্প্রেশন শুরু
             $format = (new X264('aac', 'libx264'))->setKiloBitrate(1000);
             $ffmpeg->export()
                 ->toDisk('local')
@@ -139,8 +133,7 @@ class ProcessVideoSafetyCheck implements ShouldQueue
             $this->sendFcmNotification($memberId, "Success! ✅", "Your video is now live.");
 
         } catch (\Exception $e) {
-            Log::error("Video Processing Failed (Post ID {$this->postId}): " . $e->getMessage());
-            throw $e;
+            Log::error("Final Error (Post ID {$this->postId}): " . $e->getMessage());
         } finally {
             $this->cleanup($tempFiles);
         }
