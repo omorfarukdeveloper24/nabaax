@@ -58,6 +58,9 @@ Route::get('testing', function () {
 Route::group(['namespace' => 'Api','prefix'=>'v1','middleware' => 'api'], function(){
         Route::get('/country', [MemberController::class, 'country']); 
 });
+
+
+
     
 
 
@@ -65,12 +68,13 @@ Route::group(['namespace' => 'Api','prefix'=>'v1','middleware' => 'api'], functi
     
     Route::post('/member-login', [MemberController::class, 'signin']);
     Route::post('/member-logout', [MemberController::class, 'logout']);
-    Route::get('/membersearch', [MemberController::class, 'membersearch']);  
-
     
+
+
     Route::prefix('member')->group(function () {
         Route::get('/list', [MemberController::class, 'list']);  
         Route::post('/store', [MemberController::class, 'store']); 
+        Route::get('/membersearch', [MemberController::class, 'membersearch']);  
         Route::post('/forgot-password', [MemberController::class, 'forgot_password']); 
         Route::post('/forgot-verify', [MemberController::class, 'forgot_verify']); 
         Route::post('/change-password', [MemberController::class, 'change_password']); 
