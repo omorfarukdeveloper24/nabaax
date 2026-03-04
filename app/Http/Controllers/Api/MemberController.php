@@ -32,6 +32,7 @@ use Illuminate\Support\Facades\Http;
 use Google\Client;
 use App\Traits\NotificationTrait;
 use App\Jobs\DistributePartnerBonus;
+use Illuminate\Support\Facades\Cache;
 
 class MemberController extends Controller
 {
@@ -539,10 +540,91 @@ class MemberController extends Controller
     
     
     
+    // public function forgot_password(Request $request)
+    // {
+    //     // return $request->all();
+        
+    //     $validator = Validator::make($request->all(), [
+    //         'phone' => 'required|string|max:12',
+    //     ]);
+
+    //     if ($validator->fails()) {
+    //         return response()->json([
+    //             'status' => 'failed',
+    //             'type' => 'validation_error',
+    //             'message' => $validator->errors()->first(),
+    //             'errors' => $validator->errors(),
+    //         ], 422);
+    //     }
+      
+    //     $user = Member::where('phone', $request->phone)->select('id', 'phone', 'forgot')->first();
+        
+     
+    //     if (! $user) {
+    //         return response()->json([
+    //             'status' => 'failed',
+    //             'message' => 'Phone number not found',
+    //         ], 404);
+    //     }
+
+    //     $otp = mt_rand(100000, 999999);
+    //     $user->forgot = $otp;
+    //     $user->save();
+
+    //     try {
+    //         $site_setting = GeneralSetting::where('status', 1)
+    //             ->select('name', 'white_logo', 'status')
+    //             ->first();
+
+    //         $sms_gateway = SmsGateway::where('status', 1)->first();
+
+    //         if ($sms_gateway) {
+    //             $url = $sms_gateway->url;
+    //             $data = [
+    //                 'api_key'  => $sms_gateway->api_key,
+    //                 'number'   => $user->phone,
+    //                 'type'     => 'text',
+    //                 'senderid' => $sms_gateway->senderid,
+    //                 'message'  => "Dear {$user->name},\r\nYour Forget verification code (OTP) is: {$otp}\r\nThank you for using " . ($site_setting->name ?? 'our service') . "!",
+    //             ];
+    //             $ch = curl_init();
+    //             curl_setopt($ch, CURLOPT_URL, $url);
+    //             curl_setopt($ch, CURLOPT_POST, 1);
+    //             curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+    //             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    //             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    //             $response = curl_exec($ch);
+
+    //             if (curl_errno($ch)) {
+    //                 $curlErr = curl_error($ch);
+    //                 curl_close($ch);;
+    //                 return response()->json([
+    //                     'status' => 'failed',
+    //                     'message' => 'Failed to send OTP SMS',
+    //                 ], 500);
+    //             }
+    //             curl_close($ch);
+    //         }
+
+    //         return response()->json([
+    //             'status' => 'success',
+    //             'message' => 'OTP sent to your phone number',
+    //             'phone' => $user->phone,
+    //         ], 200);
+
+    //     } catch (Exception $e) {
+    //         Log::error('Forgot password error: '.$e->getMessage());
+    //         return response()->json([
+    //             'status' => 'failed',
+    //             'message' => 'Failed to send OTP',
+    //             'error' => $e->getMessage(),
+    //         ], 500);
+    //     }
+    // }
+
     public function forgot_password(Request $request)
     {
-        // return $request->all();
-        
+        // ১. ভ্যালিডেশন
         $validator = Validator::make($request->all(), [
             'phone' => 'required|string|max:12',
         ]);
@@ -555,17 +637,31 @@ class MemberController extends Controller
                 'errors' => $validator->errors(),
             ], 422);
         }
-      
-        $user = Member::where('phone', $request->phone)->select('id', 'phone', 'forgot')->first();
-        
-     
-        if (! $user) {
+
+        // ২. হ্যাকার ট্র্যাক করার জন্য ডাটা সংগ্রহ
+        $ip = $request->ip();
+        $userAgent = $request->header('User-Agent');
+
+        // ৩. মেম্বার চেক (name সহ সিলেক্ট করা হয়েছে কারণ মেসেজে name ব্যবহার করেছেন)
+        $user = Member::where('phone', $request->phone)
+                    ->select('id', 'phone', 'forgot', 'name') 
+                    ->first();
+
+        // ৪. যদি ইউজার না পাওয়া যায় (Security Tip: হ্যাকারকে সরাসরি বলবেন না যে নাম্বার নেই)
+        if (!$user) {
+            Log::warning("Suspicious hit: Phone not found", [
+                'ip' => $ip,
+                'phone_tried' => $request->phone,
+                'device' => $userAgent
+            ]);
+            
             return response()->json([
                 'status' => 'failed',
-                'message' => 'Phone number not found',
+                'message' => 'If this number is registered, you will receive an OTP.',
             ], 404);
         }
 
+        // ৫. OTP জেনারেট ও সেভ
         $otp = mt_rand(100000, 999999);
         $user->forgot = $otp;
         $user->save();
@@ -579,31 +675,34 @@ class MemberController extends Controller
 
             if ($sms_gateway) {
                 $url = $sms_gateway->url;
+                $site_name = $site_setting->name ?? 'our service';
+                
                 $data = [
                     'api_key'  => $sms_gateway->api_key,
                     'number'   => $user->phone,
                     'type'     => 'text',
                     'senderid' => $sms_gateway->senderid,
-                    'message'  => "Dear {$user->name},\r\nYour Forget verification code (OTP) is: {$otp}\r\nThank you for using " . ($site_setting->name ?? 'our service') . "!",
+                    'message'  => "Dear {$user->name},\r\nYour Forget verification code (OTP) is: {$otp}\r\nThank you for using {$site_name}!",
                 ];
+
                 $ch = curl_init();
                 curl_setopt($ch, CURLOPT_URL, $url);
                 curl_setopt($ch, CURLOPT_POST, 1);
-                curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data)); // Better practice
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
                 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
                 $response = curl_exec($ch);
 
                 if (curl_errno($ch)) {
-                    $curlErr = curl_error($ch);
-                    curl_close($ch);;
-                    return response()->json([
-                        'status' => 'failed',
-                        'message' => 'Failed to send OTP SMS',
-                    ], 500);
+                    Log::error("SMS Gateway Error: " . curl_error($ch));
+                    curl_close($ch);
+                    return response()->json(['status' => 'failed', 'message' => 'SMS delivery failed'], 500);
                 }
                 curl_close($ch);
             }
+
+            // সাকসেস হলে আইপি লগ করে রাখা (ঐচ্ছিক)
+            Log::info("OTP sent successfully", ['phone' => $user->phone, 'ip' => $ip]);
 
             return response()->json([
                 'status' => 'success',
@@ -611,11 +710,11 @@ class MemberController extends Controller
                 'phone' => $user->phone,
             ], 200);
 
-        } catch (Exception $e) {
-            Log::error('Forgot password error: '.$e->getMessage());
+        } catch (\Exception $e) {
+            Log::error('Forgot password error: '.$e->getMessage(), ['ip' => $ip]);
             return response()->json([
                 'status' => 'failed',
-                'message' => 'Failed to send OTP',
+                'message' => 'Something went wrong!',
                 'error' => $e->getMessage(),
             ], 500);
         }
