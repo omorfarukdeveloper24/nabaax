@@ -21,7 +21,6 @@ class ProcessVideoSafetyCheck implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, NotificationTrait;
 
     protected $postId, $videoPath, $customThumbPath;
-
     public $timeout = 1800;
     public $tries = 2;
 
@@ -47,7 +46,6 @@ class ProcessVideoSafetyCheck implements ShouldQueue
             $keyFileData = config('filesystems.disks.gcs.key_file');
             $videoBaseName = basename($this->videoPath);
             
-            // ভিডিও ওপেন
             $ffmpeg = FFMpeg::fromDisk('local')->open('temp_videos/' . $videoBaseName);
             $duration = $ffmpeg->getDurationInSeconds();
 
@@ -56,13 +54,18 @@ class ProcessVideoSafetyCheck implements ShouldQueue
 
             $imageAnnotator = new ImageAnnotatorClient(['credentials' => $keyFileData]);
 
+            // ১. সেফটি চেক লুপ
             for ($i = 1; $i <= $frameCount; $i++) {
                 $time = ($duration / ($frameCount + 1)) * $i;
                 $frameName = "frame_{$this->postId}_{$i}.jpg";
                 $framePath = storage_path('app/temp_videos/' . $frameName);
                 
-                // প্রো-টিপ: সরাসরি ফ্রেম সেভ করুন
-                $ffmpeg->getFrameFromSeconds($time)->save('temp_videos/' . $frameName);
+                // এখানে সঠিক export মেথড ব্যবহার করা হয়েছে
+                $ffmpeg->getFrameFromSeconds($time)
+                       ->export()
+                       ->toDisk('local')
+                       ->save('temp_videos/' . $frameName);
+                
                 $tempFiles[] = $framePath;
 
                 if (file_exists($framePath)) {
@@ -79,13 +82,13 @@ class ProcessVideoSafetyCheck implements ShouldQueue
             $imageAnnotator->close();
 
             if (!$isSafe) {
-                Log::warning("Unsafe Video Deleted. Post ID: {$this->postId}");
+                Log::warning("Unsafe content: Post ID {$this->postId}");
                 $post->delete();
-                $this->sendFcmNotification($memberId, "Post Removed ⚠️", "Your video violates community standards.");
+                $this->sendFcmNotification($memberId, "Post Removed ⚠️", "Community standards violation.");
                 return;
             }
 
-            // ২. ভিডিও প্রসেসিং এবং থাম্বনেইল
+            // ২. কম্প্রেশন ও থাম্বনেইল
             $fileNameBase = pathinfo($this->videoPath, PATHINFO_FILENAME);
             $compressedName = $fileNameBase . '_processed.mp4';
             $compressedPath = storage_path('app/temp_videos/' . $compressedName);
@@ -96,11 +99,14 @@ class ProcessVideoSafetyCheck implements ShouldQueue
             if ($this->customThumbPath && file_exists($this->customThumbPath)) {
                 copy($this->customThumbPath, $thumbnailPath);
             } else {
-                $ffmpeg->getFrameFromSeconds(min(2, $duration))->save('temp_videos/' . $thumbName);
+                $ffmpeg->getFrameFromSeconds(min(2, $duration))
+                       ->export()
+                       ->toDisk('local')
+                       ->save('temp_videos/' . $thumbName);
             }
             $tempFiles[] = $thumbnailPath;
 
-            // কম্প্রেশন
+            // ভিডিও কম্প্রেশন (১০০০ বিটরেট)
             $format = (new X264('aac', 'libx264'))->setKiloBitrate(1000);
             $ffmpeg->export()
                 ->toDisk('local')
@@ -115,19 +121,16 @@ class ProcessVideoSafetyCheck implements ShouldQueue
             $storage = new StorageClient(['projectId' => config('filesystems.disks.gcs.project_id'), 'keyFile' => $keyFileData]);
             $bucket = $storage->bucket(config('filesystems.disks.gcs.bucket'));
 
-            $gcsVideoPath = "posts/videos/" . $compressedName;
-            $gcsThumbPath = "posts/thumbnails/" . $thumbName;
+            $bucket->upload(fopen($compressedPath, 'r'), ['name' => "posts/videos/" . $compressedName, 'resumable' => true]);
+            $bucket->upload(fopen($thumbnailPath, 'r'), ['name' => "posts/thumbnails/" . $thumbName]);
 
-            $bucket->upload(fopen($compressedPath, 'r'), ['name' => $gcsVideoPath, 'resumable' => true]);
-            $bucket->upload(fopen($thumbnailPath, 'r'), ['name' => $gcsThumbPath]);
-
-            // ৪. রেকর্ড আপডেট
+            // ৪. ডাটাবেজ আপডেট
             Post_media::updateOrCreate(
                 ['post_id' => $this->postId],
                 [
                     'media_type' => 'video',
-                    'path' => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $gcsVideoPath,
-                    'thumbnail_path' => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $gcsThumbPath,
+                    'path' => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/posts/videos/" . $compressedName,
+                    'thumbnail_path' => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/posts/thumbnails/" . $thumbName,
                     'duration' => round($duration),
                 ]
             );
