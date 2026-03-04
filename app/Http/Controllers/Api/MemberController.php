@@ -637,34 +637,35 @@ class MemberController extends Controller
         }
 
         $ip = $request->ip();
+        $phone = $request->phone;
 
-        // ২. লোকেশন ডাটা সংগ্রহ (ip-api ব্যবহার করে)
-        $locationData = [
-            'ip' => $ip,
-            'city' => 'Unknown',
-            'country' => 'Unknown',
-            'isp' => 'Unknown'
-        ];
-
+        // ২. লোকেশন ডাটা সংগ্রহ
+        $locationData = ['ip' => $ip, 'city' => 'Unknown', 'country' => 'Unknown', 'isp' => 'Unknown'];
         try {
-            // ৩ সেকেন্ডের বেশি সময় নিলে স্কিপ করবে যাতে আপনার সাইট স্লো না হয়
             $ctx = stream_context_create(['http' => ['timeout' => 3]]);
             $response = file_get_contents("http://ip-api.com/json/{$ip}", false, $ctx);
             if ($response) {
                 $apiData = json_decode($response);
                 if ($apiData->status == 'success') {
                     $locationData['city']    = $apiData->city;
-                    $locationData['region']  = $apiData->regionName;
                     $locationData['country'] = $apiData->country;
                     $locationData['isp']     = $apiData->isp;
                 }
             }
-        } catch (\Exception $e) {
-            // লোকেশন না পাওয়া গেলে সমস্যা নেই, লগ চলবে
+        } catch (\Exception $e) { }
+
+        // ৩. বিকাশ স্টাইল লিমিট চেক (ফোন নম্বর অনুযায়ী ২৪ ঘণ্টায় একবার)
+        $phoneCacheKey = 'otp_sent_limit_' . $phone;
+        if (cache()->has($phoneCacheKey)) {
+            Log::warning("Limit Exceeded for phone: $phone", $locationData);
+            return response()->json([
+                'status' => 'failed',
+                'message' => 'You can request an OTP only once every 24 hours.',
+            ], 429);
         }
 
-        // ৩. মেম্বার চেক
-        $user = Member::where('phone', $request->phone)
+        // ৪. মেম্বার চেক
+        $user = Member::where('phone', $phone)
                     ->select('id', 'phone', 'forgot', 'name') 
                     ->first();
 
@@ -675,19 +676,6 @@ class MemberController extends Controller
                 'message' => 'If this number is registered, you will receive an OTP.',
             ], 404);
         }
-
-        // ৪. রেট লিমিটিং চেক (একই আইপি থেকে ১ মিনিটে ৩ বারের বেশি হিট বন্ধ)
-        $cacheKey = 'otp_limit_' . $ip;
-        $attempts = cache()->get($cacheKey, 0);
-
-        if ($attempts >= 3) {
-            Log::alert("Hacker/Bot Alert: Too many attempts from this IP", $locationData);
-            return response()->json([
-                'status' => 'failed',
-                'message' => 'Too many attempts. Please try again after 1 minute.',
-            ], 429);
-        }
-        cache()->put($cacheKey, $attempts + 1, 60); // ১ মিনিটের জন্য রেকর্ড রাখবে
 
         // ৫. OTP জেনারেট ও সেভ
         $otp = mt_rand(100000, 999999);
@@ -718,7 +706,9 @@ class MemberController extends Controller
                 curl_close($ch);
             }
 
-            // ৬. সফল হলে ফুল লোকেশন ডাটা লগ করা
+            // ৬. ওটিপি সফলভাবে পাঠানোর পর ২৪ ঘণ্টার জন্য লক করে দেওয়া
+            cache()->put($phoneCacheKey, true, 300); // ৮৬৪০০ সেকেন্ড = ২৪ ঘণ্টা
+
             Log::info("OTP sent successfully", [
                 'phone' => $user->phone,
                 'location' => $locationData

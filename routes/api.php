@@ -75,7 +75,8 @@ Route::group(['namespace' => 'Api','prefix'=>'v1','middleware' => 'api'], functi
         Route::get('/list', [MemberController::class, 'list']);  
         Route::post('/store', [MemberController::class, 'store']); 
         Route::get('/membersearch', [MemberController::class, 'membersearch']);  
-        Route::post('/forgot-password', [MemberController::class, 'forgot_password']); 
+        // Route::post('/forgot-password', [MemberController::class, 'forgot_password']); 
+        Route::middleware('throttle:2,1')->post('/forgot-password', [MemberController::class, 'forgot_password']);
         Route::post('/forgot-verify', [MemberController::class, 'forgot_verify']); 
         Route::post('/change-password', [MemberController::class, 'change_password']); 
         Route::post('/new-password', [MemberController::class, 'new_password']); 
