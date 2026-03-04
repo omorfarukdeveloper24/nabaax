@@ -501,7 +501,7 @@ class MemberController extends Controller
                     "number"   => $member->phone,
                     "type"     => 'text',
                     "senderid" => $sms_gateway->senderid,
-                    "message"  => "Dear {$member->name},\r\nYour verification code (OTP) is: {$member->phoneverify}\r\nThank you for using {$site_setting->name}!\r\nPowered by Safoan."
+                    "message"  => "Dear {$member->name},\r\nYour Registration verification code (OTP) is: {$member->phoneverify}\r\nThank you for using {$site_setting->name}!\r\nPowered by Safoan."
                 ];
 
                 $ch = curl_init();
@@ -584,7 +584,7 @@ class MemberController extends Controller
                     'number'   => $user->phone,
                     'type'     => 'text',
                     'senderid' => $sms_gateway->senderid,
-                    'message'  => "Dear {$user->name},\r\nYour verification code (OTP) is: {$otp}\r\nThank you for using " . ($site_setting->name ?? 'our service') . "!",
+                    'message'  => "Dear {$user->name},\r\nYour Forget verification code (OTP) is: {$otp}\r\nThank you for using " . ($site_setting->name ?? 'our service') . "!",
                 ];
                 $ch = curl_init();
                 curl_setopt($ch, CURLOPT_URL, $url);
@@ -1221,188 +1221,451 @@ class MemberController extends Controller
 
 
 
+    // public function profile(Request $request)
+    // {
+    //     $authMember = Auth::guard('member')->user();
+    //     $authId = $authMember ? $authMember->id : null;
+        
+    //     $memberId = $request->id;
+        
+    //         if(!$memberId){
+    //             return response()->json([
+    //             'status' => 'failed',
+    //             'message'=> 'No member id found',
+    //         ]); 
+    //         }
+            
+    //      $miniAds = Miniad::where('status', 1)
+    //         ->select('id', 'title', 'image', 'link')
+    //         ->get();
+    
+    //     if ($miniAds->isEmpty()) {
+    //         $miniAds = collect([]);
+    //     }
+            
+    //     $member = Member::where(['id' =>$request->id])->first();
+    //     // return $member;
+
+    //     if ($authId && $authId != $memberId) {
+    //         $checkFollow = Follow::where('follower_id', $authId)
+    //                             ->where('following_id', $memberId)
+    //                             ->exists();
+    //         $member->is_following = $checkFollow; // ফলো করলে true, না করলে false
+    //     } else {
+    //         $member->is_following = false; // নিজের প্রোফাইল হলে বা লগইন না থাকলে false
+    //     }
+        
+        
+    //      $district = DB::table('districts')
+    //         ->where('id', $member->district)
+    //         ->select('id', 'name')
+    //         ->first();
+    
+    //     $upazila = DB::table('upazilas')
+    //         ->where('id', $member->upazila)
+    //         ->select('id', 'name')
+    //         ->first();
+            
+    //     $profession = DB::table('professions')
+    //         ->where('id', $member->profession)
+    //         ->select('id', 'title')
+    //         ->first();
+            
+    //     $division = DB::table('divisions')
+    //         ->where('id', $member->division)
+    //         ->select('id', 'name')
+    //         ->first();
+        
+    //     $nationality = DB::table('countries')
+    //         ->where('id', $member->nationality)
+    //         ->select('id', 'name')
+    //         ->first();
+    
+    //     $member->nationality = $nationality;
+    //     $member->district = $district;
+    //     $member->upazila  = $upazila;
+    //     $member->profession  = $profession;
+    //     $member->division = $division;
+    //     $followers_count = Follow::where('following_id', $member->id)->count();
+
+    //     $following_count = Follow::where('follower_id', $member->id)->count();
+
+    //     $friends_count = Follow::where('follower_id', $member->id)
+    //                         ->where('is_friend', 1)
+    //                         ->count();
+        
+        
+        
+    //     $posts = Post::with(['member', 'media'])
+    //         ->withCount([
+    //             'likes as like_count' => function ($q) {
+    //                 $q->where('type', 1);
+    //             },
+    //             'likes as dislike_count' => function ($q) {
+    //                 $q->where('type', 2);
+    //             },
+    //             'comments as comment_count' 
+    //         ])
+    //         ->withExists([
+    //             'likes as liked_by_me' => function ($q) use ($memberId) {
+    //                 $q->where('member_id', $memberId)->where('type', 1);
+    //             },
+    //             'likes as disliked_by_me' => function ($q) use ($memberId) {
+    //                 $q->where('member_id', $memberId)->where('type', 2);
+    //             },
+    //         ])
+    //         ->where('member_id', $memberId)
+    //         ->where('status', 'active')
+    //         // ->whereNotIn('id', function ($query) use ($memberId) {
+    //         //     $query->select('post_id')
+    //         //           ->from('post_views')
+    //         //           ->where('member_id', $memberId);
+    //         // })
+    //         ->latest()
+    //         ->paginate(5);
+            
+            
+    //         $posts->getCollection()->transform(function ($post, $index) use ($memberId, $miniAds) {
+    //         $isFollowing = Follow::where('follower_id', $memberId)
+    //             ->where('following_id', $post->member->id)
+    //             ->exists();
+    
+    //         $post->is_following = $isFollowing;
+            
+            
+    //         $followBoost = FollowBoost::where('member_id', $post->member->id)->first();
+    
+    //         if ($followBoost && $followBoost->status === 'active') {
+    //             $post->follow_boost_status = 'active';
+    //         } else {
+    //             $post->follow_boost_status = 'inactive';
+    //         }
+            
+    //         // PostBoost check
+    //         $postBoost = PostBoost::where('post_id', $post->id)->latest()->first();
+        
+    //         if ($postBoost && $postBoost->status === 'active') {
+    //             $post->post_boost = [
+    //                 'id' => $postBoost->id,
+    //                 'status' => 'active'
+    //             ];
+    //         } else {
+    //             $post->post_boost = [
+    //                 'id' => null,
+    //                 'status' => 'inactive'
+    //             ];
+    //         }
+    
+    //         // if ($miniAds->count() > 0) {
+                
+    //         //     $start = ($index * 2) % $miniAds->count();
+    //         //     $miniAdPair = [];
+    
+    //         //     for ($i = 0; $i < 2; $i++) {
+    //         //         $miniAdPair[] = $miniAds[($start + $i) % $miniAds->count()];
+    //         //     }
+    
+    //         //     $post->mini_ads = $miniAdPair;
+    //         // } else {
+    //         //     $post->mini_ads = [];
+    //         // }
+
+            
+    //         if ($miniAds->count() > 0) {
+    //             $adIndex = $index % $miniAds->count();
+                
+    //             $post->mini_ads = $miniAds[$adIndex]; 
+    //         } else {
+    //             $post->mini_ads = null; 
+    //         }
+    
+    //         return $post;
+    //     });
+            
+            
+            
+            
+        
+            
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'message'=> '10 post show',
+    //         'followers_count' => $followers_count, 
+    //         'following_count' => $following_count, 
+    //         'friends_count'   => $friends_count,
+    //         "is_following" => $member->is_following,
+    //         'member'   => $member,
+    //         'data'   => $posts,
+            
+    //     ]);
+        
+    // }
+
+
+    // public function profile(Request $request)
+    // {
+    //     // ১. লগইন মেম্বার চেক (থাকলে ID পাবে, না থাকলে null)
+    //     $authMember = Auth::guard('member')->user();
+    //     $authId = $authMember ? $authMember->id : null;
+        
+    //     $memberId = $request->id;
+        
+    //     if(!$memberId){
+    //         return response()->json(['status' => 'failed', 'message'=> 'No member id found'], 400); 
+    //     }
+                
+    //     // ২. মেম্বার ডাটা লোড (Eager Loading ব্যবহার করা ভালো ছিল, তবে আপনার স্টাইল অনুযায়ী রাখা হলো)
+    //     $member = Member::find($memberId);
+
+    //     if (!$member) {
+    //         return response()->json(['status' => 'failed', 'message'=> 'Member not found'], 404);
+    //     }
+
+    //     // ৩. ফলো স্ট্যাটাস (গেস্ট হলে সবসময় false)
+    //     if ($authId && $authId != $memberId) {
+    //         $member->is_following = Follow::where('follower_id', $authId)
+    //                                     ->where('following_id', $memberId)
+    //                                     ->exists();
+    //     } else {
+    //         $member->is_following = false;
+    //     }
+        
+    //     // ৪. অ্যাড্রেস এবং প্রফেশন লোড (ডিবি কুয়েরি কমানোর জন্য আপনি মডেলে রিলেশন করতে পারেন)
+    //     $member->nationality = DB::table('countries')->where('id', $member->nationality)->select('id', 'name')->first();
+    //     $member->district = DB::table('districts')->where('id', $member->district)->select('id', 'name')->first();
+    //     $member->upazila  = DB::table('upazilas')->where('id', $member->upazila)->select('id', 'name')->first();
+    //     $member->profession  = DB::table('professions')->where('id', $member->profession)->select('id', 'title')->first();
+    //     $member->division = DB::table('divisions')->where('id', $member->division)->select('id', 'name')->first();
+
+    //     // ৫. কাউন্টগুলো বের করা
+    //     $followers_count = Follow::where('following_id', $memberId)->count();
+    //     $following_count = Follow::where('follower_id', $memberId)->count();
+    //     $friends_count = Follow::where('follower_id', $memberId)->where('is_friend', 1)->count();
+        
+    //     // ৬. মিনি অ্যাডস ক্যাশ থেকে বা সরাসরি নেওয়া
+    //     $miniAds = Miniad::where('status', 1)->select('id', 'title', 'image', 'link')->get();
+
+    //     // ৭. পোস্ট কুয়েরি (TikTok স্টাইল গেস্ট লজিক)
+    //     $posts = Post::with(['member:id,name,image', 'media'])
+    //         ->withCount([
+    //             'likes as like_count' => fn($q) => $q->where('type', 1),
+    //             'likes as dislike_count' => fn($q) => $q->where('type', 2),
+    //             'comments as comment_count' 
+    //         ])
+    //         ->withExists([
+    //             // লগইন থাকলে অরিজিনাল ডাটা, না থাকলে FALSE
+    //             'likes as liked_by_me' => fn($q) => $authId ? $q->where('member_id', $authId)->where('type', 1) : $q->whereRaw('1=0'),
+    //             'likes as disliked_by_me' => fn($q) => $authId ? $q->where('member_id', $authId)->where('type', 2) : $q->whereRaw('1=0'),
+    //         ])
+    //         ->where('member_id', $memberId)
+    //         ->where('status', 'active')
+    //         ->latest()
+    //         ->paginate(5);
+                
+    //     // ৮. ট্রান্সফর্ম লজিক
+    //     $posts->getCollection()->transform(function ($post, $index) use ($authId, $miniAds) {
+    //         // ফলো বুস্ট চেক
+    //         $followBoost = FollowBoost::where('member_id', $post->member->id)->where('status', 'active')->exists();
+    //         $post->follow_boost_status = $followBoost ? 'active' : 'inactive';
+            
+    //         // পোস্ট বুস্ট চেক
+    //         $postBoost = PostBoost::where('post_id', $post->id)->where('status', 'active')->first();
+    //         $post->post_boost = $postBoost ? ['id' => $postBoost->id, 'status' => 'active'] : ['id' => null, 'status' => 'inactive'];
+
+    //         // গেস্ট হলে পোস্টের জন্য is_following সবসময় false
+    //         $post->is_following = $authId ? Follow::where('follower_id', $authId)->where('following_id', $post->member->id)->exists() : false;
+
+    //         // অ্যাডস ইনজেকশন
+    //         $post->mini_ads = $miniAds->count() > 0 ? $miniAds[$index % $miniAds->count()] : null;
+
+    //         return $post;
+    //     });
+
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'followers_count' => $followers_count, 
+    //         'following_count' => $following_count, 
+    //         'friends_count'   => $friends_count,
+    //         'is_following'    => $member->is_following,
+    //         'member'          => $member,
+    //         'data'            => $posts,
+    //     ]);
+    // }
+
+    // public function profile(Request $request)
+    // {
+    //     $authMember = Auth::guard('member')->user();
+    //     $authId = $authMember ? $authMember->id : null;
+    //     $memberId = $request->id;
+
+    //     if (!$memberId) {
+    //         return response()->json(['status' => 'failed', 'message' => 'No member id found'], 400);
+    //     }
+
+    //     // ১. মেম্বার ডাটা এবং অ্যাডস ক্যাশ করা (প্রোফাইল লোড ফাস্ট হবে)
+    //     $member = Cache::remember("member_profile_{$memberId}", 300, function () use ($memberId) {
+    //         $m = Member::find($memberId);
+    //         if ($m) {
+    //             // ডাটাবেস কুয়েরি কমাতে রিলেশনগুলো একবারেই লোড করা (Join এর বিকল্প)
+    //             $m->nationality = DB::table('countries')->where('id', $m->nationality)->select('id', 'name')->first();
+    //             $m->district = DB::table('districts')->where('id', $m->district)->select('id', 'name')->first();
+    //             $m->upazila = DB::table('upazilas')->where('id', $m->upazila)->select('id', 'name')->first();
+    //             $m->profession = DB::table('professions')->where('id', $m->profession)->select('id', 'title')->first();
+    //             $m->division = DB::table('divisions')->where('id', $m->division)->select('id', 'name')->first();
+    //         }
+    //         return $m;
+    //     });
+
+    //     if (!$member) {
+    //         return response()->json(['status' => 'failed', 'message' => 'Member not found'], 404);
+    //     }
+
+    //     // ২. ফলো চেক (এটি ক্যাশ করা যাবে না কারণ এটি প্রতি ইউজারের জন্য আলাদা)
+    //     $member->is_following = ($authId && $authId != $memberId) 
+    //         ? Follow::where('follower_id', $authId)->where('following_id', $memberId)->exists() 
+    //         : false;
+
+    //     // ৩. কাউন্ট গুলো আলাদাভাবে ক্যাশ করা (খুবই কার্যকর যখন অনেক ফলোয়ার থাকে)
+    //     $counts = Cache::remember("member_counts_{$memberId}", 60, function () use ($memberId) {
+    //         return [
+    //             'followers' => Follow::where('following_id', $memberId)->count(),
+    //             'following' => Follow::where('follower_id', $memberId)->count(),
+    //             'friends'   => Follow::where('follower_id', $memberId)->where('is_friend', 1)->count(),
+    //         ];
+    //     });
+
+    //     $miniAds = Cache::remember('active_mini_ads', 600, function () {
+    //         return Miniad::where('status', 1)->select('id', 'title', 'image', 'link')->get();
+    //     });
+
+    //     // ৪. পোস্ট কুয়েরি অপ্টিমাইজেশন (Eager Loading ব্যবহার করে N+1 কোয়েরি বন্ধ করা)
+    //     $posts = Post::with(['member:id,name,image', 'media'])
+    //         ->withCount([
+    //             'likes as like_count' => fn($q) => $q->where('type', 1),
+    //             'likes as dislike_count' => fn($q) => $q->where('type', 2),
+    //             'comments as comment_count'
+    //         ])
+    //         ->withExists([
+    //             'likes as liked_by_me' => fn($q) => $authId ? $q->where('member_id', $authId)->where('type', 1) : $q->whereRaw('1=0'),
+    //             'likes as disliked_by_me' => fn($q) => $authId ? $q->where('member_id', $authId)->where('type', 2) : $q->whereRaw('1=0'),
+    //         ])
+    //         ->where('member_id', $memberId)
+    //         ->where('status', 'active')
+    //         ->latest()
+    //         ->paginate(5);
+
+    //     // ৫. লুপের ভেতরে কুয়েরি কমানো (খুবই গুরুত্বপূর্ণ স্কেলেবিলিটির জন্য)
+    //     $posts->getCollection()->transform(function ($post, $index) use ($authId, $miniAds) {
+    //         // বুস্ট স্ট্যাটাস চেক (এখানে রিলেশন থাকলে আরও ফাস্ট হতো)
+    //         $followBoost = FollowBoost::where('member_id', $post->member_id)->where('status', 'active')->exists();
+    //         $post->follow_boost_status = $followBoost ? 'active' : 'inactive';
+
+    //         $postBoost = PostBoost::where('post_id', $post->id)->where('status', 'active')->first();
+    //         $post->post_boost = $postBoost ? ['id' => $postBoost->id, 'status' => 'active'] : ['id' => null, 'status' => 'inactive'];
+
+    //         $post->is_following = $authId ? Follow::where('follower_id', $authId)->where('following_id', $post->member_id)->exists() : false;
+    //         $post->mini_ads = $miniAds->count() > 0 ? $miniAds[$index % $miniAds->count()] : null;
+
+    //         return $post;
+    //     });
+
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'followers_count' => $counts['followers'],
+    //         'following_count' => $counts['following'],
+    //         'friends_count'   => $counts['friends'],
+    //         'is_following'    => $member->is_following,
+    //         'member'          => $member,
+    //         'data'            => $posts,
+    //     ]);
+    // }
+
     public function profile(Request $request)
     {
-        
-        
-        // $member = Auth::guard('member')->user();
         $authMember = Auth::guard('member')->user();
         $authId = $authMember ? $authMember->id : null;
-        
-    
         $memberId = $request->id;
-        
-            if(!$memberId){
-                return response()->json([
-                'status' => 'failed',
-                'message'=> 'No member id found',
-            ]); 
+
+        if (!$memberId) {
+            return response()->json(['status' => 'failed', 'message' => 'No member id found'], 400);
+        }
+
+        // ১. মেম্বার ডাটা এবং অ্যাডস ক্যাশ করা (প্রোফাইল লোড ফাস্ট হবে)
+        $member = Cache::remember("member_profile_{$memberId}", 300, function () use ($memberId) {
+            $m = Member::find($memberId);
+            if ($m) {
+                // ডাটাবেস কুয়েরি কমাতে রিলেশনগুলো একবারেই লোড করা (Join এর বিকল্প)
+                $m->nationality = DB::table('countries')->where('id', $m->nationality)->select('id', 'name')->first();
+                $m->district = DB::table('districts')->where('id', $m->district)->select('id', 'name')->first();
+                $m->upazila = DB::table('upazilas')->where('id', $m->upazila)->select('id', 'name')->first();
+                $m->profession = DB::table('professions')->where('id', $m->profession)->select('id', 'title')->first();
+                $m->division = DB::table('divisions')->where('id', $m->division)->select('id', 'name')->first();
             }
-            
-         $miniAds = Miniad::where('status', 1)
-            ->select('id', 'title', 'image', 'link')
-            ->get();
-    
-        if ($miniAds->isEmpty()) {
-            $miniAds = collect([]);
+            return $m;
+        });
+
+        if (!$member) {
+            return response()->json(['status' => 'failed', 'message' => 'Member not found'], 404);
         }
-            
-        $member = Member::where(['id' =>$request->id])->first();
-        // return $member;
 
-        if ($authId && $authId != $memberId) {
-            $checkFollow = Follow::where('follower_id', $authId)
-                                ->where('following_id', $memberId)
-                                ->exists();
-            $member->is_following = $checkFollow; // ফলো করলে true, না করলে false
-        } else {
-            $member->is_following = false; // নিজের প্রোফাইল হলে বা লগইন না থাকলে false
-        }
-        
-        
-         $district = DB::table('districts')
-            ->where('id', $member->district)
-            ->select('id', 'name')
-            ->first();
-    
-        $upazila = DB::table('upazilas')
-            ->where('id', $member->upazila)
-            ->select('id', 'name')
-            ->first();
-            
-        $profession = DB::table('professions')
-            ->where('id', $member->profession)
-            ->select('id', 'title')
-            ->first();
-            
-        $division = DB::table('divisions')
-            ->where('id', $member->division)
-            ->select('id', 'name')
-            ->first();
-        
-        $nationality = DB::table('countries')
-            ->where('id', $member->nationality)
-            ->select('id', 'name')
-            ->first();
-    
-        $member->nationality = $nationality;
-        $member->district = $district;
-        $member->upazila  = $upazila;
-        $member->profession  = $profession;
-        $member->division = $division;
-        $followers_count = Follow::where('following_id', $member->id)->count();
+        // ২. ফলো চেক (এটি ক্যাশ করা যাবে না কারণ এটি প্রতি ইউজারের জন্য আলাদা)
+        $member->is_following = ($authId && $authId != $memberId) 
+            ? Follow::where('follower_id', $authId)->where('following_id', $memberId)->exists() 
+            : false;
 
-        $following_count = Follow::where('follower_id', $member->id)->count();
+        // ৩. কাউন্ট গুলো আলাদাভাবে ক্যাশ করা (খুবই কার্যকর যখন অনেক ফলোয়ার থাকে)
+        $counts = Cache::remember("member_counts_{$memberId}", 60, function () use ($memberId) {
+            return [
+                'followers' => Follow::where('following_id', $memberId)->count(),
+                'following' => Follow::where('follower_id', $memberId)->count(),
+                'friends'   => Follow::where('follower_id', $memberId)->where('is_friend', 1)->count(),
+            ];
+        });
 
-        $friends_count = Follow::where('follower_id', $member->id)
-                            ->where('is_friend', 1)
-                            ->count();
-        
-        
-        
-        $posts = Post::with(['member', 'media'])
+        $miniAds = Cache::remember('active_mini_ads', 600, function () {
+            return Miniad::where('status', 1)->select('id', 'title', 'image', 'link')->get();
+        });
+
+        // ৪. পোস্ট কুয়েরি অপ্টিমাইজেশন (Eager Loading ব্যবহার করে N+1 কোয়েরি বন্ধ করা)
+        $posts = Post::with(['member:id,name,image', 'media'])
             ->withCount([
-                'likes as like_count' => function ($q) {
-                    $q->where('type', 1);
-                },
-                'likes as dislike_count' => function ($q) {
-                    $q->where('type', 2);
-                },
-                'comments as comment_count' 
+                'likes as like_count' => fn($q) => $q->where('type', 1),
+                'likes as dislike_count' => fn($q) => $q->where('type', 2),
+                'comments as comment_count'
             ])
             ->withExists([
-                'likes as liked_by_me' => function ($q) use ($memberId) {
-                    $q->where('member_id', $memberId)->where('type', 1);
-                },
-                'likes as disliked_by_me' => function ($q) use ($memberId) {
-                    $q->where('member_id', $memberId)->where('type', 2);
-                },
+                'likes as liked_by_me' => fn($q) => $authId ? $q->where('member_id', $authId)->where('type', 1) : $q->whereRaw('1=0'),
+                'likes as disliked_by_me' => fn($q) => $authId ? $q->where('member_id', $authId)->where('type', 2) : $q->whereRaw('1=0'),
             ])
             ->where('member_id', $memberId)
             ->where('status', 'active')
-            // ->whereNotIn('id', function ($query) use ($memberId) {
-            //     $query->select('post_id')
-            //           ->from('post_views')
-            //           ->where('member_id', $memberId);
-            // })
             ->latest()
             ->paginate(5);
-            
-            
-            $posts->getCollection()->transform(function ($post, $index) use ($memberId, $miniAds) {
-            $isFollowing = Follow::where('follower_id', $memberId)
-                ->where('following_id', $post->member->id)
-                ->exists();
-    
-            $post->is_following = $isFollowing;
-            
-            
-            $followBoost = FollowBoost::where('member_id', $post->member->id)->first();
-    
-            if ($followBoost && $followBoost->status === 'active') {
-                $post->follow_boost_status = 'active';
-            } else {
-                $post->follow_boost_status = 'inactive';
-            }
-            
-            // PostBoost check
-            $postBoost = PostBoost::where('post_id', $post->id)->latest()->first();
-        
-            if ($postBoost && $postBoost->status === 'active') {
-                $post->post_boost = [
-                    'id' => $postBoost->id,
-                    'status' => 'active'
-                ];
-            } else {
-                $post->post_boost = [
-                    'id' => null,
-                    'status' => 'inactive'
-                ];
-            }
-    
-            // if ($miniAds->count() > 0) {
-                
-            //     $start = ($index * 2) % $miniAds->count();
-            //     $miniAdPair = [];
-    
-            //     for ($i = 0; $i < 2; $i++) {
-            //         $miniAdPair[] = $miniAds[($start + $i) % $miniAds->count()];
-            //     }
-    
-            //     $post->mini_ads = $miniAdPair;
-            // } else {
-            //     $post->mini_ads = [];
-            // }
 
-            
-            if ($miniAds->count() > 0) {
-                $adIndex = $index % $miniAds->count();
-                
-                $post->mini_ads = $miniAds[$adIndex]; 
-            } else {
-                $post->mini_ads = null; 
-            }
-    
+        // ৫. লুপের ভেতরে কুয়েরি কমানো (খুবই গুরুত্বপূর্ণ স্কেলেবিলিটির জন্য)
+        $posts->getCollection()->transform(function ($post, $index) use ($authId, $miniAds) {
+            // বুস্ট স্ট্যাটাস চেক (এখানে রিলেশন থাকলে আরও ফাস্ট হতো)
+            $followBoost = FollowBoost::where('member_id', $post->member_id)->where('status', 'active')->exists();
+            $post->follow_boost_status = $followBoost ? 'active' : 'inactive';
+
+            $postBoost = PostBoost::where('post_id', $post->id)->where('status', 'active')->first();
+            $post->post_boost = $postBoost ? ['id' => $postBoost->id, 'status' => 'active'] : ['id' => null, 'status' => 'inactive'];
+
+            $post->is_following = $authId ? Follow::where('follower_id', $authId)->where('following_id', $post->member_id)->exists() : false;
+            $post->mini_ads = $miniAds->count() > 0 ? $miniAds[$index % $miniAds->count()] : null;
+
             return $post;
         });
-            
-            
-            
-            
-        
-            
+
         return response()->json([
             'status' => 'success',
-            'message'=> '10 post show',
-            'followers_count' => $followers_count, 
-            'following_count' => $following_count, 
-            'friends_count'   => $friends_count,
-            "is_following" => $member->is_following,
-            'member'   => $member,
-            'data'   => $posts,
-            
+            'followers_count' => $counts['followers'],
+            'following_count' => $counts['following'],
+            'friends_count'   => $counts['friends'],
+            'is_following'    => $member->is_following,
+            'member'          => $member,
+            'data'            => $posts,
         ]);
-        
     }
 
 
