@@ -34,8 +34,11 @@ class ProcessVideoSafetyCheck implements ShouldQueue
     public function handle()
     {
         $post = Post::find($this->postId);
+        // পাথ চেক করার জন্য basename ব্যবহার করা নিরাপদ
+        $videoBaseName = basename($this->videoPath);
+
         if (!$post || !file_exists($this->videoPath)) {
-            $this->cleanup([]);
+            Log::error("Video processing failed: Post not found or file does not exist at {$this->videoPath}");
             return;
         }
 
@@ -44,7 +47,6 @@ class ProcessVideoSafetyCheck implements ShouldQueue
 
         try {
             $keyFileData = config('filesystems.disks.gcs.key_file');
-            $videoBaseName = basename($this->videoPath);
             
             // ভিডিও ওপেন
             $ffmpeg = FFMpeg::fromDisk('local')->open('temp_videos/' . $videoBaseName);
@@ -55,14 +57,18 @@ class ProcessVideoSafetyCheck implements ShouldQueue
 
             $imageAnnotator = new ImageAnnotatorClient(['credentials' => $keyFileData]);
 
-            // ১. ফ্রেম কাটার নতুন এবং নিরাপদ পদ্ধতি
+            // ১. সেফটি চেক (ফ্রেম এক্সট্রাকশন)
             for ($i = 1; $i <= $frameCount; $i++) {
                 $time = ($duration / ($frameCount + 1)) * $i;
                 $frameName = "frame_{$this->postId}_{$i}.jpg";
                 $framePath = storage_path('app/temp_videos/' . $frameName);
                 
-                // এখানে export() এর বদলে সরাসরি save() ব্যবহার করা হয়েছে
-                $ffmpeg->getFrameFromSeconds($time)->save('temp_videos/' . $frameName);
+                // এখানে সঠিক চেইন ব্যবহার করা হয়েছে যাতে ফরম্যাট এরর না আসে
+                $ffmpeg->getFrameFromSeconds($time)
+                       ->export()
+                       ->toDisk('local')
+                       ->save('temp_videos/' . $frameName);
+
                 $tempFiles[] = $framePath;
 
                 if (file_exists($framePath)) {
@@ -85,22 +91,25 @@ class ProcessVideoSafetyCheck implements ShouldQueue
                 return;
             }
 
-            // ২. থাম্বনেইল এবং কম্প্রেশন (১০০০ বিটরেট)
+            // ২. থাম্বনেইল এবং কম্প্রেশন পাথ সেটআপ
             $fileNameBase = pathinfo($this->videoPath, PATHINFO_FILENAME);
             $compressedName = $fileNameBase . '_processed.mp4';
             $compressedPath = storage_path('app/temp_videos/' . $compressedName);
             $thumbName = $fileNameBase . '_thumb.jpg';
             $thumbnailPath = storage_path('app/temp_videos/' . $thumbName);
 
-            // থাম্বনেইল
+            // থাম্বনেইল জেনারেশন
             if ($this->customThumbPath && file_exists($this->customThumbPath)) {
                 copy($this->customThumbPath, $thumbnailPath);
             } else {
-                $ffmpeg->getFrameFromSeconds(min(2, $duration))->save('temp_videos/' . $thumbName);
+                $ffmpeg->getFrameFromSeconds(min(2, $duration))
+                       ->export()
+                       ->toDisk('local')
+                       ->save('temp_videos/' . $thumbName);
             }
             $tempFiles[] = $thumbnailPath;
 
-            // কম্প্রেশন শুরু
+            // ৩. কম্প্রেশন (১০০০ বিটরেট)
             $format = (new X264('aac', 'libx264'))->setKiloBitrate(1000);
             $ffmpeg->export()
                 ->toDisk('local')
@@ -111,14 +120,14 @@ class ProcessVideoSafetyCheck implements ShouldQueue
             
             $tempFiles[] = $compressedPath;
 
-            // ৩. GCS আপলোড
+            // ৪. GCS আপলোড
             $storage = new StorageClient(['projectId' => config('filesystems.disks.gcs.project_id'), 'keyFile' => $keyFileData]);
             $bucket = $storage->bucket(config('filesystems.disks.gcs.bucket'));
 
             $bucket->upload(fopen($compressedPath, 'r'), ['name' => "posts/videos/" . $compressedName, 'resumable' => true]);
             $bucket->upload(fopen($thumbnailPath, 'r'), ['name' => "posts/thumbnails/" . $thumbName]);
 
-            // ৪. ডাটাবেজ আপডেট
+            // ৫. ডাটাবেজ আপডেট
             Post_media::updateOrCreate(
                 ['post_id' => $this->postId],
                 [
@@ -133,7 +142,8 @@ class ProcessVideoSafetyCheck implements ShouldQueue
             $this->sendFcmNotification($memberId, "Success! ✅", "Your video is now live.");
 
         } catch (\Exception $e) {
-            Log::error("Final Error (Post ID {$this->postId}): " . $e->getMessage());
+            Log::error("ProcessVideo Job Failed (Post ID {$this->postId}): " . $e->getMessage());
+            throw $e; // ট্রাই করার জন্য এক্সেপশন থ্রো করা ভালো
         } finally {
             $this->cleanup($tempFiles);
         }
