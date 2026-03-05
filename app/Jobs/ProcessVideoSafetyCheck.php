@@ -156,9 +156,18 @@ class ProcessVideoSafetyCheck implements ShouldQueue
 
     protected function compressVideo($compressedPath) 
     {
-        $command = "/usr/bin/ffmpeg -y -i " . escapeshellarg($this->videoPath) . " -c:v libx264 -preset veryfast -b:v 1200k -c:a aac -threads 2 " . escapeshellarg($compressedPath) . " 2>&1";
+        
+        $command = "/usr/bin/ffmpeg -y -i " . escapeshellarg($this->videoPath) . 
+                " -vcodec libx264 -crf 28 -preset veryfast " . 
+                " -vf \"scale='min(720,iw)':-2\" " . 
+                " -acodec aac -b:a 128k -movflags +faststart -threads 2 " . 
+                escapeshellarg($compressedPath) . " 2>&1";
+
         exec($command, $output, $returnVar);
-        if ($returnVar !== 0) throw new \Exception("FFMpeg compression failed: " . implode("\n", $output));
+
+        if ($returnVar !== 0) {
+            throw new \Exception("FFMpeg compression failed: " . implode("\n", $output));
+        }
     }
 
     protected function cleanupFiles(array $files)
