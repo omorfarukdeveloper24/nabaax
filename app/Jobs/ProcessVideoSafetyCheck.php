@@ -9,20 +9,21 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Google\Cloud\Storage\StorageClient;
 use Google\Cloud\Vision\V1\ImageAnnotatorClient;
-use ProtoneMedia\LaravelFFMpeg\Support\FFMpeg;
-use FFMpeg\Format\Video\X264;
 use App\Models\Post;
 use App\Models\Post_media;
 use App\Traits\NotificationTrait;
 use Illuminate\Support\Facades\Log;
+use FFMpeg\FFMpeg;
+use FFMpeg\FFProbe;
+use FFMpeg\Coordinate\TimeCode;
 
 class ProcessVideoSafetyCheck implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, NotificationTrait;
 
     protected $postId, $videoPath, $customThumbPath;
-    public $timeout = 1800;
-    public $tries = 1; // এরর ট্র্যাকিং সহজ করার জন্য বর্তমানে ১ রাখা হয়েছে
+    public $timeout = 1800; // ৩০ মিনিট
+    public $tries = 1;
 
     public function __construct($postId, $videoPath, $customThumbPath = null)
     {
@@ -33,83 +34,66 @@ class ProcessVideoSafetyCheck implements ShouldQueue
 
     public function handle()
     {
-        // ১. ফাইল রাইট হওয়ার জন্য পর্যাপ্ত সময় দেওয়া
-        sleep(10); 
+        // ১. শুরুতে ১০ সেকেন্ড অপেক্ষা (ফাইল রাইট হওয়ার জন্য সময় দেয়া)
+        sleep(10);
 
         $post = Post::find($this->postId);
         if (!$post || !file_exists($this->videoPath)) {
-            Log::error("File not found at start: " . $this->videoPath);
+            Log::error("Post or File not found. Post ID: {$this->postId}, Path: {$this->videoPath}");
             return;
         }
 
-        $videoBaseName = basename($this->videoPath);
         $fileNameBase = pathinfo($this->videoPath, PATHINFO_FILENAME);
-        $compressedPath = storage_path('app/temp_videos/' . $fileNameBase . '_processed.mp4');
-        $thumbnailPath = storage_path('app/temp_videos/' . $fileNameBase . '_thumb.jpg');
+        $tempDir = storage_path('app/temp_videos/');
         
-        $tempFrames = [];
+        // ডিরেক্টরি না থাকলে তৈরি করে নেয়া
+        if (!file_exists($tempDir)) {
+            mkdir($tempDir, 0777, true);
+        }
+
+        $compressedPath = $tempDir . $fileNameBase . '_processed.mp4';
+        $thumbnailPath = $tempDir . $fileNameBase . '_thumb.jpg';
+        $tempFiles = [];
 
         try {
             $keyFileData = config('filesystems.disks.gcs.key_file');
 
-            // ২. লারাভেলের ভ্যালিডেশন বাইপাস করতে openUrl এবং সরাসরি পাথ ব্যবহার
-            $media = FFMpeg::openUrl(storage_path('app/temp_videos/' . $videoBaseName));
-            $durationSeconds = $media->getDurationInSeconds();
+            // ২. FFProbe দিয়ে ডিউরেশন চেক
+            $ffprobe = FFProbe::create([
+                'ffprobe.binaries' => '/usr/bin/ffprobe',
+            ]);
+            $durationSeconds = (float) $ffprobe->format($this->videoPath)->get('duration');
 
-            // ৩. সেফটি চেক
-            $isSafe = true;
-            $imageAnnotator = new ImageAnnotatorClient(['credentials' => $keyFileData]);
-
-            for ($i = 1; $i <= 3; $i++) {
-                $time = ($durationSeconds / 4) * $i;
-                $frameName = "frame_{$this->postId}_{$i}.jpg";
-                $frameLocalPath = storage_path('app/temp_videos/' . $frameName);
-                
-                // সরাসরি ডিস্ক পাথ এক্সপোর্ট
-                $media->getFrameFromSeconds($time)
-                      ->export()
-                      ->toDisk('local')
-                      ->save('temp_videos/' . $frameName);
-
-                if (file_exists($frameLocalPath)) {
-                    $tempFrames[] = $frameLocalPath;
-                    $content = file_get_contents($frameLocalPath);
-                    $response = $imageAnnotator->safeSearchDetection($content);
-                    $safe = $response->getSafeSearchAnnotation();
-
-                    if ($safe && ($safe->getAdult() >= 4 || $safe->getRacy() >= 4 || $safe->getViolence() >= 4)) {
-                        $isSafe = false;
-                        break;
-                    }
-                }
-            }
-            $imageAnnotator->close();
+            // ৩. সেফটি চেক (Google Vision)
+            $isSafe = $this->runSafetyCheck($keyFileData, $durationSeconds, $tempFiles);
 
             if (!$isSafe) {
-                Log::warning("Unsafe video detected Post ID: {$this->postId}");
+                Log::warning("Unsafe video detected! Deleting Post ID: {$this->postId}");
                 $post->delete();
-                $this->cleanupFiles($tempFrames);
+                $this->cleanupFiles(array_merge($tempFiles, [$this->videoPath]));
                 return;
             }
 
-            // ৪. থাম্বনেইল এবং ভিডিও কম্প্রেশন
-            $this->generateThumbnail($videoBaseName, $durationSeconds, $thumbnailPath);
-            $this->compressVideo($videoBaseName, $compressedPath);
+            // ৪. থাম্বনেইল জেনারেশন
+            $this->generateThumbnail($durationSeconds, $thumbnailPath);
 
-            // ৫. GCS আপলোড
+            // ৫. ভিডিও কম্প্রেশন (Shell Command)
+            $this->compressVideo($compressedPath);
+
+            // ৬. GCS আপলোড
             $storage = new StorageClient([
                 'projectId' => config('filesystems.disks.gcs.project_id'),
-                'keyFile'    => $keyFileData,
+                'keyFile' => $keyFileData
             ]);
             $bucket = $storage->bucket(config('filesystems.disks.gcs.bucket'));
             
             $gcsVideoPath = "posts/videos/" . basename($compressedPath);
             $gcsThumbPath = "posts/thumbnails/" . basename($thumbnailPath);
 
-            $bucket->upload(fopen($compressedPath, 'r'), ['name' => $gcsVideoPath, 'resumable' => true]);
+            $bucket->upload(fopen($compressedPath, 'r'), ['name' => $gcsVideoPath]);
             $bucket->upload(fopen($thumbnailPath, 'r'), ['name' => $gcsThumbPath]);
 
-            // ৬. ডাটাবেজ আপডেট
+            // ৭. ডাটাবেজ আপডেট
             Post_media::updateOrCreate(
                 ['post_id' => $post->id],
                 [
@@ -121,43 +105,75 @@ class ProcessVideoSafetyCheck implements ShouldQueue
             );
 
             $post->update(['status' => 'active']);
+            
+            // নোটিফিকেশন পাঠানো
             $this->sendFcmNotification($post->member_id, "Your video is live! ✅", "Processed successfully.");
 
-            // সব সফল হলে ফাইল ক্লিনআপ
-            $this->cleanupFiles(array_merge($tempFrames, [$compressedPath, $thumbnailPath]));
+            // ফাইনাল ক্লিনআপ
+            $this->cleanupFiles(array_merge($tempFiles, [$compressedPath, $thumbnailPath, $this->videoPath]));
 
         } catch (\Exception $e) {
-            Log::error("Video Job Error (Post ID {$this->postId}): " . $e->getMessage());
-            // এরর হলে ফাইল ডিলিট করবেন না যাতে আপনি ম্যানুয়ালি চেক করতে পারেন ফাইলটি ঠিক আছে কি না
+            Log::error("Critical Video Error (Post ID {$this->postId}): " . $e->getMessage());
+            $this->cleanupFiles(array_merge($tempFiles, [$compressedPath ?? null, $thumbnailPath ?? null]));
             throw $e;
         }
     }
 
-    protected function generateThumbnail($videoBaseName, $durationSeconds, $thumbnailPath) {
+    protected function runSafetyCheck($keyFileData, $durationSeconds, &$tempFiles)
+    {
+        $ffmpeg = FFMpeg::create(['ffmpeg.binaries' => '/usr/bin/ffmpeg', 'ffprobe.binaries' => '/usr/bin/ffprobe']);
+        $video = $ffmpeg->open($this->videoPath);
+        $imageAnnotator = new ImageAnnotatorClient(['credentials' => $keyFileData]);
+        $isSafe = true;
+
+        for ($i = 1; $i <= 3; $i++) {
+            $time = ($durationSeconds / 4) * $i;
+            $framePath = storage_path("app/temp_videos/frame_{$this->postId}_{$i}.jpg");
+            
+            $video->frame(TimeCode::fromSeconds($time))->save($framePath);
+            $tempFiles[] = $framePath;
+
+            if (file_exists($framePath)) {
+                $response = $imageAnnotator->safeSearchDetection(file_get_contents($framePath));
+                $safe = $response->getSafeSearchAnnotation();
+
+                if ($safe && ($safe->getAdult() >= 4 || $safe->getRacy() >= 4)) {
+                    $isSafe = false;
+                    break;
+                }
+            }
+        }
+        $imageAnnotator->close();
+        return $isSafe;
+    }
+
+    protected function generateThumbnail($durationSeconds, $thumbnailPath) 
+    {
         if ($this->customThumbPath && file_exists($this->customThumbPath)) {
             copy($this->customThumbPath, $thumbnailPath);
         } else {
-            FFMpeg::openUrl(storage_path('app/temp_videos/' . $videoBaseName))
-                ->getFrameFromSeconds(min(1, $durationSeconds))
-                ->export()->toDisk('local')->save('temp_videos/' . basename($thumbnailPath));
+            $ffmpeg = FFMpeg::create(['ffmpeg.binaries' => '/usr/bin/ffmpeg', 'ffprobe.binaries' => '/usr/bin/ffprobe']);
+            $video = $ffmpeg->open($this->videoPath);
+            $video->frame(TimeCode::fromSeconds(min(1, $durationSeconds)))->save($thumbnailPath);
         }
     }
 
-    protected function compressVideo($videoBaseName, $compressedPath) {
-        $format = (new X264('aac', 'libx264'))->setKiloBitrate(1200); 
-        FFMpeg::openUrl(storage_path('app/temp_videos/' . $videoBaseName))
-            ->export()->toDisk('local')->inFormat($format)
-            ->addFilter('-preset', 'veryfast')
-            ->addFilter('-threads', 2)
-            ->save('temp_videos/' . basename($compressedPath));
+    protected function compressVideo($compressedPath) 
+    {
+        $command = "/usr/bin/ffmpeg -y -i " . escapeshellarg($this->videoPath) . " -c:v libx264 -preset veryfast -b:v 1200k -c:a aac -threads 2 " . escapeshellarg($compressedPath) . " 2>&1";
+        exec($command, $output, $returnVar);
+
+        if ($returnVar !== 0) {
+            throw new \Exception("FFMpeg compression failed: " . implode("\n", $output));
+        }
     }
 
-    protected function cleanupFiles($extraFiles = [])
+    protected function cleanupFiles(array $files)
     {
-        if (file_exists($this->videoPath)) @unlink($this->videoPath);
-        if ($this->customThumbPath && file_exists($this->customThumbPath)) @unlink($this->customThumbPath);
-        foreach ($extraFiles as $file) {
-            if (file_exists($file)) @unlink($file);
+        foreach ($files as $file) {
+            if ($file && file_exists($file)) {
+                @unlink($file);
+            }
         }
     }
 }
