@@ -1,37 +1,15 @@
 steps:
-  # ১. ইমেজ তৈরি করা (এটি ঠিক আছে)
+  # ১. ইমেজ তৈরি করা
   - name: 'gcr.io/cloud-builders/gcloud'
-    args:
-      - 'compute'
-      - 'images'
-      - 'create'
-      - 'nabaax-img-${SHORT_SHA}-${BUILD_ID}'
-      - '--source-disk=nabaax-managed-group-ctxd'
-      - '--source-disk-zone=us-central1-a' # জোন দেওয়া আছে
-      - '--force'
+    args: ['compute', 'images', 'create', 'nabaax-img-dev', '--source-disk=nabaax-managed-group-ctxd', '--source-disk-zone=us-central1-a', '--force']
 
-  # ২. ইন্সট্যান্স টেম্পলেট তৈরি করা (এখানে পরিবর্তন করা হয়েছে)
+  # ২. ইউনিক নামে ইন্সট্যান্স টেম্পলেট তৈরি করা
   - name: 'gcr.io/cloud-builders/gcloud'
-    args:
-      - 'compute'
-      - 'instance-templates'
-      - 'create'
-      - 'nabaax-tmpl-${SHORT_SHA}-${BUILD_ID}'
-      - '--source-instance=nabaax-managed-group-ctxd'
-      - '--source-instance-zone=us-central1-a' # এই লাইনটি নতুন যোগ করতে হবে
-      - '--instance-template-region=us-central1'
+    args: ['compute', 'instance-templates', 'create', 'nabaax-tmpl-${SHORT_SHA}', '--source-instance=nabaax-managed-group-ctxd', '--source-instance-zone=us-central1-a']
 
-  # ৩. ম্যানেজড গ্রুপ আপডেট করা
+  # ৩. ম্যানেজড গ্রুপ আপডেট করা (ইউনিক টেম্পলেট দিয়ে)
   - name: 'gcr.io/cloud-builders/gcloud'
-    args:
-      - 'compute'
-      - 'instance-groups'
-      - 'managed'
-      - 'rolling-action'
-      - 'start-update'
-      - 'nabaax-managed-group'
-      - '--version=template=nabaax-tmpl-${SHORT_SHA}-${BUILD_ID}'
-      - '--zone=us-central1-a'
+    args: ['compute', 'instance-groups', 'managed', 'rolling-action', 'start-update', 'nabaax-managed-group', '--version=template=nabaax-tmpl-${SHORT_SHA}', '--zone=us-central1-a']
 
 options:
   logging: CLOUD_LOGGING_ONLY
