@@ -1,14 +1,36 @@
 steps:
-  # ... আপনার আগের ৩টি ধাপ এখানে থাকবে ...
+  # ১. ইমেজ তৈরি করা (এটি ঠিক আছে)
   - name: 'gcr.io/cloud-builders/gcloud'
-    args: ['compute', 'images', 'create', 'nabaax-img-${SHORT_SHA}', '--source-disk=nabaax-managed-group-ctxd', '--source-disk-zone=us-central1-a', '--force']
-  
-  - name: 'gcr.io/cloud-builders/gcloud'
-    args: ['compute', 'instance-templates', 'create', 'nabaax-tmpl-${SHORT_SHA}', '--source-instance=nabaax-managed-group-ctxd', '--instance-template-region=us-central1']
+    args:
+      - 'compute'
+      - 'images'
+      - 'create'
+      - 'nabaax-img-${SHORT_SHA}-${BUILD_ID}' # আরও ইউনিক নাম
+      - '--source-disk=nabaax-managed-group-ctxd'
+      - '--source-disk-zone=us-central1-a'
+      - '--force'
 
+  # ২. ইন্সট্যান্স টেম্পলেট তৈরি করা
   - name: 'gcr.io/cloud-builders/gcloud'
-    args: ['compute', 'instance-groups', 'managed', 'rolling-action', 'start-update', 'nabaax-managed-group', '--version=template=nabaax-tmpl-${SHORT_SHA}', '--zone=us-central1-a']
+    args:
+      - 'compute'
+      - 'instance-templates'
+      - 'create'
+      - 'nabaax-tmpl-${SHORT_SHA}-${BUILD_ID}' # ইউনিক নাম দিতে BUILD_ID যোগ করা হয়েছে
+      - '--source-instance=nabaax-managed-group-ctxd'
+      - '--instance-template-region=us-central1'
 
-# এই অংশটুকু নতুন যোগ করুন
+  # ৩. ম্যানেজড গ্রুপ আপডেট করা
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'compute'
+      - 'instance-groups'
+      - 'managed'
+      - 'rolling-action'
+      - 'start-update'
+      - 'nabaax-managed-group'
+      - '--version=template=nabaax-tmpl-${SHORT_SHA}-${BUILD_ID}'
+      - '--zone=us-central1-a'
+
 options:
   logging: CLOUD_LOGGING_ONLY
