@@ -1,16 +1,16 @@
 steps:
-  # ১. আপনার লারাভেল কোড দিয়ে একটি নতুন 'ইমেজ' তৈরি করা
+  # ১. আপনার বর্তমান সার্ভার থেকে একটি নতুন 'ইমেজ' (Snapshot) তৈরি করা
   - name: 'gcr.io/cloud-builders/gcloud'
     args:
       - 'compute'
       - 'images'
       - 'create'
       - 'nabaax-img-${SHORT_SHA}'
-      - '--source-disk=nabaax-managed-group-ctxd' # আপনার বর্তমান সচল ডিস্কের নাম
+      - '--source-disk=nabaax-managed-group-ctxd' 
       - '--source-disk-zone=us-central1-a'
       - '--force'
 
-  # ২. এই ইমেজটি দিয়ে একটি নতুন টেম্পলেট তৈরি করা
+  # ২. এই ইমেজটি ব্যবহার করে একটি নতুন 'ইন্সট্যান্স টেম্পলেট' তৈরি করা
   - name: 'gcr.io/cloud-builders/gcloud'
     args:
       - 'compute'
@@ -20,7 +20,7 @@ steps:
       - '--source-instance=nabaax-managed-group-ctxd'
       - '--instance-template-region=us-central1'
 
-  # ৩. ম্যানেজড গ্রুপকে বলা নতুন টেম্পলেটটি ব্যবহার করতে (রোলিং আপডেট)
+  # ৩. আপনার ম্যানেজড গ্রুপকে বলা যে এখন থেকে এই নতুন টেম্পলেটটি ব্যবহার করতে হবে
   - name: 'gcr.io/cloud-builders/gcloud'
     args:
       - 'compute'
