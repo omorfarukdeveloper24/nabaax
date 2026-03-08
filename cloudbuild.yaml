@@ -1,5 +1,5 @@
 steps:
-  # ১. ইমেজ তৈরি করা (এটি ঠিক আছে)
+  # ১. ইমেজ তৈরি করা
   - name: 'gcr.io/cloud-builders/gcloud'
     args:
       - 'compute'
@@ -10,7 +10,7 @@ steps:
       - '--source-disk-zone=us-central1-a'
       - '--force'
 
-  # ২. গ্লোবাল ইন্সট্যান্স টেম্পলেট তৈরি করা (Region ফ্ল্যাগ সরিয়ে দেওয়া হয়েছে)
+  # ২. গ্লোবাল ইন্সট্যান্স টেম্পলেট তৈরি করা
   - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
     args:
@@ -20,7 +20,6 @@ steps:
         gcloud compute instance-templates create nabaax-template-dev \
           --source-instance=nabaax-managed-group-ctxd \
           --source-instance-zone=us-central1-a
-          # এখানে --instance-template-region বাদ দেওয়া হয়েছে যেন এটি Global হয়
 
   # ৩. ম্যানেজড গ্রুপ আপডেট করা
   - name: 'gcr.io/cloud-builders/gcloud'
