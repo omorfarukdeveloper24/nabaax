@@ -1,0 +1,33 @@
+steps:
+  # ১. আপনার লারাভেল কোড দিয়ে একটি নতুন 'ইমেজ' তৈরি করা
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'compute'
+      - 'images'
+      - 'create'
+      - 'nabaax-img-${SHORT_SHA}'
+      - '--source-disk=nabaax-managed-group-ctxd' # আপনার বর্তমান সচল ডিস্কের নাম
+      - '--source-disk-zone=us-central1-a'
+      - '--force'
+
+  # ২. এই ইমেজটি দিয়ে একটি নতুন টেম্পলেট তৈরি করা
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'compute'
+      - 'instance-templates'
+      - 'create'
+      - 'nabaax-template-${SHORT_SHA}'
+      - '--source-instance=nabaax-managed-group-ctxd'
+      - '--instance-template-region=us-central1'
+
+  # ৩. ম্যানেজড গ্রুপকে বলা নতুন টেম্পলেটটি ব্যবহার করতে (রোলিং আপডেট)
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'compute'
+      - 'instance-groups'
+      - 'managed'
+      - 'rolling-action'
+      - 'start-update'
+      - 'nabaax-managed-group'
+      - '--version=template=nabaax-template-${SHORT_SHA}'
+      - '--zone=us-central1-a'
