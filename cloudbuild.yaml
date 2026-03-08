@@ -1,25 +1,26 @@
 steps:
-  # ১. ইমেজ তৈরি করা (এটি ঠিক আছে)
+  # ১. ইমেজ তৈরি করা (পুরানো ইমেজ ডিলিট করে নতুন করবে)
   - name: 'gcr.io/cloud-builders/gcloud'
     args:
       - 'compute'
       - 'images'
       - 'create'
-      - 'nabaax-img-${SHORT_SHA}-${BUILD_ID}'
+      - 'nabaax-img-dev' # ফিক্সড নাম
       - '--source-disk=nabaax-managed-group-ctxd'
-      - '--source-disk-zone=us-central1-a' # জোন দেওয়া আছে
+      - '--source-disk-zone=us-central1-a'
       - '--force'
 
-  # ২. ইন্সট্যান্স টেম্পলেট তৈরি করা (এখানে পরিবর্তন করা হয়েছে)
+  # ২. ইন্সট্যান্স টেম্পলেট তৈরি (আগেরটি ডিলিট করে নতুন করবে)
   - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
     args:
-      - 'compute'
-      - 'instance-templates'
-      - 'create'
-      - 'nabaax-tmpl-${SHORT_SHA}-${BUILD_ID}'
-      - '--source-instance=nabaax-managed-group-ctxd'
-      - '--source-instance-zone=us-central1-a' # এই লাইনটি নতুন যোগ করতে হবে
-      - '--instance-template-region=us-central1'
+      - '-c'
+      - |
+        gcloud compute instance-templates delete nabaax-template-dev --quiet || true
+        gcloud compute instance-templates create nabaax-template-dev \
+          --source-instance=nabaax-managed-group-ctxd \
+          --source-instance-zone=us-central1-a \
+          --instance-template-region=us-central1
 
   # ৩. ম্যানেজড গ্রুপ আপডেট করা
   - name: 'gcr.io/cloud-builders/gcloud'
@@ -30,7 +31,7 @@ steps:
       - 'rolling-action'
       - 'start-update'
       - 'nabaax-managed-group'
-      - '--version=template=nabaax-tmpl-${SHORT_SHA}-${BUILD_ID}'
+      - '--version=template=nabaax-template-dev'
       - '--zone=us-central1-a'
 
 options:
