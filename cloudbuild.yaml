@@ -1,16 +1,16 @@
 steps:
-  # ১. ইমেজ তৈরি করা (পুরানো ইমেজ ডিলিট করে নতুন করবে)
+  # ১. ইমেজ তৈরি করা (এটি ঠিক আছে)
   - name: 'gcr.io/cloud-builders/gcloud'
     args:
       - 'compute'
       - 'images'
       - 'create'
-      - 'nabaax-img-dev' # ফিক্সড নাম
+      - 'nabaax-img-dev'
       - '--source-disk=nabaax-managed-group-ctxd'
       - '--source-disk-zone=us-central1-a'
       - '--force'
 
-  # ২. ইন্সট্যান্স টেম্পলেট তৈরি (আগেরটি ডিলিট করে নতুন করবে)
+  # ২. গ্লোবাল ইন্সট্যান্স টেম্পলেট তৈরি করা (Region ফ্ল্যাগ সরিয়ে দেওয়া হয়েছে)
   - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: 'bash'
     args:
@@ -19,8 +19,8 @@ steps:
         gcloud compute instance-templates delete nabaax-template-dev --quiet || true
         gcloud compute instance-templates create nabaax-template-dev \
           --source-instance=nabaax-managed-group-ctxd \
-          --source-instance-zone=us-central1-a \
-          --instance-template-region=us-central1
+          --source-instance-zone=us-central1-a
+          # এখানে --instance-template-region বাদ দেওয়া হয়েছে যেন এটি Global হয়
 
   # ৩. ম্যানেজড গ্রুপ আপডেট করা
   - name: 'gcr.io/cloud-builders/gcloud'
@@ -31,7 +31,7 @@ steps:
       - 'rolling-action'
       - 'start-update'
       - 'nabaax-managed-group'
-      - '--version=template=nabaax-template-dev'
+      - '--version=template=projects/project-3a2b1ad7-77c7-4b62-946/global/instanceTemplates/nabaax-template-dev'
       - '--zone=us-central1-a'
 
 options:
