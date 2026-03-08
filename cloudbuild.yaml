@@ -1,33 +1,14 @@
 steps:
-  # ১. আপনার বর্তমান সার্ভার থেকে একটি নতুন 'ইমেজ' (Snapshot) তৈরি করা
+  # ... আপনার আগের ৩টি ধাপ এখানে থাকবে ...
   - name: 'gcr.io/cloud-builders/gcloud'
-    args:
-      - 'compute'
-      - 'images'
-      - 'create'
-      - 'nabaax-img-${SHORT_SHA}'
-      - '--source-disk=nabaax-managed-group-ctxd' 
-      - '--source-disk-zone=us-central1-a'
-      - '--force'
+    args: ['compute', 'images', 'create', 'nabaax-img-${SHORT_SHA}', '--source-disk=nabaax-managed-group-ctxd', '--source-disk-zone=us-central1-a', '--force']
+  
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args: ['compute', 'instance-templates', 'create', 'nabaax-tmpl-${SHORT_SHA}', '--source-instance=nabaax-managed-group-ctxd', '--instance-template-region=us-central1']
 
-  # ২. এই ইমেজটি ব্যবহার করে একটি নতুন 'ইন্সট্যান্স টেম্পলেট' তৈরি করা
   - name: 'gcr.io/cloud-builders/gcloud'
-    args:
-      - 'compute'
-      - 'instance-templates'
-      - 'create'
-      - 'nabaax-template-${SHORT_SHA}'
-      - '--source-instance=nabaax-managed-group-ctxd'
-      - '--instance-template-region=us-central1'
+    args: ['compute', 'instance-groups', 'managed', 'rolling-action', 'start-update', 'nabaax-managed-group', '--version=template=nabaax-tmpl-${SHORT_SHA}', '--zone=us-central1-a']
 
-  # ৩. আপনার ম্যানেজড গ্রুপকে বলা যে এখন থেকে এই নতুন টেম্পলেটটি ব্যবহার করতে হবে
-  - name: 'gcr.io/cloud-builders/gcloud'
-    args:
-      - 'compute'
-      - 'instance-groups'
-      - 'managed'
-      - 'rolling-action'
-      - 'start-update'
-      - 'nabaax-managed-group'
-      - '--version=template=nabaax-template-${SHORT_SHA}'
-      - '--zone=us-central1-a'
+# এই অংশটুকু নতুন যোগ করুন
+options:
+  logging: CLOUD_LOGGING_ONLY
