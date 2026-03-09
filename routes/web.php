@@ -42,6 +42,11 @@ Route::get('/cc', function () {
 //     return 'Google Video API Ready!';
 // });
 
+Route::get('/manage-group', function () {
+    
+    return 'Google Managed Group vm is working Ready!';
+});
+
 // Route::get('/test-gcs-direct', function () {
 //     try {
 //         $keyFileData = json_decode(file_get_contents(base_path(env('GCS_KEY_FILE'))), true);
