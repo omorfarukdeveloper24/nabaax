@@ -28,7 +28,7 @@ use Google\Cloud\VideoIntelligence\V1\VideoIntelligenceServiceClient;
 
 Auth::routes();
 
-Route::get('/cc', function () {
+Route::get('/clean', function () {
     Artisan::call('config:clear');
     Artisan::call('cache:clear');
     Artisan::call('route:clear');
