@@ -285,22 +285,22 @@ a { text-decoration: none; }
 
               <a href="#"> 
                 <div class="sc-admin-card">
-                    <div class="sc-admin-icon bg-teal">
+                    <div class="sc-admin-icon bg-red">
                         <i data-feather="zoom-out"></i> </div>
                     <div class="school-admin-details">
                         <h3>{{ number_format($total_debit, 2) }}</h3>
-                        <p>Company Expense</p>
+                        <p>Our Expense</p>
                     </div>
                 </div>
             </a>
 
             <a href="#">
                 <div class="sc-admin-card">
-                    <div class="sc-admin-icon bg-red">
+                    <div class="sc-admin-icon bg-teal">
                         <i data-feather="zoom-in"></i> </div>
                     <div class="school-admin-details">
                         <h3>{{ number_format($total_credit, 2) }}</h3>
-                        <p>Company Income</p>
+                        <p>Our Income</p>
                     </div>
                 </div>
             </a>
