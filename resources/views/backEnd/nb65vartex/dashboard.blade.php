@@ -254,7 +254,7 @@ a { text-decoration: none; }
               <a href="#"><div class="sc-admin-card">
                   <div class="sc-admin-icon bg-blue"><i data-feather="briefcase"></i>  </div>
                   <div class="school-admin-details">
-                    <h3> {{ $total_balance }} </h3>
+                    <h3> {{ number_format($total_balance, 2) }}</h3>
                     <p>All Balance</p>
                   </div>
               </div></a>
@@ -262,7 +262,7 @@ a { text-decoration: none; }
               <a href="#"><div class="sc-admin-card">
                   <div class="sc-admin-icon bg-green"><i data-feather="printer"></i></div>
                   <div class="school-admin-details">
-                    <h3> {{ $total_cash }} </h3>
+                    <h3> {{ number_format($total_cash, 2) }} </h3>
                     <p>Total Cash</p>
                   </div>
               </div></a>
@@ -283,22 +283,29 @@ a { text-decoration: none; }
                   </div>
               </div></a>
 
-              <!-- <a href="#"><div class="sc-admin-card">
-                  <div class="sc-admin-icon bg-teal"><i class="fa-solid fa-money-check-dollar"></i></div>
-                  <div class="school-admin-details">
-                    <h3>10</h3>
-                    <p>Complete Fee</p>
-                  </div>
-              </div></a>
+              <a href="#"> 
+                <div class="sc-admin-card">
+                    <div class="sc-admin-icon bg-teal">
+                        <i data-feather="zoom-out"></i> </div>
+                    <div class="school-admin-details">
+                        <h3>{{ number_format($total_debit, 2) }}</h3>
+                        <p>Company Expense</p>
+                    </div>
+                </div>
+            </a>
 
-              <a href="#"><div class="sc-admin-card">
-                  <div class="sc-admin-icon bg-red"><i class="fa-solid fa-circle-exclamation"></i></div>
-                  <div class="school-admin-details">
-                    <h3>1000</h3>
-                    <p>Due Fee</p>
-                  </div>
-              </div></a>
+            <a href="#">
+                <div class="sc-admin-card">
+                    <div class="sc-admin-icon bg-red">
+                        <i data-feather="zoom-in"></i> </div>
+                    <div class="school-admin-details">
+                        <h3>{{ number_format($total_credit, 2) }}</h3>
+                        <p>Company Income</p>
+                    </div>
+                </div>
+            </a>
 
+<!-- 
               <a href="#"><div class="sc-admin-card">
                   <div class="sc-admin-icon bg-indigo"><i class="fa-solid fa-book-open"></i></div>
                   <div class="school-admin-details">

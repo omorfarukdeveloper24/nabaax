@@ -2511,7 +2511,6 @@ public function incomeHistory()
 }
 
 
-
     public function update(Request $request)
     {
         try {
@@ -2528,7 +2527,7 @@ public function incomeHistory()
             $validated = $request->validate([
                 'name'          => 'sometimes|string|max:255',
                 'email'         => 'nullable|email|max:255|unique:members,email,' . $member->id,
-                'phone'         => 'sometimes|string|max:20',
+                'phone'         => 'nullable|string|max:20',
                 'address'       => 'nullable|string|max:500',
                 'bio'           => 'nullable|string|max:1000',
                 'location'      => 'nullable|string|max:255',

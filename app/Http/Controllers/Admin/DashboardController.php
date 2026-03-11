@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Customer;
 use App\Models\Company;
 use App\Models\WalletWithdraw;
+use App\Models\AdminPayHistory;
 use App\Models\Deposit;
 use App\Models\Member;
 use Carbon\Carbon;
@@ -31,7 +32,9 @@ class DashboardController extends Controller
         $total_cash = Company::value('balance') ?? 0;
         $total_deposit = Deposit::where('status','approved')->sum('amount');
         $total_withdraw = WalletWithdraw::where('status','approved')->sum('amount');
-        return view('backEnd.nb65vartex.dashboard', compact('users','total_balance','total_cash','total_deposit','total_withdraw'));
+        $total_credit = AdminPayHistory::where('type', 'credit')->sum('amount');
+        $total_debit = AdminPayHistory::where('type', 'debit')->sum('amount');
+        return view('backEnd.nb65vartex.dashboard', compact('users','total_balance','total_cash','total_deposit','total_withdraw','total_credit','total_debit'));
         
     }
     public function changepassword()
