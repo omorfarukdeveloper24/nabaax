@@ -1925,10 +1925,11 @@ class MemberController extends Controller
 
     public function allteam(Request $request)
     {
-       
         $currentMemberId = Auth::guard("member")->id();
+        
+        // ১. মেম্বার ডেটা ফেচ (লিমিটেড কলাম)
         $member = Member::select('id', 'name', 'email', 'image', 'username', 'partner', 'balance')
-                    ->find($currentMemberId);
+                        ->find($currentMemberId);
         
         if (!$member) {
             return response()->json([
@@ -1939,12 +1940,12 @@ class MemberController extends Controller
 
         $perPage = $request->query('per_page', 20);
 
+        // ২. প্রফেশনাল ওয়ে: সরাসরি রিলেশনশিপ লোড করা
+        // এখানে with('allReferrals') কল করলে মডেলের ভেতর থাকা withCount স্বয়ংক্রিয়ভাবে সব লেভেলে কাজ করবে
         $referrals = $member->referrals()
             ->select('id', 'name', 'username', 'referrer_id', 'balance', 'approved', 'image') 
-            ->withCount('referrals') 
-            ->with(['allReferrals' => function($query) {
-                $query->withCount('referrals'); 
-            }])
+            ->withCount('referrals') // লেভেল ১ এর জন্য
+            ->with('allReferrals')    // লেভেল ২ থেকে শেষ পর্যন্ত সবার জন্য (মডেল থেকে আসবে)
             ->paginate($perPage);
 
         return response()->json([

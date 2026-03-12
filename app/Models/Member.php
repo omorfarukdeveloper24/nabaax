@@ -70,12 +70,13 @@ class Member extends Authenticatable implements JWTSubject
         return $this->hasMany(Member::class, 'referrer_id');
     }
 
+
     public function allReferrals()
     {
         return $this->referrals()
                     ->with('allReferrals') 
                     ->withCount('referrals') 
-                    ->select('id', 'name', 'username', 'referrer_id', 'balance', 'approved', 'image'); 
+                    ->select('id', 'name', 'username', 'referrer_id', 'balance', 'approved', 'image');
     }
     
     public function posts()
