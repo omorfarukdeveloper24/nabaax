@@ -126,7 +126,8 @@ class ProcessVideoSafetyCheck implements ShouldQueue
                         'status'  => 'active',
                         'type'    => 'post'
                     ],
-                    'post'
+                    'post',
+                    (string)$post->id
                 );
             } catch (\Exception $e) {
                 \Log::error("FCM Success Notification Failed: " . $e->getMessage());

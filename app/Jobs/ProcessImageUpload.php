@@ -112,7 +112,8 @@ class ProcessImageUpload implements ShouldQueue
                             'post_id' => (string)$post->id,
                             'status'  => 'active'
                         ],
-                        'post' // টাইপ
+                        'post',
+                        (string)$post->id
                     );
                 } catch (\Exception $e) {
                     \Log::error("FCM Success Notification Failed (Image): " . $e->getMessage());
