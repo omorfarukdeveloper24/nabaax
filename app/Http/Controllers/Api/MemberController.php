@@ -1925,7 +1925,10 @@ class MemberController extends Controller
 
     public function allteam(Request $request)
     {
-        $member = Auth::guard("member")->user();
+       
+        $currentMemberId = Auth::guard("member")->id();
+        $member = Member::select('id', 'name', 'email', 'image', 'username', 'partner', 'balance')
+                    ->find($currentMemberId);
         
         if (!$member) {
             return response()->json([
@@ -1934,14 +1937,14 @@ class MemberController extends Controller
             ], 401);
         }
 
-        $perPage = request()->query('per_page', 20);
+        $perPage = $request->query('per_page', 20);
 
         $referrals = $member->referrals()
+            ->select('id', 'name', 'username', 'referrer_id', 'balance', 'approved', 'image') 
             ->withCount('referrals') 
             ->with(['allReferrals' => function($query) {
                 $query->withCount('referrals'); 
             }])
-            ->select('id', 'name', 'username', 'referrer_id', 'balance', 'approved')
             ->paginate($perPage);
 
         return response()->json([
