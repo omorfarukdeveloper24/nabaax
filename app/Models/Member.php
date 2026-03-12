@@ -33,11 +33,7 @@ class Member extends Authenticatable implements JWTSubject
         'password', 'remember_token',
     ];
 
-    /**
-     * UPDATED: $casts প্রপার্টি যুক্ত করা হয়েছে।
-     * এটি ব্যালেন্স এবং তারিখগুলোকে সঠিক ফরম্যাটে (decimal/datetime) রূপান্তর করবে।
-     */
-    
+
     protected $casts = [
         'monetization' => 'boolean',
         'monetization_activated_at' => 'datetime',
@@ -46,6 +42,8 @@ class Member extends Authenticatable implements JWTSubject
         'approved' => 'boolean',
         'status' => 'boolean',
     ];
+
+    protected $appends = ['referrals_count'];
 
     public function getJWTIdentifier()
     {
@@ -57,7 +55,10 @@ class Member extends Authenticatable implements JWTSubject
         return [];
     }
 
-    
+    public function getReferralsCountAttribute()
+    {
+        return $this->referrals()->count();
+    }
 
     public function referrer()
     {
@@ -70,12 +71,10 @@ class Member extends Authenticatable implements JWTSubject
         return $this->hasMany(Member::class, 'referrer_id');
     }
 
-
     public function allReferrals()
     {
         return $this->referrals()
                     ->with('allReferrals') 
-                    ->withCount('referrals') 
                     ->select('id', 'name', 'username', 'referrer_id', 'balance', 'approved', 'image');
     }
     
