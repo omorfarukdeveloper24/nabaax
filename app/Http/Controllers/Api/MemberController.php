@@ -1903,19 +1903,47 @@ class MemberController extends Controller
 
     
 
+    // public function allteam(Request $request)
+    // {
+    //    $member = Auth::guard("member")->user();
+    //    if (!$member) {
+    //     return response()->json([
+    //         'status' => failed,
+    //             'message' => 'Unauthorized user'
+    //         ], 401);
+    //     }
+        
+    //     $perPage = request()->query('per_page', 20);
+    //     $referrals = $member->allReferrals()->paginate($perPage);
+        
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'member' => $member,
+    //         'referrals' => $referrals
+    //     ]);
+    // }
+
     public function allteam(Request $request)
     {
-       $member = Auth::guard("member")->user();
-       if (!$member) {
-        return response()->json([
-            'status' => failed,
+        $member = Auth::guard("member")->user();
+        
+        if (!$member) {
+            return response()->json([
+                'status' => 'failed',
                 'message' => 'Unauthorized user'
             ], 401);
         }
-        
+
         $perPage = request()->query('per_page', 20);
-        $referrals = $member->allReferrals()->paginate($perPage);
-        
+
+        $referrals = $member->referrals()
+            ->withCount('referrals') 
+            ->with(['allReferrals' => function($query) {
+                $query->withCount('referrals'); 
+            }])
+            ->select('id', 'name', 'username', 'referrer_id', 'balance', 'approved')
+            ->paginate($perPage);
+
         return response()->json([
             'status' => 'success',
             'member' => $member,
