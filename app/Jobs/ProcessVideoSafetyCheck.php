@@ -69,8 +69,21 @@ class ProcessVideoSafetyCheck implements ShouldQueue
                 Log::warning("Unsafe content (18+) detected in Post ID: {$this->postId}");
                 
                 // ইউজারকে রিজেকশন নোটিফিকেশন পাঠানো
-                $this->sendFcmNotification($post->member_id, "Video Rejected! ❌", "Your video contains restricted content and was removed.");
-
+                
+                try {
+                    $this->sendFcmNotification(
+                        $post->member_id, 
+                        "Video Rejected! ❌", 
+                        "Your video contains restricted content and was removed.",
+                        [
+                            'post_id' => (string)$this->postId,
+                            'reason'  => 'unsafe_content'
+                        ],
+                        'post'
+                    );
+                } catch (\Exception $e) {
+                    \Log::error("FCM Rejection Notification Failed: " . $e->getMessage());
+                }
                 // ডাটাবেজ থেকে পোস্ট ডিলিট
                 $post->delete();
 
@@ -102,7 +115,22 @@ class ProcessVideoSafetyCheck implements ShouldQueue
             );
 
             $post->update(['status' => 'active']);
-            $this->sendFcmNotification($post->member_id, "Your video is live! ✅", "Processed successfully.");
+            
+            try {
+                $this->sendFcmNotification(
+                    $post->member_id, 
+                    "Your video is live! ✅", 
+                    "Great news! Your video has been processed and is now live.",
+                    [
+                        'post_id' => (string)$post->id,
+                        'status'  => 'active',
+                        'type'    => 'post'
+                    ],
+                    'post'
+                );
+            } catch (\Exception $e) {
+                \Log::error("FCM Success Notification Failed: " . $e->getMessage());
+            }
 
             // ৬. ফাইনাল ক্লিনআপ
             $this->cleanupFiles(array_merge($tempFiles, [$compressedPath, $thumbnailPath, $this->videoPath]));

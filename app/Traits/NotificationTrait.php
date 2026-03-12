@@ -8,7 +8,7 @@ use Google\Client;
 
 trait NotificationTrait
 {
-    public function sendFcmNotification($memberId, $title, $body, $data = [], $notificationType = 'notype')
+    public function sendFcmNotification($memberId, $title, $body, $data = [], $notificationType = '')
     {
         // ১. ডাটা ফরম্যাট করা (সব ভ্যালুকে স্ট্রিং-এ কনভার্ট করা)
         $formattedData = [];

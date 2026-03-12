@@ -56,8 +56,22 @@ class ProcessImageUpload implements ShouldQueue
             // যদি অ্যাডাল্ট বা আপত্তিজনক কিছু পাওয়া যায় (Likelihood 4 = Likely, 5 = Very Likely)
             if ($safe->getAdult() >= 4 || $safe->getRacy() >= 4) {
                 \Log::warning("Inappropriate image detected for Post ID: {$this->postId}. Deleting post.");
+                try {
+                    $this->sendFcmNotification(
+                        $memberId, 
+                        "We removed your post ⚠️", 
+                        "Because it goes against our Community Standards.",
+                        [
+                            'post_id' => (string)$this->postId,
+                            'reason'  => 'community_guidelines'
+                        ],
+                        'post' // টাইপ
+                    );
+                } catch (\Exception $e) {
+                    \Log::error("FCM Rejection Notification Failed (Image): " . $e->getMessage());
+                }
+
                 $post->delete();
-                $this->sendFcmNotification($memberId, "We removed your post ⚠️",  "Because it goes against our Community Standards.");
                 return;
 
             }
@@ -89,7 +103,20 @@ class ProcessImageUpload implements ShouldQueue
             $post = Post::find($this->postId);
             if ($post) {
                 $post->update(['status' => 'active']);
-                $this->sendFcmNotification($post->member_id, "Your post is ready to view ✅",  "Your upload was successful " );
+                try {
+                    $this->sendFcmNotification(
+                        $post->member_id, 
+                        "Your post is ready to view ✅", 
+                        "Your upload was successful and your post is now live.",
+                        [
+                            'post_id' => (string)$post->id,
+                            'status'  => 'active'
+                        ],
+                        'post' // টাইপ
+                    );
+                } catch (\Exception $e) {
+                    \Log::error("FCM Success Notification Failed (Image): " . $e->getMessage());
+                }
             }
 
         } catch (\Exception $e) {
