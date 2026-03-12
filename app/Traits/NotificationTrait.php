@@ -8,7 +8,7 @@ use Google\Client;
 
 trait NotificationTrait
 {
-    public function sendFcmNotification($memberId, $title, $body, $data = [], $notificationType = '')
+    public function sendFcmNotification($memberId, $title, $body, $data = [], $notificationType = '', $notificationId = null)
     {
         // ১. ডাটা ফরম্যাট করা (সব ভ্যালুকে স্ট্রিং-এ কনভার্ট করা)
         $formattedData = [];
@@ -72,6 +72,7 @@ trait NotificationTrait
             DB::table('notifications')->insert([
                 'member_id'         => $memberId,
                 'firebase_id'       => null, 
+                'notification_id'   => $notificationId,
                 'title'             => $title,
                 'description'       => $body,
                 'notification_type' => $notificationType,
