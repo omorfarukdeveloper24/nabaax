@@ -116,6 +116,25 @@ class PaymentServiceController extends Controller
         ]);
     }
 
+    public function generation_income()
+    {
+        $member = Auth::guard('member')->user();
+
+        $generation_history = CustomerPayHistory::where('member_id', $member->id)
+            ->where('tnx', 'LIKE', 'GEN%') 
+            ->select('id', 'payment_name', 'tnx', 'amount', 'balance', 'method', 'type', 'created_at')
+            ->latest()
+            ->paginate(30);
+
+        // ৩. রেসপন্স রিটার্ন
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Generation income history retrieved successfully.',
+            'data' => $generation_history,
+        ]);
+    }
+    
+
     public function receive_payment()
     {
         $member = Auth::guard('member')->user();
