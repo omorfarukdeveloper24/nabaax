@@ -18,10 +18,13 @@ class VerifyMemberController extends Controller
     use NotificationTrait;
     public function index(Request $request)
     {
-        $status = $request->verified; // pending, approved, inactive
-        
+        $status = $request->verified; 
+
         $data = Member::query()
             ->when($status !== null, function ($query) use ($status) {
+                if ($status === 'unverified') {
+                    return $query->whereNull('verified');
+                }
                 return $query->where('verified', $status);
             })
             ->latest()

@@ -308,6 +308,13 @@
                                             <i data-feather="minus"></i> Successful Member
                                         </a>
                                     </li>
+
+                                    <li>
+                                        <a href="{{ route('verifymember.index', ['verified' => 'unverified']) }}"
+                                        class="{{ request('verified') == 'unverified' ? 'active' : '' }}">
+                                            <i data-feather="minus"></i> Unverified Member
+                                        </a>
+                                    </li>
                         
                                     <li>
                                         <a href="{{ route('verifymember.index', ['verified' => '3']) }}"
