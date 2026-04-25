@@ -395,13 +395,12 @@ class PostController extends Controller
         });
 
         // ২. সিড ম্যানেজমেন্ট (আগের মতোই)
-        $seed = request()->has('cursor') ? session()->get('post_seed') : rand(1, 9999);
-        if (!request()->has('cursor')) {
-            session()->put('post_seed', $seed);
-        }
+       $seed = request()->get('seed', 1234);
 
         $cursor = request()->get('cursor', 'first');
         $userType = $memberId ? "u{$memberId}" : "guest";
+    
+       // ক্যাশ কী-তে সিড এবং পেজ বা কার্সর থাকা জরুরি
         $cacheKey = "posts_feed_{$userType}_s{$seed}_c{$cursor}";
 
         // ৩. ক্যাশ চেক (HIT/MISS সঠিকভাবে দেখার জন্য আগে চেক করুন)

@@ -148,11 +148,6 @@ class DepositController extends Controller
                 $title = "Deposit ($new_status)";
                 $body = "Your deposit of {$deposit->amount} has been " . ucfirst($new_status);
                 
-                // ১. মেম্বার আইডি (কার কাছে যাবে)
-                // ২. টাইটেল (নোটিফিকেশন হেডলাইন)
-                // ৩. বডি (মূল মেসেজ)
-                // ৪. ডাটা অ্যারে (অ্যাপের ভেতর লজিক হ্যান্ডেল করার জন্য)
-                // ৫. নোটিফিকেশন টাইপ (ডাটাবেসে সেভ করার জন্য এবং ফিল্টার করার জন্য)
 
                 $this->sendFcmNotification(
                     $deposit->member_id,               // ১
