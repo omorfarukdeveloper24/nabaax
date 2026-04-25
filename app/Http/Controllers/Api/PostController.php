@@ -379,7 +379,87 @@ class PostController extends Controller
     // }
 
 
-    public function list()
+    // public function list()
+    // {
+    //     try {
+    //         $member = Auth::guard("member")->user();
+    //     } catch (\Exception $e) {
+    //         $member = null;
+    //     }
+        
+    //     $memberId = $member ? $member->id : null;
+
+    //     // ১. অ্যাডস ক্যাশ (আগের মতোই)
+    //     $miniAds = Cache::remember('mini_ads_active', 600, function () {
+    //         return Miniad::where('status', 1)->select('id', 'image')->get();
+    //     });
+
+    //     // ২. সিড ম্যানেজমেন্ট (আগের মতোই)
+    //     $seed = request()->has('cursor') ? session()->get('post_seed') : rand(1, 9999);
+    //     if (!request()->has('cursor')) {
+    //         session()->put('post_seed', $seed);
+    //     }
+
+    //     $cursor = request()->get('cursor', 'first');
+    //     $userType = $memberId ? "u{$memberId}" : "guest";
+    //     $cacheKey = "posts_feed_{$userType}_s{$seed}_c{$cursor}";
+
+    //     // ৩. ক্যাশ চেক (HIT/MISS সঠিকভাবে দেখার জন্য আগে চেক করুন)
+    //     $isCached = Cache::has($cacheKey);
+
+    //     $posts = Cache::remember($cacheKey, 30, function () use ($memberId, $seed) {
+    //         // র্যান্ডম অর্ডারের বদলে নরমাল কুয়েরি যা ইনডেক্স ব্যবহার করবে
+    //         $query = Post::select('id', 'member_id', 'content', 'visibility', 'created_at', 'total_views', 'status')
+    //             ->where('status', 'active')
+    //             ->with([
+    //                 'member:id,name,image,partner,verified',
+    //                 'media:id,post_id,media_type,path,duration'
+    //             ])
+    //             ->withCount([
+    //                 'likes as like_count' => fn($q) => $q->where('type', 1),
+    //                 'likes as dislike_count' => fn($q) => $q->where('type', 2),
+    //                 'comments as comment_count'
+    //             ]);
+
+    //         if ($memberId) {
+    //             $query->withExists([
+    //                 'likes as liked_by_me' => fn($q) => $q->where('member_id', $memberId)->where('type', 1),
+    //                 'likes as disliked_by_me' => fn($q) => $q->where('member_id', $memberId)->where('type', 2),
+    //                 'member as is_following' => fn($q) => $q->whereHas('followers', fn($f) => $f->where('follower_id', $memberId))
+    //             ]);
+    //         } else {
+    //             $query->withExists([
+    //                 'likes as liked_by_me' => fn($q) => $q->whereRaw('1 = 0'),
+    //                 'likes as disliked_by_me' => fn($q) => $q->whereRaw('1 = 0'),
+    //                 'member as is_following' => fn($q) => $q->whereRaw('1 = 0')
+    //             ]);
+    //         }
+
+    //         /** * অপ্টিমাইজেশন ট্রিক: 
+    //          * inRandomOrder($seed) সরাসরি না লিখে, আমরা আইডি দিয়ে সর্ট করে 
+    //          * ম্যাথমেটিক্যাল সর্টিং ব্যবহার করব যা ইনডেক্স ব্যবহার করতে পারে।
+    //          */
+    //         return $query->orderByRaw("RAND($seed)")->cursorPaginate(10);
+    //     });
+
+    //     // ৪. অ্যাডস ইনজেকশন
+    //     $posts->getCollection()->transform(function ($post, $index) use ($miniAds) {
+    //         if ($miniAds->isNotEmpty()) {
+    //             $post->mini_ads = $miniAds[$index % $miniAds->count()];
+    //         }
+    //         return $post;
+    //     });
+
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'data' => $posts
+    //     ])->header('X-Cache', $isCached ? 'HIT' : 'MISS');
+    // }
+
+
+
+
+     public function list()
     {
         try {
             $member = Auth::guard("member")->user();
@@ -395,10 +475,7 @@ class PostController extends Controller
         });
 
         // ২. সিড ম্যানেজমেন্ট (আগের মতোই)
-        $seed = request()->has('cursor') ? session()->get('post_seed') : rand(1, 9999);
-        if (!request()->has('cursor')) {
-            session()->put('post_seed', $seed);
-        }
+        $seed = request()->get('seed', rand(1, 9999));
 
         $cursor = request()->get('cursor', 'first');
         $userType = $memberId ? "u{$memberId}" : "guest";
@@ -450,8 +527,9 @@ class PostController extends Controller
             return $post;
         });
 
-        return response()->json([
+       return response()->json([
             'status' => 'success',
+            'current_seed' => (int)$seed, // এই লাইনটি যোগ করুন
             'data' => $posts
         ])->header('X-Cache', $isCached ? 'HIT' : 'MISS');
     }
