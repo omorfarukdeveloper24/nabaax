@@ -5,135 +5,158 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Like;
+use App\Models\Post;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use App\Jobs\UpdateLikeCountJob;
+use App\Jobs\SendLikeNotificationJob;
 
 class LikeController extends Controller
 {
     function __construct()
     {
-        $this->middleware("auth.jwt", [
-            
-        ]);
+        $this->middleware("auth.jwt", []);
     }
-    
-    
+
     public function list(Request $request)
     {
-         $member = Auth::guard('member')->user();
+        $member = Auth::guard('member')->user();
         if (!$member) {
             return response()->json([
-                'status' => 'failed',
+                'status'  => 'failed',
                 'message' => 'Unauthorized user'
             ], 401);
         }
-        $likes = Like::where('post_id',$request->id)->with(['post', 'member'])->latest()->get();
-        $like_count = $likes->count();
-        return response()->json(['status'=>'success','like'=>$like_count]);
+
+        $like_count    = Like::where('post_id', $request->id)->where('type', 1)->count();
+        $dislike_count = Like::where('post_id', $request->id)->where('type', 2)->count();
+
+        return response()->json([
+            'status'        => 'success',
+            'like_count'    => $like_count,
+            'dislike_count' => $dislike_count,
+        ]);
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'post_id' => 'required',
-            'type' => 'required',
+            'post_id' => 'required|exists:posts,id',
+            'type'    => 'required|in:1,2', // 1 = like, 2 = dislike
         ]);
-        // return $request;
-        
-        
-         
+
         $member = Auth::guard("member")->user();
-        
-       if (!$member) {
-        return response()->json([
-            'status' => failed,
+        if (!$member) {
+            return response()->json([
+                'status'  => 'failed',
                 'message' => 'Unauthorized user'
             ], 401);
         }
 
-       
-        $like = Like::updateOrCreate(
-            [
-                'post_id' => $validated['post_id'],
-                'member_id' => $member->id,
-            ],
-            [
-                'type' => $validated['type'],
-            ]
-        );
+        $postId   = (int) $validated['post_id'];
+        $newType  = (int) $validated['type'];
+        $memberId = $member->id;
 
-        return response()->json([
-            'status'=>'success',
-            'message' => 'Like submit successfully',
-            'data' => $like
-        ]);
+        // Post owner কে খুঁজে বের করা
+        $post = Post::find($postId);
+
+        // আগের reaction আছে কিনা চেক
+        $existingLike = Like::where('post_id', $postId)
+                            ->where('member_id', $memberId)
+                            ->first();
+
+        try {
+            DB::beginTransaction();
+
+            if ($existingLike) {
+                if ($existingLike->type == $newType) {
+                    // একই button আবার চাপলে — toggle off (remove)
+                    $existingLike->delete();
+                    DB::commit();
+
+                    // count decrement — background Job
+                    $action = $newType == 1 ? 'like_decrement' : 'dislike_decrement';
+                    UpdateLikeCountJob::dispatch($postId, $action)
+                        ->onQueue('default');
+
+                    return response()->json([
+                        'status'  => 'success',
+                        'message' => 'Reaction removed',
+                        'data'    => null,
+                    ]);
+
+                } else {
+                    // like → dislike অথবা dislike → like (switch)
+                    $oldType = $existingLike->type;
+                    $existingLike->update(['type' => $newType]);
+                    DB::commit();
+
+                    // পুরনোটা কমাও, নতুনটা বাড়াও — background Job
+                    $decrementAction = $oldType == 1 ? 'like_decrement' : 'dislike_decrement';
+                    $incrementAction = $newType == 1 ? 'like_increment' : 'dislike_increment';
+
+                    UpdateLikeCountJob::dispatch($postId, $decrementAction)->onQueue('default');
+                    UpdateLikeCountJob::dispatch($postId, $incrementAction)->onQueue('default');
+
+                    // notification — নিজের post হলে পাঠাবে না
+                    if ($post && $post->member_id !== $memberId) {
+                        $reactionType = $newType == 1 ? 'like' : 'dislike';
+                        SendLikeNotificationJob::dispatch(
+                            $post->member_id,
+                            $member->name,
+                            $postId,
+                            $reactionType
+                        )->onQueue('notifications');
+                    }
+
+                    return response()->json([
+                        'status'  => 'success',
+                        'message' => 'Reaction updated',
+                        'data'    => $existingLike,
+                    ]);
+                }
+
+            } else {
+                // একদম নতুন like/dislike
+                $like = Like::create([
+                    'post_id'   => $postId,
+                    'member_id' => $memberId,
+                    'type'      => $newType,
+                ]);
+                DB::commit();
+
+                // count increment — background Job
+                $action = $newType == 1 ? 'like_increment' : 'dislike_increment';
+                UpdateLikeCountJob::dispatch($postId, $action)->onQueue('default');
+
+                // notification — নিজের post হলে পাঠাবে না
+                if ($post && $post->member_id !== $memberId) {
+                    $reactionType = $newType == 1 ? 'like' : 'dislike';
+                    SendLikeNotificationJob::dispatch(
+                        $post->member_id,
+                        $member->name,
+                        $postId,
+                        $reactionType
+                    )->onQueue('notifications');
+                }
+
+                return response()->json([
+                    'status'  => 'success',
+                    'message' => 'Reaction saved',
+                    'data'    => $like,
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error("LikeController store Error: " . $e->getMessage());
+
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Something went wrong!',
+            ], 500);
+        }
     }
-
-    // public function store(Request $request)
-    // {
-    //     $validated = $request->validate([
-    //         'post_id' => 'required|exists:posts,id',
-    //         'type' => 'required|in:1,2', // ১ = লাইক, ২ = ডিসলাইক
-    //     ]);
-
-    //     $member = Auth::guard("member")->user();
-    //     if (!$member) {
-    //         return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
-    //     }
-
-    //     $postId = $validated['post_id'];
-    //     $newType = (int)$validated['type'];
-    //     $memberId = $member->id;
-
-    //     // ১. আগের কোনো রিঅ্যাকশন আছে কিনা চেক করুন
-    //     $existingLike = Like::where('post_id', $postId)->where('member_id', $memberId)->first();
-
-    //     // ডাটাবেস ট্রানজ্যাকশন ব্যবহার করা নিরাপদ যাতে কাউন্টিং ভুল না হয়
-    //     $like = DB::transaction(function () use ($postId, $memberId, $newType, $existingLike) {
-    //         $post = Post::lockForUpdate()->find($postId);
-
-    //         if ($existingLike) {
-    //             if ($existingLike->type == $newType) {
-    //                 // একই বাটনে আবার চাপ দিলে (Toggle off/Remove)
-    //                 $existingLike->delete();
-    //                 $this->updatePostCount($post, $newType, -1);
-    //                 return null; 
-    //             } else {
-    //                 // লাইক থেকে ডিসলাইক বা ডিসলাইক থেকে লাইক (Switch)
-    //                 $oldType = $existingLike->type;
-    //                 $existingLike->update(['type' => $newType]);
-    //                 $this->updatePostCount($post, $oldType, -1); // আগেরটা কমান
-    //                 $this->updatePostCount($post, $newType, 1);  // নতুনটা বাড়ান
-    //                 return $existingLike;
-    //             }
-    //         } else {
-    //             // একদম নতুন লাইক/ডিসলাইক
-    //             $newLike = Like::create([
-    //                 'post_id' => $postId,
-    //                 'member_id' => $memberId,
-    //                 'type' => $newType
-    //             ]);
-    //             $this->updatePostCount($post, $newType, 1);
-    //             return $newLike;
-    //         }
-    //     });
-
-    //     return response()->json([
-    //         'status' => 'success',
-    //         'message' => $like ? 'Reaction saved' : 'Reaction removed',
-    //         'data' => $like
-    //     ]);
-    // }
-
-    // // কাউন্ট আপডেট করার জন্য একটি প্রাইভেট ফাংশন
-    // private function updatePostCount($post, $type, $value)
-    // {
-    //     if ($type == 1) {
-    //         $post->increment('like_count', $value);
-    //     } else {
-    //         $post->increment('dislike_count', $value);
-    //     }
-    // }
-
 
     public function details($id)
     {
@@ -141,72 +164,42 @@ class LikeController extends Controller
         return response()->json($like);
     }
 
-    
-
-    public function update(Request $request)
-    {
-        $validated = $request->validate([
-            'post_id' => 'required',
-            'type'    => 'required', 
-        ]);
-
-        $member = Auth::guard("member")->user();
-
-        if (!$member) {
-            return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
-        }
-
-        $like = Like::where('post_id', $request->post_id)
-                    ->where('member_id', $member->id)
-                    ->first();
-
-        if ($like) {
-            $like->update([
-                'type' => $validated['type']
-            ]);
-
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Reaction updated successfully',
-                'data' => $like
-            ]);
-        }
-
-        return response()->json([
-            'status' => 'failed',
-            'message' => 'No reaction found to update. Please like first.'
-        ], 404);
-    }
-
     public function destroy(Request $request)
     {
         $request->validate([
-            'post_id' => 'required',
+            'post_id' => 'required|exists:posts,id',
         ]);
 
         $member = Auth::guard("member")->user();
-
         if (!$member) {
-            return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
+            return response()->json([
+                'status'  => 'failed',
+                'message' => 'Unauthorized'
+            ], 401);
         }
 
         $like = Like::where('post_id', $request->post_id)
                     ->where('member_id', $member->id)
                     ->first();
 
-        if ($like) {
-            $like->delete();
+        if (!$like) {
             return response()->json([
-                'status'  => 'success',
-                'message' => 'Like deleted successfully'
-            ]);
+                'status'  => 'failed',
+                'message' => 'Like not found'
+            ], 404);
         }
 
+        $postId = $like->post_id;
+        $type   = $like->type;
+        $like->delete();
+
+        // count decrement — background Job
+        $action = $type == 1 ? 'like_decrement' : 'dislike_decrement';
+        UpdateLikeCountJob::dispatch($postId, $action)->onQueue('default');
+
         return response()->json([
-            'status'  => 'failed',
-            'message' => 'Like not found'
-        ], 404);
+            'status'  => 'success',
+            'message' => 'Like deleted successfully',
+        ]);
     }
-
-
 }
