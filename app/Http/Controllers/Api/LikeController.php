@@ -68,6 +68,72 @@ class LikeController extends Controller
         ]);
     }
 
+    // public function store(Request $request)
+    // {
+    //     $validated = $request->validate([
+    //         'post_id' => 'required|exists:posts,id',
+    //         'type' => 'required|in:1,2', // ১ = লাইক, ২ = ডিসলাইক
+    //     ]);
+
+    //     $member = Auth::guard("member")->user();
+    //     if (!$member) {
+    //         return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
+    //     }
+
+    //     $postId = $validated['post_id'];
+    //     $newType = (int)$validated['type'];
+    //     $memberId = $member->id;
+
+    //     // ১. আগের কোনো রিঅ্যাকশন আছে কিনা চেক করুন
+    //     $existingLike = Like::where('post_id', $postId)->where('member_id', $memberId)->first();
+
+    //     // ডাটাবেস ট্রানজ্যাকশন ব্যবহার করা নিরাপদ যাতে কাউন্টিং ভুল না হয়
+    //     $like = DB::transaction(function () use ($postId, $memberId, $newType, $existingLike) {
+    //         $post = Post::lockForUpdate()->find($postId);
+
+    //         if ($existingLike) {
+    //             if ($existingLike->type == $newType) {
+    //                 // একই বাটনে আবার চাপ দিলে (Toggle off/Remove)
+    //                 $existingLike->delete();
+    //                 $this->updatePostCount($post, $newType, -1);
+    //                 return null; 
+    //             } else {
+    //                 // লাইক থেকে ডিসলাইক বা ডিসলাইক থেকে লাইক (Switch)
+    //                 $oldType = $existingLike->type;
+    //                 $existingLike->update(['type' => $newType]);
+    //                 $this->updatePostCount($post, $oldType, -1); // আগেরটা কমান
+    //                 $this->updatePostCount($post, $newType, 1);  // নতুনটা বাড়ান
+    //                 return $existingLike;
+    //             }
+    //         } else {
+    //             // একদম নতুন লাইক/ডিসলাইক
+    //             $newLike = Like::create([
+    //                 'post_id' => $postId,
+    //                 'member_id' => $memberId,
+    //                 'type' => $newType
+    //             ]);
+    //             $this->updatePostCount($post, $newType, 1);
+    //             return $newLike;
+    //         }
+    //     });
+
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'message' => $like ? 'Reaction saved' : 'Reaction removed',
+    //         'data' => $like
+    //     ]);
+    // }
+
+    // // কাউন্ট আপডেট করার জন্য একটি প্রাইভেট ফাংশন
+    // private function updatePostCount($post, $type, $value)
+    // {
+    //     if ($type == 1) {
+    //         $post->increment('like_count', $value);
+    //     } else {
+    //         $post->increment('dislike_count', $value);
+    //     }
+    // }
+
 
     public function details($id)
     {

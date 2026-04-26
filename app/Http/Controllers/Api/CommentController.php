@@ -8,73 +8,19 @@ use App\Models\Comment;
 use App\Models\Post;
 use Illuminate\Support\Facades\Auth;
 use App\Traits\NotificationTrait;
-use App\Models\Member; 
+use App\Models\Member;
 use Illuminate\Support\Facades\DB;
+use App\Jobs\SendMentionNotificationJob;
+use App\Jobs\UpdateCommentCountJob;
 
 class CommentController extends Controller
 {
     use NotificationTrait;
+
     function __construct()
     {
-        $this->middleware("auth.jwt", [
-            
-        ]);
+        $this->middleware("auth.jwt", []);
     }
-    
-    
-    
-    
-    // public function list(Request $request)
-    // {
-    //     $member = Auth::guard('member')->user();
-    
-    //     if (!$member) {
-    //         return response()->json([
-    //             'status' => 'failed',
-    //             'message' => 'Unauthorized user',
-    //         ], 401);
-    //     }
-    
-    //     if (!Post::where('id', $request->id)->exists()) {
-    //         return response()->json([
-    //             'status' => 'failed',
-    //             'message' => 'Post not found',
-    //         ], 404);
-    //     }
-        
-        
-        
-        
-    //     $comments = Comment::select('id', 'post_id', 'member_id', 'parent_id', 'content', 'updated_at')
-    //     ->where('post_id', $request->id)
-    //     ->whereNull('parent_id')
-    //     ->with([
-    //         'member:id,name,username,image',
-    //         'replies' => function ($query) {
-    //             $query->select('id', 'post_id', 'member_id', 'parent_id', 'content', 'updated_at')
-    //                   ->with('member:id,name,username,image');
-    //         }
-    //     ])
-    //     ->latest()
-    //     ->paginate(50);
-        
-        
-        
-        
-    
-    //     return response()->json([
-    //         'status' => 'success',
-    //         'data'   => $comments,
-    //     ], 200);
-    // }
-    
-    
-    // public function list()
-    // {
-    //     $comments = Comment::with(['post', 'member', 'parent'])->latest()->get();
-    //     return response()->json($comments);
-    // }
-
 
     public function list(Request $request)
     {
@@ -82,24 +28,23 @@ class CommentController extends Controller
 
         if (!$member) {
             return response()->json([
-                'status' => 'failed',
+                'status'  => 'failed',
                 'message' => 'Unauthorized user',
             ], 401);
         }
 
         if (!Post::where('id', $request->id)->exists()) {
             return response()->json([
-                'status' => 'failed',
+                'status'  => 'failed',
                 'message' => 'Post not found',
             ], 404);
         }
 
-        
         $comments = Comment::select('id', 'post_id', 'member_id', 'parent_id', 'content', 'updated_at')
             ->where('post_id', $request->id)
-            ->whereNull('parent_id') 
-            ->with('member:id,name,username,image') 
-            ->withCount('replies') 
+            ->whereNull('parent_id')
+            ->with('member:id,name,username,image')
+            ->withCount('replies')
             ->latest()
             ->paginate(50);
 
@@ -111,18 +56,20 @@ class CommentController extends Controller
 
     public function getReplies(Request $request)
     {
-        
         $parentId = $request->parent_id;
 
         if (!$parentId) {
-            return response()->json(['status' => 'failed', 'message' => 'Parent ID is required'], 400);
+            return response()->json([
+                'status'  => 'failed',
+                'message' => 'Parent ID is required',
+            ], 400);
         }
 
         $replies = Comment::select('id', 'post_id', 'member_id', 'parent_id', 'content', 'updated_at')
             ->where('parent_id', $parentId)
             ->with('member:id,name,username,image')
             ->withCount('replies')
-            ->oldest() 
+            ->oldest()
             ->get();
 
         return response()->json([
@@ -131,53 +78,26 @@ class CommentController extends Controller
         ], 200);
     }
 
-    // public function store(Request $request)
-    // {
-    //     // return $request;
-        
-    //     $member = Auth::guard('member')->user();
-    //     if (!$member) {
-    //         return response()->json([
-    //             'status' => 'failed',
-    //             'message' => 'Unauthorized user'
-    //         ], 401);
-    //     }
-    
-    //     $validated = $request->validate([
-    //         'post_id'   => 'required',
-    //         'content'   => 'required',
-    //         'parent_id' => 'nullable',
-    //     ]);
-
-    //     $validated['member_id'] = $member->id;
-        
-    //     // return $validated;
-        
-    //     $comment = Comment::create($validated);
-    //     return response()->json([
-    //         'status'  => 'success',
-    //         'message' => 'Comment submitted successfully',
-    //         'data'    => $comment,
-    //     ], 200);
-    // }
-
     public function store(Request $request)
     {
         // ১. মেম্বার অথেন্টিকেশন চেক
         $member = Auth::guard('member')->user();
         if (!$member) {
-            return response()->json(['status' => 'failed', 'message' => 'Unauthorized user'], 401);
+            return response()->json([
+                'status'  => 'failed',
+                'message' => 'Unauthorized user',
+            ], 401);
         }
 
         // ২. ইনপুট ভ্যালিডেশন
         $request->validate([
             'post_id'   => 'required|exists:posts,id',
-            'content'   => 'required|string', // ফরম্যাট: "Hello @[Siam](10)"
+            'content'   => 'required|string',
             'parent_id' => 'nullable|exists:comments,id',
         ]);
 
         try {
-            DB::beginTransaction(); // ডাটা সেফটির জন্য ট্রানজ্যাকশন শুরু
+            DB::beginTransaction();
 
             // ৩. কমেন্ট সেভ করা
             $comment = Comment::create([
@@ -187,32 +107,27 @@ class CommentController extends Controller
                 'member_id' => $member->id,
             ]);
 
-            // ৪. মেনশন আইডি খুঁজে বের করা (Regex)
+            DB::commit();
+            // ⚠️ DB commit-এর পরে dispatch — transaction-এর বাইরে
+
+            // ৪. comment_count increment — background Job
+            UpdateCommentCountJob::dispatch($request->post_id, 'increment')
+                ->onQueue('default');
+
+            // ৫. mention notification — background Job
             preg_match_all('/@\[.*?\]\((\d+)\)/', $request->content, $matches);
             $mentionedIds = array_unique($matches[1]);
 
-            if (!empty($mentionedIds)) {
-                // ৫. নোটিফিকেশন পাঠানোর প্রস্তুতি
-                $title = "New Mention";
-                $body  = "{$member->name} mentioned you in a comment.";
-                
-                // ডাটা হিসেবে আইডি পাঠিয়ে রাখা যাতে অ্যাপে ক্লিক করলে ঐ পোস্টে নিয়ে যায়
-                $notifData = [
-                    'type'    => 'mention',
-                    'post_id' => (string)$request->post_id,
-                    'comment_id' => (string)$comment->id
-                ];
-
-                foreach ($mentionedIds as $id) {
-                    // নিজেকে নিজে মেনশন করলে নোটিফিকেশন পাঠানোর দরকার নেই
-                    if ($id != $member->id) {
-                        // আপনার Trait এর ফাংশনটি এখানে কল করা হচ্ছে
-                        $this->sendFcmNotification($id, $title, $body, $notifData);
-                    }
+            foreach ($mentionedIds as $id) {
+                if ($id != $member->id) {
+                    SendMentionNotificationJob::dispatch(
+                        (int) $id,
+                        $member->name,
+                        (int) $request->post_id,
+                        $comment->id
+                    )->onQueue('notifications');
                 }
             }
-
-            DB::commit(); // সব ঠিক থাকলে ডাটাবেজে পার্মানেন্ট সেভ হবে
 
             return response()->json([
                 'status'  => 'success',
@@ -221,17 +136,16 @@ class CommentController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            DB::rollBack(); // কোনো এরর হলে আগের সবকিছু বাতিল হয়ে যাবে
+            DB::rollBack();
             \Log::error("Comment Store Error: " . $e->getMessage());
-            
+
             return response()->json([
-                'status' => 'error',
+                'status'  => 'error',
                 'message' => 'Something went wrong!',
-                'error' => $e->getMessage()
+                'error'   => $e->getMessage(),
             ], 500);
         }
     }
-
 
     public function details($id)
     {
@@ -241,7 +155,16 @@ class CommentController extends Controller
 
     public function update(Request $request, $id)
     {
+        $member  = Auth::guard('member')->user();
         $comment = Comment::findOrFail($id);
+
+        // নিজের comment কিনা check
+        if ($comment->member_id !== $member->id) {
+            return response()->json([
+                'status'  => 'failed',
+                'message' => 'Unauthorized',
+            ], 403);
+        }
 
         $validated = $request->validate([
             'content' => 'required|string',
@@ -250,20 +173,33 @@ class CommentController extends Controller
         $comment->update($validated);
 
         return response()->json([
-            'message' => 'কমেন্ট সফলভাবে আপডেট হয়েছে',
-            'data' => $comment
+            'message' => 'কমেন্ট সফলভাবে আপডেট হয়েছে',
+            'data'    => $comment,
         ]);
     }
 
     public function destroy($id)
     {
+        $member  = Auth::guard('member')->user();
         $comment = Comment::findOrFail($id);
+
+        // নিজের comment কিনা check
+        if ($comment->member_id !== $member->id) {
+            return response()->json([
+                'status'  => 'failed',
+                'message' => 'Unauthorized',
+            ], 403);
+        }
+
+        $postId = $comment->post_id;
         $comment->delete();
 
+        // comment_count decrement — background Job
+        UpdateCommentCountJob::dispatch($postId, 'decrement')
+            ->onQueue('default');
+
         return response()->json([
-            'message' => 'কমেন্ট ডিলিট করা হয়েছে'
+            'message' => 'কমেন্ট ডিলিট করা হয়েছে',
         ]);
     }
-    
-
 }
