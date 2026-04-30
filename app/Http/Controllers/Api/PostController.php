@@ -486,16 +486,11 @@ class PostController extends Controller
 
         $posts = Cache::remember($cacheKey, 30, function () use ($memberId, $seed) {
             // র্যান্ডম অর্ডারের বদলে নরমাল কুয়েরি যা ইনডেক্স ব্যবহার করবে
-            $query = Post::select('id', 'member_id', 'content', 'visibility', 'created_at', 'total_views', 'status')
+            $query = Post::select('id', 'member_id', 'content', 'visibility', 'created_at', 'like_count', 'dislike_count', 'comment_count', 'total_views', 'status')
                 ->where('status', 'active')
                 ->with([
                     'member:id,name,image,partner,verified',
                     'media:id,post_id,media_type,path,duration'
-                ])
-                ->withCount([
-                    'likes as like_count' => fn($q) => $q->where('type', 1),
-                    'likes as dislike_count' => fn($q) => $q->where('type', 2),
-                    'comments as comment_count'
                 ]);
 
             if ($memberId) {
