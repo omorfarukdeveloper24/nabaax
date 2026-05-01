@@ -23,8 +23,6 @@ class SendLikeNotificationJob implements ShouldQueue
 
     public function handle(): void
     {
-        $this->undefinedFunctionCall();
-        
         $title = $this->reactionType === 'like' ? 'New Like 👍' : 'New Dislike 👎';
         $body  = "{$this->likerName} reacted to your post.";
 
