@@ -43,14 +43,14 @@ class ErrorLogController extends Controller
         // Unique sources for filter dropdown
         $sources = ErrorLog::select('source')->distinct()->pluck('source');
 
-        return view('admin.errorloghistory.index', compact('errors', 'stats', 'sources'));
+        return view('backEnd.errorlog.index', compact('errors', 'stats', 'sources'));
     }
 
     // Single error details
     public function show($id)
     {
         $error = ErrorLog::findOrFail($id);
-        return view('admin.errorloghistory.show', compact('error'));
+        return view('backEnd.errorlog.show', compact('error'));
     }
 
     // Admin retry করবে
