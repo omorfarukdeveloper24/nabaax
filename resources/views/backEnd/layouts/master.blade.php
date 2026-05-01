@@ -429,6 +429,14 @@
                         <!-- END PAYMENT History  NAV ITEM -->
 
                         <li>
+                            <a href="{{ route('errorloghistory.index') }}">
+                                <i data-feather="clipboard"></i>
+                                <span> Error Log History  </span>
+                            </a>
+                        </li>
+                        <!-- END ERROR LOG History  NAV ITEM -->
+
+                        <li>
                             <a href="#sidebar-miniad" data-bs-toggle="collapse">
                                 <i data-feather="user"></i>
                                 <span> Mini Ad  </span>

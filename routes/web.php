@@ -20,6 +20,7 @@ use App\Http\Controllers\Admin\VerifyMemberController;
 use App\Http\Controllers\Admin\WithdrawController;
 use App\Http\Controllers\Admin\AdminPayHistoryController;
 use App\Http\Controllers\Admin\MiniAdController;
+use App\Http\Controllers\Admin\ErrorLogController;
 use App\Http\Controllers\GcsTestController;
 use Illuminate\Support\Facades\Storage;
 use Google\Cloud\Storage\StorageClient;
@@ -75,10 +76,10 @@ Route::get('/clean', function () {
 //     return "Controller Created";
 // });
 
-Route::get('/migrate', function () {
-    Artisan::call('migrate');
-    return "Migrate Done!";
-});
+// Route::get('/migrate', function () {
+//     Artisan::call('migrate');
+//     return "Migrate Done!";
+// });
 
 // Route::get('/model', function () {
 //     Artisan::call('make:model Notification -m');
@@ -151,6 +152,7 @@ Route::group(['namespace' => 'Admin', 'prefix' => 'nb65vartex', 'middleware' => 
 
 // auth route
 Route::group(['namespace' => 'Admin', 'middleware' => ['auth', 'lock', 'check_refer'], 'prefix' => 'nb65vartex'], function () {
+
     Route::get('dashboard', [DashboardController::class, 'dashboard'])->name('dashboard');
     // Route::get('change-password', [DashboardController::class, 'changepassword'])->name('change_password');
     Route::post('new-password', [DashboardController::class, 'newpassword'])->name('new_password');
@@ -229,6 +231,15 @@ Route::group(['namespace' => 'Admin', 'middleware' => ['auth', 'lock', 'check_re
     Route::post('settings/inactive', [GeneralSettingController::class, 'inactive'])->name('settings.inactive');
     Route::post('settings/active', [GeneralSettingController::class, 'active'])->name('settings.active');
     Route::post('settings/destroy', [GeneralSettingController::class, 'destroy'])->name('settings.destroy');
+
+
+     // Error Log Routes
+    Route::get('errorloghistory', [ErrorLogController::class, 'index'])->name('errorloghistory.index');
+    Route::get('errorloghistory/{id}/show', [ErrorLogController::class, 'show'])->name('errorloghistory.show');
+    Route::post('errorloghistory/{id}/retry', [ErrorLogController::class, 'retry'])->name('errorloghistory.retry');
+    Route::post('errorloghistory/{id}/resolve', [ErrorLogController::class, 'resolve'])->name('errorloghistory.resolve');
+    Route::post('errorloghistory/bulk-resolve', [ErrorLogController::class, 'bulkResolve'])->name('errorloghistory.bulk-resolve');
+    Route::get('errorloghistory/stats', [ErrorLogController::class, 'stats'])->name('errorloghistory.stats');
     
 
 

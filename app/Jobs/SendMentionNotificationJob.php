@@ -5,6 +5,7 @@ namespace App\Jobs;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use App\Traits\NotificationTrait;
+use App\Services\ErrorLogService;
 
 class SendMentionNotificationJob implements ShouldQueue
 {
@@ -36,9 +37,26 @@ class SendMentionNotificationJob implements ShouldQueue
 
     public function failed(\Throwable $e): void
     {
-        \Log::error("SendMentionNotificationJob failed", [
-            'user_id' => $this->mentionedUserId,
-            'error'   => $e->getMessage(),
-        ]);
+        $error = ErrorLogService::log(
+            type:      'job_failed',
+            source:    'SendMentionNotificationJob',
+            message:   $e->getMessage(),
+            exception: $e,
+            context:   [
+                'mentioned_user_id' => $this->mentionedUserId,
+                'post_id'           => $this->postId,
+                'comment_id'        => $this->commentId,
+            ],
+            jobClass:  self::class,
+            jobParams: [
+                'mentionedUserId' => $this->mentionedUserId,
+                'senderName'      => $this->senderName,
+                'postId'          => $this->postId,
+                'commentId'       => $this->commentId,
+            ],
+            maxRetries: $this->tries
+        );
+
+        ErrorLogService::jobFailed($error, $e);
     }
 }
