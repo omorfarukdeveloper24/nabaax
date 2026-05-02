@@ -1003,6 +1003,104 @@ class PostController extends Controller
     //     ]);
     // }
 
+    // public function store(Request $request)
+    // {
+    //     $request->validate([
+    //         'content'          => 'nullable|string',
+    //         'visibility'       => 'required',
+    //         'media.*'          => 'nullable|file|max:102400',
+    //         'custom_thumbnail' => 'nullable|image|max:5120',
+    //     ]);
+
+    //     $member = Auth::guard("member")->user();
+    //     if (!$member) {
+    //         return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
+    //     }
+
+    //     $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+    //     $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
+
+    //     $post = \App\Models\Post::create([
+    //         'member_id'  => $member->id,
+    //         'content'    => $request->content,
+    //         'visibility' => $request->visibility,
+    //         'status'     => 'pending',
+    //     ]);
+
+    //     $customThumbnailPath = null;
+    //     if ($request->hasFile('custom_thumbnail')) {
+    //         $customThumbnailPath = $request->file('custom_thumbnail')
+    //             ->store('temp_thumbnails', 'local');
+    //     }
+
+    //     if ($request->hasFile('media')) {
+    //         $imageCount           = 0;
+    //         $videoCount           = 0;
+    //         $totalMediaDispatched = 0;
+
+    //         foreach ($request->file('media') as $file) {
+    //             $extension    = strtolower($file->getClientOriginalExtension());
+    //             $fileNameBase = time() . '-' . uniqid();
+
+    //             if (in_array($extension, $imageExtensions)) {
+    //                 // সর্বোচ্চ ৩০টি image
+    //                 if ($imageCount >= 30) continue;
+    //                 $imageCount++;
+    //                 $totalMediaDispatched++;
+
+    //                 $tempPath = $file->storeAs(
+    //                     'temp_images',
+    //                     $fileNameBase . '.' . $extension,
+    //                     'local'
+    //                 );
+
+    //                 \App\Jobs\ProcessImageUpload::dispatch(
+    //                     $post->id,
+    //                     storage_path('app/' . $tempPath),
+    //                     $fileNameBase
+    //                 )->onQueue('images');
+
+    //             } elseif (in_array($extension, $videoExtensions)) {
+    //                 // সর্বোচ্চ ১টি video
+    //                 if ($videoCount >= 1) continue;
+    //                 $videoCount++;
+    //                 $totalMediaDispatched++;
+
+    //                 $tempPath = $file->storeAs(
+    //                     'temp_videos',
+    //                     $fileNameBase . '.' . $extension,
+    //                     'local'
+    //                 );
+
+    //                 \App\Jobs\ProcessVideoSafetyCheck::dispatch(
+    //                     $post->id,
+    //                     storage_path('app/' . $tempPath),
+    //                     $customThumbnailPath
+    //                         ? storage_path('app/' . $customThumbnailPath)
+    //                         : null
+    //                 )->onQueue('videos')->delay(now()->addSeconds(10));
+    //             }
+    //         }
+
+    //         if ($totalMediaDispatched === 0) {
+    //             $post->update(['status' => 'active']);
+    //         } else {
+    //             // কতটা media pending আছে track করো
+    //             $post->update(['pending_media_count' => $totalMediaDispatched]);
+    //         }
+
+    //     } else {
+    //         $post->update(['status' => 'active']);
+    //     }
+
+    //     return response()->json([
+    //         'status'  => 'success',
+    //         'message' => 'Your post is being processed and will be published shortly.',
+    //         'post'    => $post->load('media'),
+    //     ]);
+    // }
+
+
     public function store(Request $request)
     {
         $request->validate([
@@ -1019,6 +1117,30 @@ class PostController extends Controller
 
         $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
         $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
+
+        // --- লিমিট চেক লজিক শুরু ---
+        if ($request->hasFile('media')) {
+            $checkImageCount = 0;
+            $checkVideoCount = 0;
+
+            foreach ($request->file('media') as $file) {
+                $ext = strtolower($file->getClientOriginalExtension());
+                if (in_array($ext, $imageExtensions)) {
+                    $checkImageCount++;
+                } elseif (in_array($ext, $videoExtensions)) {
+                    $checkVideoCount++;
+                }
+            }
+
+            if ($checkImageCount > 30) {
+                return response()->json(['status' => 'failed', 'message' => 'Only 30 images you can post'], 400);
+            }
+
+            if ($checkVideoCount > 1) {
+                return response()->json(['status' => 'failed', 'message' => 'Only one video you can post'], 400);
+            }
+        }
+        // --- লিমিট চেক লজিক শেষ ---
 
         $post = \App\Models\Post::create([
             'member_id'  => $member->id,
@@ -1043,7 +1165,6 @@ class PostController extends Controller
                 $fileNameBase = time() . '-' . uniqid();
 
                 if (in_array($extension, $imageExtensions)) {
-                    // সর্বোচ্চ ৩০টি image
                     if ($imageCount >= 30) continue;
                     $imageCount++;
                     $totalMediaDispatched++;
@@ -1061,7 +1182,6 @@ class PostController extends Controller
                     )->onQueue('images');
 
                 } elseif (in_array($extension, $videoExtensions)) {
-                    // সর্বোচ্চ ১টি video
                     if ($videoCount >= 1) continue;
                     $videoCount++;
                     $totalMediaDispatched++;
@@ -1085,7 +1205,6 @@ class PostController extends Controller
             if ($totalMediaDispatched === 0) {
                 $post->update(['status' => 'active']);
             } else {
-                // কতটা media pending আছে track করো
                 $post->update(['pending_media_count' => $totalMediaDispatched]);
             }
 
