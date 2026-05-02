@@ -99,35 +99,45 @@ class ProcessImageUpload implements ShouldQueue
 
     protected function finalizeMediaProcessing($post, $isSuccess)
     {
-        // ১. প্রসেসিং শেষ হলে কাউন্ট কমানো
+        // ১. কাউন্ট কমানো
         $post->decrement('pending_media_count');
 
-        // ২. যখন সব ইমেজের কাজ শেষ হবে (কাউন্ট ০)
-        if ($post->fresh()->pending_media_count <= 0) {
+        // ২. লেটেস্ট ডাটা রিফ্রেশ করা
+        $post = $post->fresh();
+
+        // ৩. সব ইমেজ প্রসেসিং শেষ হলে (কাউন্ট ০ বা তার কম)
+        if ($post->pending_media_count <= 0) {
             
-            // ৩. চেক করুন ডাটাবেসে এই পোস্টের জন্য কোনো মিডিয়া সেভ হয়েছে কিনা
+            // ৪. গেটকিপার: যদি অলরেডি স্ট্যাটাস আপডেট হয়ে যায়, তবে আর এগোবে না (ডাবল নোটিফিকেশন বন্ধ করবে)
+            if ($post->status !== 'pending') {
+                return;
+            }
+
+            // ৫. চেক করুন অন্তত একটি মিডিয়া সেভ হয়েছে কি না
             $savedMediaCount = Post_media::where('post_id', $post->id)->count();
             
             if ($savedMediaCount > 0) {
-                // যদি অন্তত ১টি ইমেজও ভ্যালিড থাকে, পোস্ট লাইভ হবে
+                // ৬. পোস্টটি একটিভ করা (নোটিফিকেশনের আগে আপডেট করা সেফ)
                 $post->update(['status' => 'active']);
                 
+                // প্রফেশনাল সাকসেস মেসেজ
                 $this->sendFcmNotification(
                     $post->member_id,
-                    "Your post is live! ✅",
-                    "Processing complete. Some images may have been removed if they violated guidelines.",
+                    "Your post is live! ✅", // টাইটেল
+                    "Great news! Your media has been processed successfully and your post is now visible.", // বডি
                     ['post_id' => (string) $post->id, 'status' => 'active'],
                     'post',
                     (string) $post->id
                 );
             } else {
-                // যদি ১টিও ইমেজ সেভ না হয় (সবগুলো ১৮+ ছিল)
-                $post->update(['status' => 'failed']); // অথবা $post->delete(); আপনার ইচ্ছা অনুযায়ী
+                // যদি একটি ইমেজও গাইডলাইন মেনে না চলে
+                $post->update(['status' => 'failed']);
                 
+                // প্রফেশনাল ফেইল মেসেজ (নেতিবাচক শব্দ এড়িয়ে)
                 $this->sendFcmNotification(
                     $post->member_id,
-                    "Post removed ⚠️",
-                    "Your post was removed because all images violated our community guidelines.",
+                    "Update on your post ⚠️", 
+                    "We couldn't complete your post because the uploaded media didn't meet our community standards.", 
                     ['post_id' => (string) $post->id, 'status' => 'failed'],
                     'post'
                 );
