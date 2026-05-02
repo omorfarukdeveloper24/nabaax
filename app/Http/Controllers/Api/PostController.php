@@ -904,6 +904,105 @@ class PostController extends Controller
     // }
 
 
+    // public function store(Request $request)
+    // {
+    //     $request->validate([
+    //         'content'          => 'nullable|string',
+    //         'visibility'       => 'required',
+    //         'media.*'          => 'nullable|file|max:102400',
+    //         'custom_thumbnail' => 'nullable|image|max:5120',
+    //     ]);
+
+    //     $member = Auth::guard("member")->user();
+    //     if (!$member) {
+    //         return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
+    //     }
+
+    //     $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+    //     $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
+
+    //     // Post তৈরি করা
+    //     $post = \App\Models\Post::create([
+    //         'member_id'  => $member->id,
+    //         'content'    => $request->content,
+    //         'visibility' => $request->visibility,
+    //         'status'     => 'pending',
+    //     ]);
+
+    //     // Custom thumbnail save
+    //     $customThumbnailPath = null;
+    //     if ($request->hasFile('custom_thumbnail')) {
+    //         $customThumbnailPath = $request->file('custom_thumbnail')
+    //             ->store('temp_thumbnails', 'local');
+    //     }
+
+    //     if ($request->hasFile('media')) {
+    //         $imageCount = 0;
+    //         $videoCount = 0;
+
+    //         foreach ($request->file('media') as $file) {
+    //             $extension    = strtolower($file->getClientOriginalExtension());
+    //             $fileNameBase = time() . '-' . uniqid();
+
+    //             if (in_array($extension, $imageExtensions)) {
+    //                 // সর্বোচ্চ ৩০টি image
+    //                 if ($imageCount >= 30) continue;
+    //                 $imageCount++;
+
+    //                 $tempPath = $file->storeAs(
+    //                     'temp_images',
+    //                     $fileNameBase . '.' . $extension,
+    //                     'local'
+    //                 );
+
+    //                 // 'images' queue-এ dispatch
+    //                 // প্রতিটি image আলাদা worker নেবে — parallel processing
+    //                 \App\Jobs\ProcessImageUpload::dispatch(
+    //                     $post->id,
+    //                     storage_path('app/' . $tempPath),
+    //                     $fileNameBase
+    //                 )->onQueue('images');
+
+    //             } elseif (in_array($extension, $videoExtensions)) {
+    //                 // সর্বোচ্চ ২টি video
+    //                 if ($videoCount >= 2) continue;
+    //                 $videoCount++;
+
+    //                 $tempPath = $file->storeAs(
+    //                     'temp_videos',
+    //                     $fileNameBase . '.' . $extension,
+    //                     'local'
+    //                 );
+
+    //                 // 'videos' queue-এ dispatch
+    //                 // প্রতিটি video আলাদা worker নেবে — parallel processing
+    //                 \App\Jobs\ProcessVideoSafetyCheck::dispatch(
+    //                     $post->id,
+    //                     storage_path('app/' . $tempPath),
+    //                     $customThumbnailPath
+    //                         ? storage_path('app/' . $customThumbnailPath)
+    //                         : null
+    //                 )->onQueue('videos')->delay(now()->addSeconds(10));
+    //             }
+    //         }
+
+    //         // কোনো valid media না থাকলে সরাসরি active
+    //         if ($imageCount === 0 && $videoCount === 0) {
+    //             $post->update(['status' => 'active']);
+    //         }
+
+    //     } else {
+    //         // Media নেই — সরাসরি active
+    //         $post->update(['status' => 'active']);
+    //     }
+
+    //     return response()->json([
+    //         'status'  => 'success',
+    //         'message' => 'Your post is being processed and will be published shortly.',
+    //         'post'    => $post->load('media'),
+    //     ]);
+    // }
+
     public function store(Request $request)
     {
         $request->validate([
@@ -921,7 +1020,6 @@ class PostController extends Controller
         $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
         $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
 
-        // Post তৈরি করা
         $post = \App\Models\Post::create([
             'member_id'  => $member->id,
             'content'    => $request->content,
@@ -929,7 +1027,6 @@ class PostController extends Controller
             'status'     => 'pending',
         ]);
 
-        // Custom thumbnail save
         $customThumbnailPath = null;
         if ($request->hasFile('custom_thumbnail')) {
             $customThumbnailPath = $request->file('custom_thumbnail')
@@ -937,8 +1034,9 @@ class PostController extends Controller
         }
 
         if ($request->hasFile('media')) {
-            $imageCount = 0;
-            $videoCount = 0;
+            $imageCount           = 0;
+            $videoCount           = 0;
+            $totalMediaDispatched = 0;
 
             foreach ($request->file('media') as $file) {
                 $extension    = strtolower($file->getClientOriginalExtension());
@@ -948,6 +1046,7 @@ class PostController extends Controller
                     // সর্বোচ্চ ৩০টি image
                     if ($imageCount >= 30) continue;
                     $imageCount++;
+                    $totalMediaDispatched++;
 
                     $tempPath = $file->storeAs(
                         'temp_images',
@@ -955,8 +1054,6 @@ class PostController extends Controller
                         'local'
                     );
 
-                    // 'images' queue-এ dispatch
-                    // প্রতিটি image আলাদা worker নেবে — parallel processing
                     \App\Jobs\ProcessImageUpload::dispatch(
                         $post->id,
                         storage_path('app/' . $tempPath),
@@ -964,9 +1061,10 @@ class PostController extends Controller
                     )->onQueue('images');
 
                 } elseif (in_array($extension, $videoExtensions)) {
-                    // সর্বোচ্চ ২টি video
-                    if ($videoCount >= 2) continue;
+                    // সর্বোচ্চ ১টি video
+                    if ($videoCount >= 1) continue;
                     $videoCount++;
+                    $totalMediaDispatched++;
 
                     $tempPath = $file->storeAs(
                         'temp_videos',
@@ -974,8 +1072,6 @@ class PostController extends Controller
                         'local'
                     );
 
-                    // 'videos' queue-এ dispatch
-                    // প্রতিটি video আলাদা worker নেবে — parallel processing
                     \App\Jobs\ProcessVideoSafetyCheck::dispatch(
                         $post->id,
                         storage_path('app/' . $tempPath),
@@ -986,13 +1082,14 @@ class PostController extends Controller
                 }
             }
 
-            // কোনো valid media না থাকলে সরাসরি active
-            if ($imageCount === 0 && $videoCount === 0) {
+            if ($totalMediaDispatched === 0) {
                 $post->update(['status' => 'active']);
+            } else {
+                // কতটা media pending আছে track করো
+                $post->update(['pending_media_count' => $totalMediaDispatched]);
             }
 
         } else {
-            // Media নেই — সরাসরি active
             $post->update(['status' => 'active']);
         }
 
