@@ -843,63 +843,163 @@ class PostController extends Controller
     // }
 // ========= THIS IS OUR POST STORE FUNCTION WITH 18+ CONTENT FILTER END ==============
 
+    // public function store(Request $request)
+    // {
+    //     $request->validate([
+    //         'content' => 'nullable|string',
+    //         'visibility' => 'required',
+    //         'media.*' => 'nullable|file|max:102400',
+    //         'custom_thumbnail' => 'nullable|image|max:5120', // ইউজার চাইলে নিজের ইমেজ দিতে পারে
+    //     ]);
+
+    //     $member = Auth::guard("member")->user();
+    //     if (!$member) return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
+
+    //     $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+    //     $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
+        
+    //     $post = \App\Models\Post::create([
+    //         'member_id' => $member->id,
+    //         'content' => $request->content,
+    //         'visibility' => $request->visibility,
+    //         'status' => 'pending', 
+    //     ]);
+
+    //     // যদি ইউজার কাস্টম থাম্বনেইল পাঠায়, সেটি সেভ করা
+    //     $customThumbnailPath = null;
+    //     if ($request->hasFile('custom_thumbnail')) {
+    //         $customThumbnailPath = $request->file('custom_thumbnail')->store('temp_thumbnails', 'local');
+    //     }
+
+    //     if ($request->hasFile('media')) {
+    //         foreach ($request->file('media') as $file) {
+    //             $extension = strtolower($file->getClientOriginalExtension());
+    //             $fileNameBase = time() . '-' . uniqid();
+
+    //             if (in_array($extension, $imageExtensions)) {
+    //                 $tempPath = $file->storeAs('temp_images', $fileNameBase . '.' . $extension, 'local');
+    //                 \App\Jobs\ProcessImageUpload::dispatch($post->id, storage_path('app/' . $tempPath), $fileNameBase);
+    //             } 
+    //             elseif (in_array($extension, $videoExtensions)) {
+    //                 $tempPath = $file->storeAs('temp_videos', $fileNameBase . '.' . $extension, 'local');
+                    
+    //                 // --- মূল পরিবর্তন এখানে: ১০ সেকেন্ড ডিলে যুক্ত করা হয়েছে ---
+    //                 \App\Jobs\ProcessVideoSafetyCheck::dispatch(
+    //                     $post->id, 
+    //                     storage_path('app/' . $tempPath),
+    //                     $customThumbnailPath ? storage_path('app/' . $customThumbnailPath) : null
+    //                 )->delay(now()->addSeconds(10)); // এই লাইনটি ১০ সেকেন্ড সময় দেবে ফাইল রাইট হতে
+    //                 // ------------------------------------------------------
+    //             }
+    //         }
+    //     } else {
+    //         $post->update(['status' => 'active']);
+    //     }
+
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'message' => 'Your post is being processed and will be published shortly.',
+    //         'post' => $post->load('media')
+    //     ]);
+    // }
+
+
     public function store(Request $request)
     {
         $request->validate([
-            'content' => 'nullable|string',
-            'visibility' => 'required',
-            'media.*' => 'nullable|file|max:102400',
-            'custom_thumbnail' => 'nullable|image|max:5120', // ইউজার চাইলে নিজের ইমেজ দিতে পারে
+            'content'          => 'nullable|string',
+            'visibility'       => 'required',
+            'media.*'          => 'nullable|file|max:102400',
+            'custom_thumbnail' => 'nullable|image|max:5120',
         ]);
 
         $member = Auth::guard("member")->user();
-        if (!$member) return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
+        if (!$member) {
+            return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
+        }
 
         $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
         $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
-        
+
+        // Post তৈরি করা
         $post = \App\Models\Post::create([
-            'member_id' => $member->id,
-            'content' => $request->content,
+            'member_id'  => $member->id,
+            'content'    => $request->content,
             'visibility' => $request->visibility,
-            'status' => 'pending', 
+            'status'     => 'pending',
         ]);
 
-        // যদি ইউজার কাস্টম থাম্বনেইল পাঠায়, সেটি সেভ করা
+        // Custom thumbnail save
         $customThumbnailPath = null;
         if ($request->hasFile('custom_thumbnail')) {
-            $customThumbnailPath = $request->file('custom_thumbnail')->store('temp_thumbnails', 'local');
+            $customThumbnailPath = $request->file('custom_thumbnail')
+                ->store('temp_thumbnails', 'local');
         }
 
         if ($request->hasFile('media')) {
+            $imageCount = 0;
+            $videoCount = 0;
+
             foreach ($request->file('media') as $file) {
-                $extension = strtolower($file->getClientOriginalExtension());
+                $extension    = strtolower($file->getClientOriginalExtension());
                 $fileNameBase = time() . '-' . uniqid();
 
                 if (in_array($extension, $imageExtensions)) {
-                    $tempPath = $file->storeAs('temp_images', $fileNameBase . '.' . $extension, 'local');
-                    \App\Jobs\ProcessImageUpload::dispatch($post->id, storage_path('app/' . $tempPath), $fileNameBase);
-                } 
-                elseif (in_array($extension, $videoExtensions)) {
-                    $tempPath = $file->storeAs('temp_videos', $fileNameBase . '.' . $extension, 'local');
-                    
-                    // --- মূল পরিবর্তন এখানে: ১০ সেকেন্ড ডিলে যুক্ত করা হয়েছে ---
-                    \App\Jobs\ProcessVideoSafetyCheck::dispatch(
-                        $post->id, 
+                    // সর্বোচ্চ ৩০টি image
+                    if ($imageCount >= 30) continue;
+                    $imageCount++;
+
+                    $tempPath = $file->storeAs(
+                        'temp_images',
+                        $fileNameBase . '.' . $extension,
+                        'local'
+                    );
+
+                    // 'images' queue-এ dispatch
+                    // প্রতিটি image আলাদা worker নেবে — parallel processing
+                    \App\Jobs\ProcessImageUpload::dispatch(
+                        $post->id,
                         storage_path('app/' . $tempPath),
-                        $customThumbnailPath ? storage_path('app/' . $customThumbnailPath) : null
-                    )->delay(now()->addSeconds(10)); // এই লাইনটি ১০ সেকেন্ড সময় দেবে ফাইল রাইট হতে
-                    // ------------------------------------------------------
+                        $fileNameBase
+                    )->onQueue('images');
+
+                } elseif (in_array($extension, $videoExtensions)) {
+                    // সর্বোচ্চ ২টি video
+                    if ($videoCount >= 2) continue;
+                    $videoCount++;
+
+                    $tempPath = $file->storeAs(
+                        'temp_videos',
+                        $fileNameBase . '.' . $extension,
+                        'local'
+                    );
+
+                    // 'videos' queue-এ dispatch
+                    // প্রতিটি video আলাদা worker নেবে — parallel processing
+                    \App\Jobs\ProcessVideoSafetyCheck::dispatch(
+                        $post->id,
+                        storage_path('app/' . $tempPath),
+                        $customThumbnailPath
+                            ? storage_path('app/' . $customThumbnailPath)
+                            : null
+                    )->onQueue('videos')->delay(now()->addSeconds(10));
                 }
             }
+
+            // কোনো valid media না থাকলে সরাসরি active
+            if ($imageCount === 0 && $videoCount === 0) {
+                $post->update(['status' => 'active']);
+            }
+
         } else {
+            // Media নেই — সরাসরি active
             $post->update(['status' => 'active']);
         }
 
         return response()->json([
-            'status' => 'success',
+            'status'  => 'success',
             'message' => 'Your post is being processed and will be published shortly.',
-            'post' => $post->load('media')
+            'post'    => $post->load('media'),
         ]);
     }
 
