@@ -14,7 +14,6 @@ use App\Models\Post_media;
 use App\Traits\NotificationTrait;
 use App\Services\ErrorLogService;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB;
 use FFMpeg\FFMpeg;
 use FFMpeg\FFProbe;
 use FFMpeg\Coordinate\TimeCode;
@@ -25,12 +24,12 @@ class ProcessVideoSafetyCheck implements ShouldQueue
 
     protected $postId, $videoPath, $customThumbPath;
     public $timeout = 1800;
-    public $tries   = 3;
+    public $tries   = 3; // ৩ বার retry হবে
 
     public function __construct($postId, $videoPath, $customThumbPath = null)
     {
-        $this->postId          = $postId;
-        $this->videoPath       = $videoPath;
+        $this->postId        = $postId;
+        $this->videoPath     = $videoPath;
         $this->customThumbPath = $customThumbPath;
     }
 
@@ -60,115 +59,82 @@ class ProcessVideoSafetyCheck implements ShouldQueue
             ]);
             $bucket = $storage->bucket(config('filesystems.disks.gcs.bucket'));
 
-            // ১. Duration
+            // ১. Duration বের করা
             $ffprobe         = FFProbe::create(['ffprobe.binaries' => '/usr/bin/ffprobe']);
             $durationSeconds = (float) $ffprobe->format($this->videoPath)->get('duration');
 
             // ২. Safety check
             $isSafe = $this->runSafetyCheck($keyFileData, $durationSeconds, $tempFiles);
 
-            // ৩. 18+ হলে — শুধু এই video skip, post delete নয়
             if (!$isSafe) {
                 Log::warning("Unsafe content detected in Post ID: {$this->postId}");
-
-                // Pending count কমাও
-                DB::table('posts')
-                    ->where('id', $this->postId)
-                    ->where('pending_media_count', '>', 0)
-                    ->decrement('pending_media_count');
-
-                $post->refresh();
-
-                // Video reject notification
                 try {
                     $this->sendFcmNotification(
                         $post->member_id,
-                        "Video Rejected ❌",
-                        "One of your videos was removed for violating community standards.",
+                        "Video Rejected! ❌",
+                        "Your video contains restricted content and was removed.",
                         ['post_id' => (string) $this->postId, 'reason' => 'unsafe_content'],
                         'post'
                     );
                 } catch (\Exception $e) {
                     Log::error("FCM Rejection Notification Failed: " . $e->getMessage());
                 }
-
-                // বাকি media থাকলে post active, না থাকলে delete
-                if ($post->pending_media_count === 0) {
-                    if ($post->media()->count() > 0) {
-                        $post->update(['status' => 'active']);
-                        $this->sendSuccessNotification($post);
-                    } else {
-                        $post->delete();
-                    }
-                }
-
+                $post->delete();
                 $this->cleanupFiles(array_merge($tempFiles, [$this->videoPath]));
                 return;
             }
 
-            // ৪. Thumbnail + Compression
+            // ৩. Thumbnail + Compression
             $this->generateThumbnail($durationSeconds, $thumbnailPath);
             $this->compressVideo($compressedPath);
 
-            // ৫. GCS Upload
+            // ৪. GCS Upload
             $gcsVideoPath = "posts/videos/" . basename($compressedPath);
             $gcsThumbPath = "posts/thumbnails/" . basename($thumbnailPath);
 
             $bucket->upload(fopen($compressedPath, 'r'), ['name' => $gcsVideoPath]);
             $bucket->upload(fopen($thumbnailPath, 'r'),  ['name' => $gcsThumbPath]);
 
-            // ৬. DB — create করো, updateOrCreate নয়
-            Post_media::create([
-                'post_id'        => $post->id,
-                'path'           => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/{$gcsVideoPath}",
-                'media_type'     => 'video',
-                'thumbnail_path' => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/{$gcsThumbPath}",
-                'duration'       => round($durationSeconds),
-            ]);
+            // ৫. DB Update
+            Post_media::updateOrCreate(
+                ['post_id' => $post->id],
+                [
+                    'path'           => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/{$gcsVideoPath}",
+                    'media_type'     => 'video',
+                    'thumbnail_path' => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/{$gcsThumbPath}",
+                    'duration'       => round($durationSeconds),
+                ]
+            );
 
-            // ৭. Pending count কমাও — atomic
-            DB::table('posts')
-                ->where('id', $this->postId)
-                ->where('pending_media_count', '>', 0)
-                ->decrement('pending_media_count');
+            $post->update(['status' => 'active']);
 
-            $post->refresh();
-
-            // ৮. সব media শেষ হলে post active + একটাই notification
-            if ($post->pending_media_count === 0) {
-                $post->update(['status' => 'active']);
-                $this->sendSuccessNotification($post);
+            try {
+                $this->sendFcmNotification(
+                    $post->member_id,
+                    "Your video is live! ✅",
+                    "Great news! Your video has been processed and is now live.",
+                    ['post_id' => (string) $post->id, 'status' => 'active', 'type' => 'post'],
+                    'post',
+                    (string) $post->id
+                );
+            } catch (\Exception $e) {
+                Log::error("FCM Success Notification Failed: " . $e->getMessage());
             }
 
-            // ৯. Cleanup
+            // ৬. Cleanup
             $this->cleanupFiles(array_merge($tempFiles, [$compressedPath, $thumbnailPath, $this->videoPath]));
 
         } catch (\Exception $e) {
             Log::error("Critical Video Error (Post ID {$this->postId}): " . $e->getMessage());
             $this->cleanupFiles(array_merge($tempFiles, [$compressedPath ?? null, $thumbnailPath ?? null]));
-            throw $e;
+            throw $e; // re-throw — Laravel retry করবে
         }
     }
 
-    // সব media ready হলে একটাই notification
-    private function sendSuccessNotification(Post $post): void
-    {
-        try {
-            $this->sendFcmNotification(
-                $post->member_id,
-                "Your post is live! ✅",
-                "Your post has been processed and is now live.",
-                ['post_id' => (string) $post->id, 'status' => 'active', 'type' => 'post'],
-                'post',
-                (string) $post->id
-            );
-        } catch (\Exception $e) {
-            Log::error("FCM Success Notification Failed (Video): " . $e->getMessage());
-        }
-    }
-
+    // ⚠️ সব retry শেষ হলে এই function call হবে
     public function failed(\Throwable $e): void
     {
+        // ErrorLog-এ save করো
         $error = ErrorLogService::log(
             type:      'job_failed',
             source:    'ProcessVideoSafetyCheck',
@@ -178,8 +144,8 @@ class ProcessVideoSafetyCheck implements ShouldQueue
                 'post_id'    => $this->postId,
                 'video_path' => $this->videoPath,
             ],
-            jobClass:  self::class,
-            jobParams: [
+            jobClass:   self::class,
+            jobParams:  [
                 'postId'          => $this->postId,
                 'videoPath'       => $this->videoPath,
                 'customThumbPath' => $this->customThumbPath,
@@ -187,24 +153,13 @@ class ProcessVideoSafetyCheck implements ShouldQueue
             maxRetries: $this->tries
         );
 
+        // retry count max হয়েছে — critical mark + email
         ErrorLogService::jobFailed($error, $e);
 
-        // Pending count কমাও
-        DB::table('posts')
-            ->where('id', $this->postId)
-            ->where('pending_media_count', '>', 0)
-            ->decrement('pending_media_count');
-
+        // Post pending-এ রাখো
         $post = Post::find($this->postId);
         if ($post) {
-            $post->refresh();
-
-            if ($post->pending_media_count === 0 && $post->media()->count() > 0) {
-                $post->update(['status' => 'active']);
-            } elseif ($post->pending_media_count === 0 && $post->media()->count() === 0) {
-                $post->update(['status' => 'failed']);
-            }
-
+            $post->update(['status' => 'failed']);
             try {
                 $this->sendFcmNotification(
                     $post->member_id,
@@ -225,9 +180,9 @@ class ProcessVideoSafetyCheck implements ShouldQueue
             'ffmpeg.binaries'  => '/usr/bin/ffmpeg',
             'ffprobe.binaries' => '/usr/bin/ffprobe',
         ]);
-        $video          = $ffmpeg->open($this->videoPath);
-        $imageAnnotator = new ImageAnnotatorClient(['credentials' => $keyFileData]);
-        $isSafe         = true;
+        $video           = $ffmpeg->open($this->videoPath);
+        $imageAnnotator  = new ImageAnnotatorClient(['credentials' => $keyFileData]);
+        $isSafe          = true;
 
         for ($i = 1; $i <= 3; $i++) {
             $time      = ($durationSeconds / 4) * $i;
