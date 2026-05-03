@@ -194,6 +194,7 @@ class ProcessImageUpload implements ShouldQueue
         $approvedCount = Post_media::where('post_id', $this->postId)->count();
         $rejectedCount = $post->rejected_media_count ?? 0;
 
+        // approved আছে — active করো
         if ($approvedCount > 0) {
             $post->update(['status' => 'active']);
 
@@ -201,13 +202,8 @@ class ProcessImageUpload implements ShouldQueue
                 $this->sendFcmNotification(
                     $post->member_id,
                     "Your post is live ✅",
-                    "{$approvedCount} image(s) published. {$rejectedCount} image(s) removed for violating community standards.",
-                    [
-                        'post_id'        => (string) $post->id,
-                        'status'         => 'active',
-                        'approved_count' => (string) $approvedCount,
-                        'rejected_count' => (string) $rejectedCount,
-                    ],
+                    "{$approvedCount} image(s) published. {$rejectedCount} image(s) removed.",
+                    ['post_id' => (string) $post->id, 'status' => 'active'],
                     'post',
                     (string) $post->id
                 );
@@ -216,15 +212,13 @@ class ProcessImageUpload implements ShouldQueue
                     $post->member_id,
                     "Your post is live ✅",
                     "All {$approvedCount} image(s) published successfully.",
-                    [
-                        'post_id' => (string) $post->id,
-                        'status'  => 'active',
-                    ],
+                    ['post_id' => (string) $post->id, 'status' => 'active'],
                     'post',
                     (string) $post->id
                 );
             }
 
+        // সব rejected
         } else {
             $post->update(['status' => 'failed']);
 
@@ -232,11 +226,7 @@ class ProcessImageUpload implements ShouldQueue
                 $post->member_id,
                 "Post removed ⚠️",
                 "All {$rejectedCount} image(s) violated our community standards.",
-                [
-                    'post_id'        => (string) $post->id,
-                    'status'         => 'failed',
-                    'rejected_count' => (string) $rejectedCount,
-                ],
+                ['post_id' => (string) $post->id, 'status' => 'failed'],
                 'post'
             );
         }
