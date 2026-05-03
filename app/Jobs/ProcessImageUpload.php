@@ -115,14 +115,8 @@ class ProcessImageUpload implements ShouldQueue
             return;
         }
 
-        // ✅ নতুন — already processed কিনা check
-        // যদি status pending না হয়, মানে সব শেষ হয়ে গেছে
-        if (!in_array($post->status, ['pending'])) {
-            if (file_exists($this->tempPath)) unlink($this->tempPath);
-            return;
-        }
-
-        $uploadSuccess = false;
+        // ❌ আগের check সরিয়ে দাও — এটাই সমস্যা ছিল
+        // status check এখানে করা যাবে না কারণ parallel jobs একে অপরকে block করে
 
         try {
             $keyFileData = config('filesystems.disks.gcs.key_file');
@@ -139,15 +133,13 @@ class ProcessImageUpload implements ShouldQueue
                 Post::where('id', $this->postId)
                     ->update(['rejected_media_count' => DB::raw('rejected_media_count + 1')]);
 
-                $uploadSuccess = false;
-
             } else {
                 $img = Image::make($this->tempPath)->resize(1200, null, function ($constraint) {
                     $constraint->aspectRatio();
                     $constraint->upsize();
                 })->encode('webp', 85);
 
-                $storage  = new StorageClient([
+                $storage = new StorageClient([
                     'projectId' => config('filesystems.disks.gcs.project_id'),
                     'keyFile'   => $keyFileData,
                 ]);
@@ -164,43 +156,38 @@ class ProcessImageUpload implements ShouldQueue
                     'media_type' => 'image',
                     'path'       => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $fileName,
                 ]);
-
-                $uploadSuccess = true;
             }
 
         } catch (\Exception $e) {
             \Log::error("Image Processing Error: " . $e->getMessage());
-            $uploadSuccess = false;
             throw $e;
         } finally {
             if (file_exists($this->tempPath)) unlink($this->tempPath);
         }
 
-        $this->finalizeMediaProcessing($post);
+        $this->finalizeMediaProcessing();
     }
 
-    protected function finalizeMediaProcessing($post)
+    protected function finalizeMediaProcessing()
     {
-        // ৬. Atomic decrement — 10টা job parallel চললেও safe
+        // Atomic decrement
         Post::where('id', $this->postId)
             ->update(['pending_media_count' => DB::raw('GREATEST(pending_media_count - 1, 0)')]);
 
-        // ৭. এখন check করো — সব job শেষ হয়েছে কিনা
-        // updateOrFail দিয়ে শুধু একটাই job "finalize" করবে — race condition বন্ধ
+        // ✅ শুধু একটাই Job এই update করতে পারবে
+        // 'pending' থেকে 'processing_done' — MySQL level-এ atomic
         $updated = Post::where('id', $this->postId)
-            ->where('pending_media_count', 0)  // শুধু তখনই
-            ->where('status', 'pending')        // একবারই চলবে
-            ->update(['status' => 'processing_done']); // temp status
+            ->where('pending_media_count', 0)
+            ->where('status', 'pending')
+            ->update(['status' => 'processing_done']);
 
-        // ৮. শুধু একটাই job এই block-এ ঢুকবে (যে update করতে পেরেছে)
         if ($updated === 1) {
-            $this->sendFinalNotification($post);
+            $this->sendFinalNotification();
         }
     }
 
-    protected function sendFinalNotification($post)
+    protected function sendFinalNotification()
     {
-        // ৯. Fresh data নাও
         $post = Post::find($this->postId);
         if (!$post) return;
 
@@ -208,12 +195,9 @@ class ProcessImageUpload implements ShouldQueue
         $rejectedCount = $post->rejected_media_count ?? 0;
 
         if ($approvedCount > 0) {
-            // ১০. Post active করো
             $post->update(['status' => 'active']);
 
-            // ১১. একটাই notification — সব info একসাথে
             if ($rejectedCount > 0) {
-                // কিছু approved, কিছু rejected
                 $this->sendFcmNotification(
                     $post->member_id,
                     "Your post is live ✅",
@@ -228,7 +212,6 @@ class ProcessImageUpload implements ShouldQueue
                     (string) $post->id
                 );
             } else {
-                // সব approved
                 $this->sendFcmNotification(
                     $post->member_id,
                     "Your post is live ✅",
@@ -243,13 +226,12 @@ class ProcessImageUpload implements ShouldQueue
             }
 
         } else {
-            // ১২. সব rejected — post failed
             $post->update(['status' => 'failed']);
 
             $this->sendFcmNotification(
                 $post->member_id,
                 "Post removed ⚠️",
-                "All {$rejectedCount} image(s) violated our community standards. Your post has been removed.",
+                "All {$rejectedCount} image(s) violated our community standards.",
                 [
                     'post_id'        => (string) $post->id,
                     'status'         => 'failed',
@@ -283,8 +265,7 @@ class ProcessImageUpload implements ShouldQueue
 
         ErrorLogService::jobFailed($error, $e);
 
-        // ১৩. Failed job-এর জন্যও pending count কমাও
-        // নাহলে post সারাজীবন pending থাকবে
-        $this->finalizeMediaProcessing(Post::find($this->postId) ?? new Post(['id' => $this->postId]));
+        // Failed job-এর জন্যও count কমাও
+        $this->finalizeMediaProcessing();
     }
 }
