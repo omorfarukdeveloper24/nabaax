@@ -1101,6 +1101,126 @@ class PostController extends Controller
     // }
 
 
+    // public function store(Request $request)
+    // {
+    //     $request->validate([
+    //         'content'          => 'nullable|string',
+    //         'visibility'       => 'required',
+    //         'media.*'          => 'nullable|file|max:102400',
+    //         'custom_thumbnail' => 'nullable|image|max:5120',
+    //     ]);
+
+    //     $member = Auth::guard("member")->user();
+    //     if (!$member) {
+    //         return response()->json(['status' => 'failed', 'message' => 'Unauthorized'], 401);
+    //     }
+
+    //     $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+    //     $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
+
+    //     // --- লিমিট চেক লজিক শুরু ---
+    //     if ($request->hasFile('media')) {
+    //         $checkImageCount = 0;
+    //         $checkVideoCount = 0;
+
+    //         foreach ($request->file('media') as $file) {
+    //             $ext = strtolower($file->getClientOriginalExtension());
+    //             if (in_array($ext, $imageExtensions)) {
+    //                 $checkImageCount++;
+    //             } elseif (in_array($ext, $videoExtensions)) {
+    //                 $checkVideoCount++;
+    //             }
+    //         }
+
+    //         if ($checkImageCount > 30) {
+    //             return response()->json(['status' => 'failed', 'message' => 'Only 30 images you can post'], 400);
+    //         }
+
+    //         if ($checkVideoCount > 1) {
+    //             return response()->json(['status' => 'failed', 'message' => 'Only one video you can post'], 400);
+    //         }
+    //     }
+    //     // --- লিমিট চেক লজিক শেষ ---
+
+    //     $post = \App\Models\Post::create([
+    //         'member_id'  => $member->id,
+    //         'content'    => $request->content,
+    //         'visibility' => $request->visibility,
+    //         'status'     => 'pending',
+    //     ]);
+
+    //     $customThumbnailPath = null;
+    //     if ($request->hasFile('custom_thumbnail')) {
+    //         $customThumbnailPath = $request->file('custom_thumbnail')
+    //             ->store('temp_thumbnails', 'local');
+    //     }
+
+    //     if ($request->hasFile('media')) {
+    //         $imageCount           = 0;
+    //         $videoCount           = 0;
+    //         $totalMediaDispatched = 0;
+
+    //         foreach ($request->file('media') as $file) {
+    //             $extension    = strtolower($file->getClientOriginalExtension());
+    //             $fileNameBase = time() . '-' . uniqid();
+
+    //             if (in_array($extension, $imageExtensions)) {
+    //                 if ($imageCount >= 30) continue;
+    //                 $imageCount++;
+    //                 $totalMediaDispatched++;
+
+    //                 $tempPath = $file->storeAs(
+    //                     'temp_images',
+    //                     $fileNameBase . '.' . $extension,
+    //                     'local'
+    //                 );
+
+    //                 \App\Jobs\ProcessImageUpload::dispatch(
+    //                     $post->id,
+    //                     storage_path('app/' . $tempPath),
+    //                     $fileNameBase
+    //                 )->onQueue('images');
+
+    //             } elseif (in_array($extension, $videoExtensions)) {
+    //                 if ($videoCount >= 1) continue;
+    //                 $videoCount++;
+    //                 $totalMediaDispatched++;
+
+    //                 $tempPath = $file->storeAs(
+    //                     'temp_videos',
+    //                     $fileNameBase . '.' . $extension,
+    //                     'local'
+    //                 );
+
+    //                 \App\Jobs\ProcessVideoSafetyCheck::dispatch(
+    //                     $post->id,
+    //                     storage_path('app/' . $tempPath),
+    //                     $customThumbnailPath
+    //                         ? storage_path('app/' . $customThumbnailPath)
+    //                         : null
+    //                 )->onQueue('videos')->delay(now()->addSeconds(10));
+    //             }
+    //         }
+
+    //         if ($totalMediaDispatched === 0) {
+    //             $post->update(['status' => 'active']);
+    //         } else {
+    //             $post->update(['pending_media_count' => $totalMediaDispatched]);
+    //         }
+
+    //     } else {
+    //         $post->update(['status' => 'active']);
+    //     }
+
+    //     return response()->json([
+    //         'status'  => 'success',
+    //         'message' => 'Your post is being processed and will be published shortly.',
+    //         'post'    => $post->load('media'),
+    //     ]);
+    // }
+
+
+
     public function store(Request $request)
     {
         $request->validate([
@@ -1118,98 +1238,87 @@ class PostController extends Controller
         $imageExtensions = ['jpg', 'jpeg', 'png', 'webp'];
         $videoExtensions = ['mp4', 'mov', 'avi', 'mkv', 'webm'];
 
-        // --- লিমিট চেক লজিক শুরু ---
         if ($request->hasFile('media')) {
             $checkImageCount = 0;
             $checkVideoCount = 0;
 
             foreach ($request->file('media') as $file) {
                 $ext = strtolower($file->getClientOriginalExtension());
-                if (in_array($ext, $imageExtensions)) {
-                    $checkImageCount++;
-                } elseif (in_array($ext, $videoExtensions)) {
-                    $checkVideoCount++;
-                }
+                if (in_array($ext, $imageExtensions)) $checkImageCount++;
+                elseif (in_array($ext, $videoExtensions)) $checkVideoCount++;
             }
 
             if ($checkImageCount > 30) {
                 return response()->json(['status' => 'failed', 'message' => 'Only 30 images you can post'], 400);
             }
-
             if ($checkVideoCount > 1) {
                 return response()->json(['status' => 'failed', 'message' => 'Only one video you can post'], 400);
             }
         }
-        // --- লিমিট চেক লজিক শেষ ---
 
-        $post = \App\Models\Post::create([
-            'member_id'  => $member->id,
-            'content'    => $request->content,
-            'visibility' => $request->visibility,
-            'status'     => 'pending',
-        ]);
-
-        $customThumbnailPath = null;
-        if ($request->hasFile('custom_thumbnail')) {
-            $customThumbnailPath = $request->file('custom_thumbnail')
-                ->store('temp_thumbnails', 'local');
-        }
+        // ১. আগে count বের করো
+        $totalMediaDispatched = 0;
+        $filesToProcess = [];
 
         if ($request->hasFile('media')) {
-            $imageCount           = 0;
-            $videoCount           = 0;
-            $totalMediaDispatched = 0;
+            $imageCount = 0;
+            $videoCount = 0;
 
             foreach ($request->file('media') as $file) {
                 $extension    = strtolower($file->getClientOriginalExtension());
                 $fileNameBase = time() . '-' . uniqid();
 
-                if (in_array($extension, $imageExtensions)) {
-                    if ($imageCount >= 30) continue;
+                if (in_array($extension, $imageExtensions) && $imageCount < 30) {
                     $imageCount++;
                     $totalMediaDispatched++;
-
-                    $tempPath = $file->storeAs(
-                        'temp_images',
-                        $fileNameBase . '.' . $extension,
-                        'local'
-                    );
-
-                    \App\Jobs\ProcessImageUpload::dispatch(
-                        $post->id,
-                        storage_path('app/' . $tempPath),
-                        $fileNameBase
-                    )->onQueue('images');
-
-                } elseif (in_array($extension, $videoExtensions)) {
-                    if ($videoCount >= 1) continue;
+                    $tempPath = $file->storeAs('temp_images', $fileNameBase . '.' . $extension, 'local');
+                    $filesToProcess[] = [
+                        'type'         => 'image',
+                        'tempPath'     => $tempPath,
+                        'fileNameBase' => $fileNameBase,
+                    ];
+                } elseif (in_array($extension, $videoExtensions) && $videoCount < 1) {
                     $videoCount++;
                     $totalMediaDispatched++;
-
-                    $tempPath = $file->storeAs(
-                        'temp_videos',
-                        $fileNameBase . '.' . $extension,
-                        'local'
-                    );
-
-                    \App\Jobs\ProcessVideoSafetyCheck::dispatch(
-                        $post->id,
-                        storage_path('app/' . $tempPath),
-                        $customThumbnailPath
-                            ? storage_path('app/' . $customThumbnailPath)
-                            : null
-                    )->onQueue('videos')->delay(now()->addSeconds(10));
+                    $tempPath = $file->storeAs('temp_videos', $fileNameBase . '.' . $extension, 'local');
+                    $filesToProcess[] = [
+                        'type'     => 'video',
+                        'tempPath' => $tempPath,
+                    ];
                 }
             }
+        }
 
-            if ($totalMediaDispatched === 0) {
-                $post->update(['status' => 'active']);
+        $customThumbnailPath = null;
+        if ($request->hasFile('custom_thumbnail')) {
+            $customThumbnailPath = $request->file('custom_thumbnail')->store('temp_thumbnails', 'local');
+        }
+
+        // ২. Post create করো — count সহ একসাথে
+        $post = \App\Models\Post::create([
+            'member_id'           => $member->id,
+            'content'             => $request->content,
+            'visibility'          => $request->visibility,
+            // ৩. এখানেই pending_media_count set করো — dispatch-এর আগে
+            'pending_media_count' => $totalMediaDispatched,
+            'status'              => $totalMediaDispatched > 0 ? 'pending' : 'active',
+        ]);
+
+        // ৪. এখন dispatch করো — count DB-তে save হওয়ার পরে
+        foreach ($filesToProcess as $file) {
+            if ($file['type'] === 'image') {
+                \App\Jobs\ProcessImageUpload::dispatch(
+                    $post->id,
+                    storage_path('app/' . $file['tempPath']),
+                    $file['fileNameBase']
+                )->onQueue('images');
             } else {
-                $post->update(['pending_media_count' => $totalMediaDispatched]);
+                \App\Jobs\ProcessVideoSafetyCheck::dispatch(
+                    $post->id,
+                    storage_path('app/' . $file['tempPath']),
+                    $customThumbnailPath ? storage_path('app/' . $customThumbnailPath) : null
+                )->onQueue('videos')->delay(now()->addSeconds(10));
             }
-
-        } else {
-            $post->update(['status' => 'active']);
         }
 
         return response()->json([

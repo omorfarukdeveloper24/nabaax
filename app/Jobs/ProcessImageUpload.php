@@ -32,6 +32,80 @@ class ProcessImageUpload implements ShouldQueue
         $this->fileNameBase = $fileNameBase;
     }
 
+    // public function handle()
+    // {
+    //     $post = Post::find($this->postId);
+
+    //     if (!$post) {
+    //         if (file_exists($this->tempPath)) unlink($this->tempPath);
+    //         return;
+    //     }
+
+    //     $uploadSuccess = false;
+
+    //     try {
+    //         $keyFileData = config('filesystems.disks.gcs.key_file');
+
+    //         // ১. Vision API Safety Check
+    //         $imageAnnotator = new ImageAnnotatorClient(['credentials' => $keyFileData]);
+    //         $content        = file_get_contents($this->tempPath);
+    //         $response       = $imageAnnotator->safeSearchDetection($content);
+    //         $safe           = $response->getSafeSearchAnnotation();
+    //         $imageAnnotator->close();
+
+    //         // ২. 18+ ধরা পড়লে — শুধু এই image skip, post delete নয়
+    //         if ($safe->getAdult() >= 4 || $safe->getRacy() >= 4) {
+    //             \Log::warning("18+ image skipped. Post ID: {$this->postId}, File: {$this->fileNameBase}");
+
+    //             // rejected_media_count বাড়াও — atomic
+    //             // ৩. DB::raw দিয়ে atomic increment — race condition নেই
+    //             Post::where('id', $this->postId)
+    //                 ->update(['rejected_media_count' => DB::raw('rejected_media_count + 1')]);
+
+    //             $uploadSuccess = false; // এই image upload হয়নি
+
+    //         } else {
+    //             // ৩. Image Processing
+    //             $img = Image::make($this->tempPath)->resize(1200, null, function ($constraint) {
+    //                 $constraint->aspectRatio();
+    //                 $constraint->upsize();
+    //             })->encode('webp', 85);
+
+    //             // ৪. GCS Upload
+    //             $storage  = new StorageClient([
+    //                 'projectId' => config('filesystems.disks.gcs.project_id'),
+    //                 'keyFile'   => $keyFileData,
+    //             ]);
+    //             $bucket   = $storage->bucket(config('filesystems.disks.gcs.bucket'));
+    //             $fileName = "posts/images/{$this->fileNameBase}.webp";
+
+    //             $bucket->upload((string) $img, [
+    //                 'name'     => $fileName,
+    //                 'metadata' => ['contentType' => 'image/webp'],
+    //             ]);
+
+    //             Post_media::create([
+    //                 'post_id'    => $this->postId,
+    //                 'media_type' => 'image',
+    //                 'path'       => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $fileName,
+    //             ]);
+
+    //             $uploadSuccess = true;
+    //         }
+
+    //     } catch (\Exception $e) {
+    //         \Log::error("Image Processing Error: " . $e->getMessage());
+    //         $uploadSuccess = false;
+    //         throw $e; // retry হবে
+    //     } finally {
+    //         if (file_exists($this->tempPath)) unlink($this->tempPath);
+    //     }
+
+    //     // ৫. সব শেষে pending count কমাও এবং চেক করো
+    //     $this->finalizeMediaProcessing($post);
+    // }
+
+
     public function handle()
     {
         $post = Post::find($this->postId);
@@ -41,37 +115,38 @@ class ProcessImageUpload implements ShouldQueue
             return;
         }
 
+        // ✅ নতুন — already processed কিনা check
+        // যদি status pending না হয়, মানে সব শেষ হয়ে গেছে
+        if (!in_array($post->status, ['pending'])) {
+            if (file_exists($this->tempPath)) unlink($this->tempPath);
+            return;
+        }
+
         $uploadSuccess = false;
 
         try {
             $keyFileData = config('filesystems.disks.gcs.key_file');
 
-            // ১. Vision API Safety Check
             $imageAnnotator = new ImageAnnotatorClient(['credentials' => $keyFileData]);
             $content        = file_get_contents($this->tempPath);
             $response       = $imageAnnotator->safeSearchDetection($content);
             $safe           = $response->getSafeSearchAnnotation();
             $imageAnnotator->close();
 
-            // ২. 18+ ধরা পড়লে — শুধু এই image skip, post delete নয়
             if ($safe->getAdult() >= 4 || $safe->getRacy() >= 4) {
                 \Log::warning("18+ image skipped. Post ID: {$this->postId}, File: {$this->fileNameBase}");
 
-                // rejected_media_count বাড়াও — atomic
-                // ৩. DB::raw দিয়ে atomic increment — race condition নেই
                 Post::where('id', $this->postId)
                     ->update(['rejected_media_count' => DB::raw('rejected_media_count + 1')]);
 
-                $uploadSuccess = false; // এই image upload হয়নি
+                $uploadSuccess = false;
 
             } else {
-                // ৩. Image Processing
                 $img = Image::make($this->tempPath)->resize(1200, null, function ($constraint) {
                     $constraint->aspectRatio();
                     $constraint->upsize();
                 })->encode('webp', 85);
 
-                // ৪. GCS Upload
                 $storage  = new StorageClient([
                     'projectId' => config('filesystems.disks.gcs.project_id'),
                     'keyFile'   => $keyFileData,
@@ -96,12 +171,11 @@ class ProcessImageUpload implements ShouldQueue
         } catch (\Exception $e) {
             \Log::error("Image Processing Error: " . $e->getMessage());
             $uploadSuccess = false;
-            throw $e; // retry হবে
+            throw $e;
         } finally {
             if (file_exists($this->tempPath)) unlink($this->tempPath);
         }
 
-        // ৫. সব শেষে pending count কমাও এবং চেক করো
         $this->finalizeMediaProcessing($post);
     }
 
