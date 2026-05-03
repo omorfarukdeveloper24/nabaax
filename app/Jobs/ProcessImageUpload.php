@@ -14,6 +14,7 @@ use App\Models\Post;
 use App\Models\Post_media;
 use App\Traits\NotificationTrait;
 use App\Services\ErrorLogService;
+use Illuminate\Support\Facades\DB;
 
 class ProcessImageUpload implements ShouldQueue
 {
@@ -21,8 +22,8 @@ class ProcessImageUpload implements ShouldQueue
 
     protected $postId, $tempPath, $fileNameBase;
 
-    public int $tries   = 3;  // ৩ বার retry
-    public int $backoff = 30; // ৩০ সেকেন্ড পর retry
+    public int $tries   = 3;
+    public int $backoff = 30;
 
     public function __construct($postId, $tempPath, $fileNameBase)
     {
@@ -33,7 +34,6 @@ class ProcessImageUpload implements ShouldQueue
 
     public function handle()
     {
-        // ১. lockForUpdate() এখানে সরাসরি না ব্যবহার করে কাউন্ট কমানোর সময় ব্যবহার করা ভালো।
         $post = Post::find($this->postId);
 
         if (!$post) {
@@ -41,215 +41,162 @@ class ProcessImageUpload implements ShouldQueue
             return;
         }
 
+        $uploadSuccess = false;
+
         try {
             $keyFileData = config('filesystems.disks.gcs.key_file');
-            
-            // ২. Vision API Safety Check
+
+            // ১. Vision API Safety Check
             $imageAnnotator = new ImageAnnotatorClient(['credentials' => $keyFileData]);
-            $content = file_get_contents($this->tempPath);
-            $response = $imageAnnotator->safeSearchDetection($content);
-            $safe = $response->getSafeSearchAnnotation();
+            $content        = file_get_contents($this->tempPath);
+            $response       = $imageAnnotator->safeSearchDetection($content);
+            $safe           = $response->getSafeSearchAnnotation();
             $imageAnnotator->close();
 
-            // ১৮+ ইমেজ ডিটেকশন
+            // ২. 18+ ধরা পড়লে — শুধু এই image skip, post delete নয়
             if ($safe->getAdult() >= 4 || $safe->getRacy() >= 4) {
-                \Log::warning("Inappropriate image skipped for Post ID: {$this->postId}");
-                
-                // ৩. এখানে একটি কাস্টম কলাম বা ফ্ল্যাগ ব্যবহার করলে ভালো হয় ইউজারকে জানানোর জন্য যে "কিছু ইমেজ বাদ গেছে"
-                // আপাতত আপনার রিকোয়ারমেন্ট অনুযায়ী শুধু কাউন্ট কমিয়ে প্রসেস শেষ করছি।
-                $this->finalizeMediaProcessing($post, false); 
-                return;
+                \Log::warning("18+ image skipped. Post ID: {$this->postId}, File: {$this->fileNameBase}");
+
+                // rejected_media_count বাড়াও — atomic
+                // ৩. DB::raw দিয়ে atomic increment — race condition নেই
+                Post::where('id', $this->postId)
+                    ->update(['rejected_media_count' => DB::raw('rejected_media_count + 1')]);
+
+                $uploadSuccess = false; // এই image upload হয়নি
+
+            } else {
+                // ৩. Image Processing
+                $img = Image::make($this->tempPath)->resize(1200, null, function ($constraint) {
+                    $constraint->aspectRatio();
+                    $constraint->upsize();
+                })->encode('webp', 85);
+
+                // ৪. GCS Upload
+                $storage  = new StorageClient([
+                    'projectId' => config('filesystems.disks.gcs.project_id'),
+                    'keyFile'   => $keyFileData,
+                ]);
+                $bucket   = $storage->bucket(config('filesystems.disks.gcs.bucket'));
+                $fileName = "posts/images/{$this->fileNameBase}.webp";
+
+                $bucket->upload((string) $img, [
+                    'name'     => $fileName,
+                    'metadata' => ['contentType' => 'image/webp'],
+                ]);
+
+                Post_media::create([
+                    'post_id'    => $this->postId,
+                    'media_type' => 'image',
+                    'path'       => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $fileName,
+                ]);
+
+                $uploadSuccess = true;
             }
-
-            // ৪. ইমেজ প্রসেসিং এবং আপলোড
-            $img = Image::make($this->tempPath)->resize(1200, null, function ($constraint) {
-                $constraint->aspectRatio();
-                $constraint->upsize();
-            })->encode('webp', 85);
-
-            $storage = new StorageClient([
-                'projectId' => config('filesystems.disks.gcs.project_id'),
-                'keyFile'   => $keyFileData,
-            ]);
-            $bucket = $storage->bucket(config('filesystems.disks.gcs.bucket'));
-            $fileName = "posts/images/{$this->fileNameBase}.webp";
-
-            $bucket->upload((string) $img, [
-                'name'     => $fileName,
-                'metadata' => ['contentType' => 'image/webp'],
-            ]);
-
-            Post_media::create([
-                'post_id'    => $this->postId,
-                'media_type' => 'image',
-                'path'       => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $fileName,
-            ]);
-
-            $this->finalizeMediaProcessing($post, true);
 
         } catch (\Exception $e) {
             \Log::error("Image Processing Error: " . $e->getMessage());
-            // ৫. জবে এরর আসলেও কাউন্ট কমাতে হবে নাহলে পোস্ট সারাজীবন 'pending' থেকে যাবে
-            $this->finalizeMediaProcessing($post, false); 
-            throw $e;
+            $uploadSuccess = false;
+            throw $e; // retry হবে
         } finally {
             if (file_exists($this->tempPath)) unlink($this->tempPath);
         }
+
+        // ৫. সব শেষে pending count কমাও এবং চেক করো
+        $this->finalizeMediaProcessing($post);
     }
 
-    protected function finalizeMediaProcessing($post, $isSuccess)
+    protected function finalizeMediaProcessing($post)
     {
-        // ১. কাউন্ট কমানো
-        $post->decrement('pending_media_count');
+        // ৬. Atomic decrement — 10টা job parallel চললেও safe
+        Post::where('id', $this->postId)
+            ->update(['pending_media_count' => DB::raw('GREATEST(pending_media_count - 1, 0)')]);
 
-        // ২. লেটেস্ট ডাটা রিফ্রেশ করা
-        $post = $post->fresh();
+        // ৭. এখন check করো — সব job শেষ হয়েছে কিনা
+        // updateOrFail দিয়ে শুধু একটাই job "finalize" করবে — race condition বন্ধ
+        $updated = Post::where('id', $this->postId)
+            ->where('pending_media_count', 0)  // শুধু তখনই
+            ->where('status', 'pending')        // একবারই চলবে
+            ->update(['status' => 'processing_done']); // temp status
 
-        // ৩. সব ইমেজ প্রসেসিং শেষ হলে (কাউন্ট ০ বা তার কম)
-        if ($post->pending_media_count <= 0) {
-            
-            // ৪. গেটকিপার: যদি অলরেডি স্ট্যাটাস আপডেট হয়ে যায়, তবে আর এগোবে না (ডাবল নোটিফিকেশন বন্ধ করবে)
-            if ($post->status !== 'pending') {
-                return;
-            }
+        // ৮. শুধু একটাই job এই block-এ ঢুকবে (যে update করতে পেরেছে)
+        if ($updated === 1) {
+            $this->sendFinalNotification($post);
+        }
+    }
 
-            // ৫. চেক করুন অন্তত একটি মিডিয়া সেভ হয়েছে কি না
-            $savedMediaCount = Post_media::where('post_id', $post->id)->count();
-            
-            if ($savedMediaCount > 0) {
-                // ৬. পোস্টটি একটিভ করা (নোটিফিকেশনের আগে আপডেট করা সেফ)
-                $post->update(['status' => 'active']);
-                
-                // প্রফেশনাল সাকসেস মেসেজ
+    protected function sendFinalNotification($post)
+    {
+        // ৯. Fresh data নাও
+        $post = Post::find($this->postId);
+        if (!$post) return;
+
+        $approvedCount = Post_media::where('post_id', $this->postId)->count();
+        $rejectedCount = $post->rejected_media_count ?? 0;
+
+        if ($approvedCount > 0) {
+            // ১০. Post active করো
+            $post->update(['status' => 'active']);
+
+            // ১১. একটাই notification — সব info একসাথে
+            if ($rejectedCount > 0) {
+                // কিছু approved, কিছু rejected
                 $this->sendFcmNotification(
                     $post->member_id,
-                    "Your post is live! ✅", // টাইটেল
-                    "Great news! Your media has been processed successfully and your post is now visible.", // বডি
-                    ['post_id' => (string) $post->id, 'status' => 'active'],
+                    "Your post is live ✅",
+                    "{$approvedCount} image(s) published. {$rejectedCount} image(s) removed for violating community standards.",
+                    [
+                        'post_id'        => (string) $post->id,
+                        'status'         => 'active',
+                        'approved_count' => (string) $approvedCount,
+                        'rejected_count' => (string) $rejectedCount,
+                    ],
                     'post',
                     (string) $post->id
                 );
             } else {
-                // যদি একটি ইমেজও গাইডলাইন মেনে না চলে
-                $post->update(['status' => 'failed']);
-                
-                // প্রফেশনাল ফেইল মেসেজ (নেতিবাচক শব্দ এড়িয়ে)
+                // সব approved
                 $this->sendFcmNotification(
                     $post->member_id,
-                    "Update on your post ⚠️", 
-                    "We couldn't complete your post because the uploaded media didn't meet our community standards.", 
-                    ['post_id' => (string) $post->id, 'status' => 'failed'],
-                    'post'
+                    "Your post is live ✅",
+                    "All {$approvedCount} image(s) published successfully.",
+                    [
+                        'post_id' => (string) $post->id,
+                        'status'  => 'active',
+                    ],
+                    'post',
+                    (string) $post->id
                 );
             }
+
+        } else {
+            // ১২. সব rejected — post failed
+            $post->update(['status' => 'failed']);
+
+            $this->sendFcmNotification(
+                $post->member_id,
+                "Post removed ⚠️",
+                "All {$rejectedCount} image(s) violated our community standards. Your post has been removed.",
+                [
+                    'post_id'        => (string) $post->id,
+                    'status'         => 'failed',
+                    'rejected_count' => (string) $rejectedCount,
+                ],
+                'post'
+            );
         }
     }
 
-    // public function handle()
-    // {
-    //     $post = Post::find($this->postId);
-
-    //     if (!$post) {
-    //         if (file_exists($this->tempPath)) unlink($this->tempPath);
-    //         \Log::info("Post not found, skipping job: " . $this->postId);
-    //         return;
-    //     }
-
-    //     $memberId = $post->member_id;
-
-    //     try {
-    //         $keyFileData = config('filesystems.disks.gcs.key_file');
-
-    //         // ১. Vision API safety check
-    //         $imageAnnotator = new ImageAnnotatorClient(['credentials' => $keyFileData]);
-    //         $content        = file_get_contents($this->tempPath);
-    //         $response       = $imageAnnotator->safeSearchDetection($content);
-    //         $safe           = $response->getSafeSearchAnnotation();
-    //         $imageAnnotator->close();
-
-    //         if ($safe->getAdult() >= 4 || $safe->getRacy() >= 4) {
-    //             \Log::warning("Inappropriate image detected for Post ID: {$this->postId}");
-    //             try {
-    //                 $this->sendFcmNotification(
-    //                     $memberId,
-    //                     "We removed your post ⚠️",
-    //                     "Because it goes against our Community Standards.",
-    //                     ['post_id' => (string) $this->postId, 'reason' => 'community_guidelines'],
-    //                     'post'
-    //                 );
-    //             } catch (\Exception $e) {
-    //                 \Log::error("FCM Rejection Notification Failed (Image): " . $e->getMessage());
-    //             }
-    //             $post->delete();
-    //             return;
-    //         }
-
-    //         // ২. Image resize
-    //         $img = Image::make($this->tempPath)->resize(1200, null, function ($constraint) {
-    //             $constraint->aspectRatio();
-    //             $constraint->upsize();
-    //         })->encode('webp', 85);
-
-    //         // ৩. GCS upload
-    //         $storage  = new StorageClient([
-    //             'projectId' => config('filesystems.disks.gcs.project_id'),
-    //             'keyFile'   => $keyFileData,
-    //         ]);
-    //         $bucket   = $storage->bucket(config('filesystems.disks.gcs.bucket'));
-    //         $fileName = "posts/images/{$this->fileNameBase}.webp";
-
-    //         $bucket->upload((string) $img, [
-    //             'name'     => $fileName,
-    //             'metadata' => ['contentType' => 'image/webp'],
-    //         ]);
-
-    //         // ৪. Media record
-    //         Post_media::create([
-    //             'post_id'    => $this->postId,
-    //             'media_type' => 'image',
-    //             'path'       => "https://storage.googleapis.com/" . config('filesystems.disks.gcs.bucket') . "/" . $fileName,
-    //         ]);
-
-    //         // ৫. Post active
-    //         $post = Post::find($this->postId);
-    //         if ($post) {
-    //             $post->update(['status' => 'active']);
-    //             try {
-    //                 $this->sendFcmNotification(
-    //                     $post->member_id,
-    //                     "Your post is ready to view ✅",
-    //                     "Your upload was successful and your post is now live.",
-    //                     ['post_id' => (string) $post->id, 'status' => 'active'],
-    //                     'post',
-    //                     (string) $post->id
-    //                 );
-    //             } catch (\Exception $e) {
-    //                 \Log::error("FCM Success Notification Failed (Image): " . $e->getMessage());
-    //             }
-    //         }
-
-    //     } catch (\Exception $e) {
-    //         \Log::error("Image Processing Error: " . $e->getMessage());
-    //         throw $e; // re-throw — Laravel retry করবে
-    //     } finally {
-    //         if (file_exists($this->tempPath)) {
-    //             unlink($this->tempPath);
-    //         }
-    //     }
-    // }
-
-    // ⚠️ সব retry শেষ হলে এই function call হবে
     public function failed(\Throwable $e): void
     {
-        // ErrorLog-এ save
         $error = ErrorLogService::log(
             type:      'job_failed',
             source:    'ProcessImageUpload',
             message:   $e->getMessage(),
             exception: $e,
             context:   [
-                'post_id'   => $this->postId,
-                'temp_path' => $this->tempPath,
+                'post_id'        => $this->postId,
+                'temp_path'      => $this->tempPath,
+                'file_name_base' => $this->fileNameBase,
             ],
             jobClass:  self::class,
             jobParams: [
@@ -260,26 +207,10 @@ class ProcessImageUpload implements ShouldQueue
             maxRetries: $this->tries
         );
 
-        // Critical mark + email
         ErrorLogService::jobFailed($error, $e);
 
-        // Post failed করো + user notification
-        $post = Post::find($this->postId);
-        if ($post) {
-            $post->update(['status' => 'failed']);
-            try {
-                $this->sendFcmNotification(
-                    $post->member_id,
-                    "Image processing failed ⚠️",
-                    "We are looking into it. Please try again later.",
-                    ['post_id' => (string) $this->postId],
-                    'post'
-                );
-            } catch (\Exception $ex) {
-                \Log::error("FCM Failed Notification Error: " . $ex->getMessage());
-            }
-        }
+        // ১৩. Failed job-এর জন্যও pending count কমাও
+        // নাহলে post সারাজীবন pending থাকবে
+        $this->finalizeMediaProcessing(Post::find($this->postId) ?? new Post(['id' => $this->postId]));
     }
-
-
 }
