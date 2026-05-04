@@ -194,23 +194,25 @@ class ProcessImageUpload implements ShouldQueue
         $approvedCount = Post_media::where('post_id', $this->postId)->count();
         $rejectedCount = $post->rejected_media_count ?? 0;
 
-        // approved আছে — active করো
         if ($approvedCount > 0) {
+            // ১. অন্তত একটি ইমেজ অ্যাপ্রুভ হয়েছে — Status: Active
             $post->update(['status' => 'active']);
 
             if ($rejectedCount > 0) {
+                // কিছু অ্যাপ্রুভড, কিছু রিজেক্টেড
                 $this->sendFcmNotification(
                     $post->member_id,
-                    "Your post is live ✅",
-                    "{$approvedCount} image(s) published. {$rejectedCount} image(s) removed.",
+                    "1..Your post is live ✅",
+                    "{$approvedCount} image(s) published. {$rejectedCount} image(s) violated our community standards.",
                     ['post_id' => (string) $post->id, 'status' => 'active'],
                     'post',
                     (string) $post->id
                 );
             } else {
+                // সব অ্যাপ্রুভড
                 $this->sendFcmNotification(
                     $post->member_id,
-                    "Your post is live ✅",
+                    "2..Your post is live ✅",
                     "All {$approvedCount} image(s) published successfully.",
                     ['post_id' => (string) $post->id, 'status' => 'active'],
                     'post',
@@ -218,17 +220,37 @@ class ProcessImageUpload implements ShouldQueue
                 );
             }
 
-        // সব rejected
         } else {
-            $post->update(['status' => 'failed']);
+            // ২. কোনো অ্যাপ্রুভড ইমেজ নেই (approvedCount == 0)
+            
+            // চেক করছি পোস্ট মিডিয়াতে কোনো ডাটা আছে কি না
+            $mediaExists = Post_media::where('post_id', $this->postId)->exists();
 
-            $this->sendFcmNotification(
-                $post->member_id,
-                "Post removed ⚠️",
-                "All {$rejectedCount} image(s) violated our community standards.",
-                ['post_id' => (string) $post->id, 'status' => 'failed'],
-                'post'
-            );
+            if ($mediaExists) {
+                // মিডিয়া আছে কিন্তু অ্যাপ্রুভড কাউন্ট ০ — Status: Active (আপনার রিকোয়ারমেন্ট অনুযায়ী)
+                $post->update(['status' => 'active']);
+
+                $this->sendFcmNotification(
+                    $post->member_id,
+                    "3..Post removed ⚠️",
+                    "Total {$rejectedCount} image(s) violated our community standards.",
+                    ['post_id' => (string) $post->id, 'status' => 'active'],
+                    'post',
+                    (string) $post->id
+                );
+            } else {
+                // কোনো মিডিয়া নেই — Status: Failed
+                $post->update(['status' => 'failed']);
+
+                $this->sendFcmNotification(
+                    $post->member_id,
+                    "4..Post removed ⚠️",
+                    "All {$rejectedCount} image(s) violated our community standards.",
+                    ['post_id' => (string) $post->id, 'status' => 'failed'],
+                    'post',
+                    (string) $post->id
+                );
+            }
         }
     }
 
