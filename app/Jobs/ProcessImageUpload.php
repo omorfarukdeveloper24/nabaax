@@ -15,6 +15,7 @@ use App\Models\Post_media;
 use App\Traits\NotificationTrait;
 use App\Services\ErrorLogService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ProcessImageUpload implements ShouldQueue
 {
