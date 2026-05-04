@@ -257,64 +257,126 @@ class ProcessImageUpload implements ShouldQueue
     //     }
     // }
 
+    // protected function sendFinalNotification()
+    // {
+       
+    //     sleep(2);
+
+    //     $post = Post::find($this->postId);
+    //     if (!$post) return;
+
+    //     $approvedCount = DB::table('post_media')->where('post_id', $this->postId)->count();
+    //     $rejectedCount = $post->rejected_media_count ?? 0;
+
+    //     Log::info("Checking Post ID: {$this->postId} | Approved: {$approvedCount} | Rejected: {$rejectedCount}");
+
+    //     if ($approvedCount > 0) {
+    //         $post->update(['status' => 'active']);
+
+    //         if ($rejectedCount > 0) {
+    //             $this->sendFcmNotification(
+    //                 $post->member_id,
+    //                 "1..Your post is live ✅",
+    //                 "{$approvedCount} image(s) published. {$rejectedCount} image(s) violated our community standards.",
+    //                 ['post_id' => (string) $post->id, 'status' => 'active'],
+    //                 'post',
+    //                 (string) $post->id
+    //             );
+    //         } else {
+    //             $this->sendFcmNotification(
+    //                 $post->member_id,
+    //                 "2..Your post is live ✅",
+    //                 "All {$approvedCount} image(s) published successfully.",
+    //                 ['post_id' => (string) $post->id, 'status' => 'active'],
+    //                 'post',
+    //                 (string) $post->id
+    //             );
+    //         }
+
+    //     } else {
+    //         // ৪. সরাসরি DB কুয়েরি ব্যবহার করুন চেক করতে
+    //         $mediaExists = DB::table('post_media')->where('post_id', $this->postId)->exists();
+    //         Log::info("Checking Media Existence for Post ID: {$this->postId} | Exists: " . ($mediaExists ? 'Yes' : 'No'));
+
+    //         if ($mediaExists) {
+    //             $post->update(['status' => 'active']);
+    //             $this->sendFcmNotification(
+    //                 $post->member_id,
+    //                 "3..Post removed ⚠️",
+    //                 "Total {$rejectedCount} image(s) violated our community standards.",
+    //                 ['post_id' => (string) $post->id, 'status' => 'active'],
+    //                 'post',
+    //                 (string) $post->id
+    //             );
+    //         } else {
+    //             $post->update(['status' => 'failed']);
+    //             $this->sendFcmNotification(
+    //                 $post->member_id,
+    //                 "4..Post removed ⚠️",
+    //                 "All {$rejectedCount} image(s) violated our community standards.",
+    //                 ['post_id' => (string) $post->id, 'status' => 'failed'],
+    //                 'post',
+    //                 (string) $post->id
+    //             );
+    //         }
+    //     }
+    // }
+
+
+
+
     protected function sendFinalNotification()
     {
-        // ১. ১ সেকেন্ড অপেক্ষা করুন যাতে অন্য প্যারালাল জবগুলো ডাটাবেসে ডাটা লিখে শেষ করতে পারে
-        sleep(1);
+        // Wait for other parallel jobs to finish writing to DB
+        sleep(2);
 
-        // ২. লেটেস্ট ডাটা পাওয়ার জন্য পোস্ট মডেল রিফ্রেশ করুন
         $post = Post::find($this->postId);
         if (!$post) return;
 
-        // ৩. কোয়েরি বিল্ডার ব্যবহার করে সরাসরি টেবিল চেক করুন (মডেল ক্যাশ এড়াতে)
+        // Use direct DB query to avoid cache issues
         $approvedCount = DB::table('post_media')->where('post_id', $this->postId)->count();
         $rejectedCount = $post->rejected_media_count ?? 0;
 
-        Log::info("Checking Post ID: {$this->postId} | Approved: {$approvedCount} | Rejected: {$rejectedCount}");
 
         if ($approvedCount > 0) {
+            // CASE: At least one image is approved
             $post->update(['status' => 'active']);
 
-            if ($rejectedCount > 0) {
-                $this->sendFcmNotification(
-                    $post->member_id,
-                    "1..Your post is live ✅",
-                    "{$approvedCount} image(s) published. {$rejectedCount} image(s) violated our community standards.",
-                    ['post_id' => (string) $post->id, 'status' => 'active'],
-                    'post',
-                    (string) $post->id
-                );
-            } else {
-                $this->sendFcmNotification(
-                    $post->member_id,
-                    "2..Your post is live ✅",
-                    "All {$approvedCount} image(s) published successfully.",
-                    ['post_id' => (string) $post->id, 'status' => 'active'],
-                    'post',
-                    (string) $post->id
-                );
-            }
+            // Simplified notification for any 'active' post
+            $message = ($rejectedCount > 0) 
+                ? "{$approvedCount} image(s) published. {$rejectedCount} image(s) violated community standards."
+                : "All {$approvedCount} image(s) published successfully.";
+
+            $this->sendFcmNotification(
+                $post->member_id,
+                "Your post is live ✅",
+                $message,
+                ['post_id' => (string) $post->id, 'status' => 'active'],
+                'post',
+                (string) $post->id
+            );
 
         } else {
-            // ৪. সরাসরি DB কুয়েরি ব্যবহার করুন চেক করতে
+            // CASE: approvedCount is 0
             $mediaExists = DB::table('post_media')->where('post_id', $this->postId)->exists();
-            Log::info("Checking Media Existence for Post ID: {$this->postId} | Exists: " . ($mediaExists ? 'Yes' : 'No'));
 
             if ($mediaExists) {
+                // Media exists but count is 0 (special active state)
                 $post->update(['status' => 'active']);
                 $this->sendFcmNotification(
                     $post->member_id,
-                    "3..Post removed ⚠️",
-                    "Total {$rejectedCount} image(s) violated our community standards.",
+                    "Your post is live ✅",
+                    "Your post is live. Note: {$rejectedCount} image(s) were removed for violating our community standards.",
                     ['post_id' => (string) $post->id, 'status' => 'active'],
                     'post',
                     (string) $post->id
                 );
             } else {
+                // No media at all
                 $post->update(['status' => 'failed']);
                 $this->sendFcmNotification(
                     $post->member_id,
-                    "4..Post removed ⚠️",
+                    "Post removed ⚠️",
                     "All {$rejectedCount} image(s) violated our community standards.",
                     ['post_id' => (string) $post->id, 'status' => 'failed'],
                     'post',
