@@ -187,21 +187,95 @@ class ProcessImageUpload implements ShouldQueue
         }
     }
 
+    // protected function sendFinalNotification()
+    // {
+    //     $post = Post::find($this->postId);
+    //     if (!$post) return;
+
+    //     $approvedCount = Post_media::where('post_id', $this->postId)->count();
+    //     $rejectedCount = $post->rejected_media_count ?? 0;
+    //     Log::info("Checking Post ID: {$this->postId} | Approved: {$approvedCount} | Rejected: {$rejectedCount}");
+
+    //     if ($approvedCount > 0) {
+    //         // ১. অন্তত একটি ইমেজ অ্যাপ্রুভ হয়েছে — Status: Active
+    //         $post->update(['status' => 'active']);
+
+    //         if ($rejectedCount > 0) {
+    //             // কিছু অ্যাপ্রুভড, কিছু রিজেক্টেড
+    //             $this->sendFcmNotification(
+    //                 $post->member_id,
+    //                 "1..Your post is live ✅",
+    //                 "{$approvedCount} image(s) published. {$rejectedCount} image(s) violated our community standards.",
+    //                 ['post_id' => (string) $post->id, 'status' => 'active'],
+    //                 'post',
+    //                 (string) $post->id
+    //             );
+    //         } else {
+    //             // সব অ্যাপ্রুভড
+    //             $this->sendFcmNotification(
+    //                 $post->member_id,
+    //                 "2..Your post is live ✅",
+    //                 "All {$approvedCount} image(s) published successfully.",
+    //                 ['post_id' => (string) $post->id, 'status' => 'active'],
+    //                 'post',
+    //                 (string) $post->id
+    //             );
+    //         }
+
+    //     } else {
+    //         // ২. কোনো অ্যাপ্রুভড ইমেজ নেই (approvedCount == 0)
+            
+    //         // চেক করছি পোস্ট মিডিয়াতে কোনো ডাটা আছে কি না
+    //         $mediaExists = DB::table('post_media')->where('post_id', $this->postId)->exists();
+    //         Log::info("Checking Media Existence for Post ID: {$this->postId} | Exists: " . ($mediaExists ? 'Yes' : 'No'));
+
+    //         if ($mediaExists) {
+    //             // মিডিয়া আছে কিন্তু অ্যাপ্রুভড কাউন্ট ০ — Status: Active (আপনার রিকোয়ারমেন্ট অনুযায়ী)
+    //             $post->update(['status' => 'active']);
+
+    //             $this->sendFcmNotification(
+    //                 $post->member_id,
+    //                 "3..Post removed ⚠️",
+    //                 "Total {$rejectedCount} image(s) violated our community standards.",
+    //                 ['post_id' => (string) $post->id, 'status' => 'active'],
+    //                 'post',
+    //                 (string) $post->id
+    //             );
+    //         } else {
+    //             // কোনো মিডিয়া নেই — Status: Failed
+    //             $post->update(['status' => 'failed']);
+
+    //             $this->sendFcmNotification(
+    //                 $post->member_id,
+    //                 "4..Post removed ⚠️",
+    //                 "All {$rejectedCount} image(s) violated our community standards.",
+    //                 ['post_id' => (string) $post->id, 'status' => 'failed'],
+    //                 'post',
+    //                 (string) $post->id
+    //             );
+    //         }
+    //     }
+    // }
+
     protected function sendFinalNotification()
     {
+        // ১. ১ সেকেন্ড অপেক্ষা করুন যাতে অন্য প্যারালাল জবগুলো ডাটাবেসে ডাটা লিখে শেষ করতে পারে
+        sleep(1);
+
+        // ২. লেটেস্ট ডাটা পাওয়ার জন্য পোস্ট মডেল রিফ্রেশ করুন
         $post = Post::find($this->postId);
         if (!$post) return;
 
-        $approvedCount = Post_media::where('post_id', $this->postId)->count();
+        // ৩. কোয়েরি বিল্ডার ব্যবহার করে সরাসরি টেবিল চেক করুন (মডেল ক্যাশ এড়াতে)
+        $approvedCount = DB::table('post_media')->where('post_id', $this->postId)->count();
         $rejectedCount = $post->rejected_media_count ?? 0;
+
         Log::info("Checking Post ID: {$this->postId} | Approved: {$approvedCount} | Rejected: {$rejectedCount}");
 
         if ($approvedCount > 0) {
-            // ১. অন্তত একটি ইমেজ অ্যাপ্রুভ হয়েছে — Status: Active
             $post->update(['status' => 'active']);
 
             if ($rejectedCount > 0) {
-                // কিছু অ্যাপ্রুভড, কিছু রিজেক্টেড
                 $this->sendFcmNotification(
                     $post->member_id,
                     "1..Your post is live ✅",
@@ -211,7 +285,6 @@ class ProcessImageUpload implements ShouldQueue
                     (string) $post->id
                 );
             } else {
-                // সব অ্যাপ্রুভড
                 $this->sendFcmNotification(
                     $post->member_id,
                     "2..Your post is live ✅",
@@ -223,16 +296,12 @@ class ProcessImageUpload implements ShouldQueue
             }
 
         } else {
-            // ২. কোনো অ্যাপ্রুভড ইমেজ নেই (approvedCount == 0)
-            
-            // চেক করছি পোস্ট মিডিয়াতে কোনো ডাটা আছে কি না
-            $mediaExists = Post_media::where('post_id', $this->postId)->exists();
+            // ৪. সরাসরি DB কুয়েরি ব্যবহার করুন চেক করতে
+            $mediaExists = DB::table('post_media')->where('post_id', $this->postId)->exists();
             Log::info("Checking Media Existence for Post ID: {$this->postId} | Exists: " . ($mediaExists ? 'Yes' : 'No'));
 
             if ($mediaExists) {
-                // মিডিয়া আছে কিন্তু অ্যাপ্রুভড কাউন্ট ০ — Status: Active (আপনার রিকোয়ারমেন্ট অনুযায়ী)
                 $post->update(['status' => 'active']);
-
                 $this->sendFcmNotification(
                     $post->member_id,
                     "3..Post removed ⚠️",
@@ -242,9 +311,7 @@ class ProcessImageUpload implements ShouldQueue
                     (string) $post->id
                 );
             } else {
-                // কোনো মিডিয়া নেই — Status: Failed
                 $post->update(['status' => 'failed']);
-
                 $this->sendFcmNotification(
                     $post->member_id,
                     "4..Post removed ⚠️",
