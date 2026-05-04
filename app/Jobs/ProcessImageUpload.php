@@ -193,6 +193,7 @@ class ProcessImageUpload implements ShouldQueue
 
         $approvedCount = Post_media::where('post_id', $this->postId)->count();
         $rejectedCount = $post->rejected_media_count ?? 0;
+        Log::info("Checking Post ID: {$this->postId} | Approved: {$approvedCount} | Rejected: {$rejectedCount}");
 
         if ($approvedCount > 0) {
             // ১. অন্তত একটি ইমেজ অ্যাপ্রুভ হয়েছে — Status: Active
@@ -225,6 +226,7 @@ class ProcessImageUpload implements ShouldQueue
             
             // চেক করছি পোস্ট মিডিয়াতে কোনো ডাটা আছে কি না
             $mediaExists = Post_media::where('post_id', $this->postId)->exists();
+            Log::info("Checking Media Existence for Post ID: {$this->postId} | Exists: " . ($mediaExists ? 'Yes' : 'No'));
 
             if ($mediaExists) {
                 // মিডিয়া আছে কিন্তু অ্যাপ্রুভড কাউন্ট ০ — Status: Active (আপনার রিকোয়ারমেন্ট অনুযায়ী)
