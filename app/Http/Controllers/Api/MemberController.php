@@ -636,9 +636,32 @@ class MemberController extends Controller
             }
 
             // SMS পাঠানো
-            $sms_gateway = SmsGateway::where('status', 1)->first();
+            // $sms_gateway = SmsGateway::where('status', 1)->first();
+            // if ($sms_gateway) {
+            //     $this->sendSms($sms_gateway, $phone, "Your verification code is: $newOtp");
+            // }
+
+            // $site_setting = GeneralSetting::where('status', 1)->select('name', 'white_logo', 'status')->first();
+            $sms_gateway = SmsGateway::where(['status' => 1])->first();
+
             if ($sms_gateway) {
-                $this->sendSms($sms_gateway, $phone, "Your verification code is: $newOtp");
+                $url = $sms_gateway->url;
+                $data = [
+                    "api_key"  => $sms_gateway->api_key,
+                    "number"   => $phone,
+                    "type"     => 'text',
+                    "senderid" => $sms_gateway->senderid,
+                    "message"  => "Dear {$member->name},\r\nYour Registration verification code (OTP) is: {$newOtp}\r\nThank you for using {$site_setting->name}!\r\nPowered by Safoan."
+                ];
+
+                $ch = curl_init();
+                curl_setopt($ch, CURLOPT_URL, $url);
+                curl_setopt($ch, CURLOPT_POST, 1);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                $response = curl_exec($ch);
+                curl_close($ch);
             }
 
             return response()->json(['status' => 'success', 'message' => 'Verification code sent!']);
