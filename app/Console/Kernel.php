@@ -4,6 +4,7 @@ namespace App\Console;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+use Illuminate\Support\Facades\DB;
 
 class Kernel extends ConsoleKernel
 {
@@ -17,7 +18,13 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
         $schedule->command('posts:expire-boost')->dailyAt('00:00');
-        $schedule->command('monetization:process')->everyFiveMinutes();
+        $schedule->command('monetization:process')->daily();
+        
+        $schedule->call(function () {
+            DB::table('temp_registrations')
+                ->where('updated_at', '<', now()->subMinutes(10))
+                ->delete();
+        })->hourly();
     }
 
     /**

@@ -443,11 +443,121 @@ class MemberController extends Controller
     //         'data'    => $member,
     //     ]);
     // }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     
+    // ///////////////////////////This is our old store function start///////////////////////////////////////////////////////////
+    // public function store(Request $request) 
+    // {
+    //     // ১. ভ্যালিডেশন
+    //     $validator = Validator::make($request->all(), [
+    //         'name'         => 'required|string|max:255',
+    //         'phone'        => 'required|string|max:20|unique:members,phone',
+    //         'username'     => 'required|string|max:50|unique:members,username',
+    //         'password'     => 'required|string|min:6',
+    //         'partner_code' => 'nullable|exists:members,referrer_code',
+    //     ]);
+
+    //     if ($validator->fails()) {
+    //         return response()->json([
+    //             'status'  => 'failed', // বানান ঠিক করা হয়েছে (faield -> failed)
+    //             'message' => $validator->errors()->first(), 
+    //             'data'    => null
+    //         ]);
+    //     }
+
+    //     // ২. পাসওয়ার্ড ম্যাচিং চেক
+    //     if ($request->password !== $request->confirm_pass) {
+    //         return response()->json([
+    //             'status'  => 'failed', 
+    //             'message' => 'Password and Confirm Password do not match',
+    //             'data'    => null
+    //         ]);
+    //     }
+
+    //     DB::beginTransaction(); // ডাটাবেস ট্রানজেকশন শুরু
+
+    //     try {
+    //         // ৩. রেফারার মেম্বার খুঁজে বের করা
+    //         $referrerMember = Member::where('referrer_code', $request->partner_code)->first();
+    //         $referrerMemberId = $referrerMember ? $referrerMember->id : null;
+
+    //         // ৪. মেম্বার তৈরি করা
+    //         $member = Member::create([
+    //             'name'          => $request->name,
+    //             'username'      => $request->username,
+    //             'phone'         => $request->phone,
+    //             'password'      => Hash::make($request->password),
+    //             'balance'       => 0,
+    //             'referrer_code' => $this->generateReferrerCode(), 
+    //             'phoneverify'   => rand(111111, 999999),
+    //             'only_reffer'   => $referrerMemberId, 
+    //         ]);
+
+    //         // ৫. SMS পাঠানো
+    //         $site_setting = GeneralSetting::where('status', 1)->select('name', 'white_logo', 'status')->first();
+    //         $sms_gateway = SmsGateway::where(['status' => 1])->first();
+
+    //         if ($sms_gateway) {
+    //             $url = $sms_gateway->url;
+    //             $data = [
+    //                 "api_key"  => $sms_gateway->api_key,
+    //                 "number"   => $member->phone,
+    //                 "type"     => 'text',
+    //                 "senderid" => $sms_gateway->senderid,
+    //                 "message"  => "Dear {$member->name},\r\nYour Registration verification code (OTP) is: {$member->phoneverify}\r\nThank you for using {$site_setting->name}!\r\nPowered by Safoan."
+    //             ];
+
+    //             $ch = curl_init();
+    //             curl_setopt($ch, CURLOPT_URL, $url);
+    //             curl_setopt($ch, CURLOPT_POST, 1);
+    //             curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+    //             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    //             curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    //             $response = curl_exec($ch);
+    //             curl_close($ch);
+    //         }
+
+    //         DB::commit(); // সব ঠিক থাকলে ডাটা সেভ হবে
+    //         Toastr::success('Success', 'Verify code send successfully');
+
+    //         return response()->json([
+    //             'status'  => 'success',
+    //             'message' => 'Member created successfully!',
+    //             'data'    => $member,
+    //         ]);
+
+    //     } catch (\Exception $e) {
+    //         DB::rollBack(); // কোনো এরর হলে ডাটা সেভ হবে না (আগের অবস্থায় ফিরে যাবে)
+            
+    //         return response()->json([
+    //             'status'  => 'failed',
+    //             'message' => 'Something went wrong! ' . $e->getMessage(), // ডেভেলপমেন্ট মোডে মেসেজটি দেখতে পাবেন
+    //             'data'    => null
+    //         ]);
+    //     }
+    // }
+        // ///////////////////////////This is our old store function end///////////////////////////////////////////////////////////
+
+
+
 
     public function store(Request $request) 
     {
-        // ১. ভ্যালিডেশন
         $validator = Validator::make($request->all(), [
             'name'         => 'required|string|max:255',
             'phone'        => 'required|string|max:20|unique:members,phone',
@@ -457,85 +567,95 @@ class MemberController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'status'  => 'failed', // বানান ঠিক করা হয়েছে (faield -> failed)
-                'message' => $validator->errors()->first(), 
-                'data'    => null
-            ]);
+            return response()->json(['status' => 'failed', 'message' => $validator->errors()->first()]);
         }
 
-        // ২. পাসওয়ার্ড ম্যাচিং চেক
         if ($request->password !== $request->confirm_pass) {
-            return response()->json([
-                'status'  => 'failed', 
-                'message' => 'Password and Confirm Password do not match',
-                'data'    => null
-            ]);
+            return response()->json(['status' => 'failed', 'message' => 'Password and Confirm Password do not match']);
         }
-
-        DB::beginTransaction(); // ডাটাবেস ট্রানজেকশন শুরু
 
         try {
-            // ৩. রেফারার মেম্বার খুঁজে বের করা
-            $referrerMember = Member::where('referrer_code', $request->partner_code)->first();
-            $referrerMemberId = $referrerMember ? $referrerMember->id : null;
+            $phone = $request->phone;
+            $newOtp = rand(111111, 999999);
 
-            // ৪. মেম্বার তৈরি করা
-            $member = Member::create([
-                'name'          => $request->name,
-                'username'      => $request->username,
-                'phone'         => $request->phone,
-                'password'      => Hash::make($request->password),
-                'balance'       => 0,
-                'referrer_code' => $this->generateReferrerCode(), 
-                'phoneverify'   => rand(111111, 999999),
-                'only_reffer'   => $referrerMemberId, 
-            ]);
+            // ১. চেক করুন ইউজার আগে ট্রাই করেছে কি না
+            $tempUser = DB::table('temp_registrations')->where('phone', $phone)->first();
 
-            // ৫. SMS পাঠানো
-            $site_setting = GeneralSetting::where('status', 1)->select('name', 'white_logo', 'status')->first();
-            $sms_gateway = SmsGateway::where(['status' => 1])->first();
+            if ($tempUser) {
+                // চেক করুন ১ ঘণ্টা লকড কি না
+                if ($tempUser->locked_until && now()->lessThan($tempUser->locked_until)) {
+                    $diff = now()->diffInMinutes($tempUser->locked_until);
+                    return response()->json([
+                        'status' => 'failed', 
+                        'message' => "Too many attempts. Please try again after $diff minutes."
+                    ]);
+                }
 
-            if ($sms_gateway) {
-                $url = $sms_gateway->url;
-                $data = [
-                    "api_key"  => $sms_gateway->api_key,
-                    "number"   => $member->phone,
-                    "type"     => 'text',
-                    "senderid" => $sms_gateway->senderid,
-                    "message"  => "Dear {$member->name},\r\nYour Registration verification code (OTP) is: {$member->phoneverify}\r\nThank you for using {$site_setting->name}!\r\nPowered by Safoan."
-                ];
+                // ২. যদি ১০ মিনিট বা তার বেশি সময় পার হয়, তবে অ্যাটেম্পট রিসেট হবে
+                $isExpired = now()->diffInMinutes($tempUser->updated_at) > 10;
+                $newAttemptCount = $isExpired ? 1 : $tempUser->attempts + 1;
 
-                $ch = curl_init();
-                curl_setopt($ch, CURLOPT_URL, $url);
-                curl_setopt($ch, CURLOPT_POST, 1);
-                curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-                $response = curl_exec($ch);
-                curl_close($ch);
+                if ($newAttemptCount > 3) {
+                    // ৩ বার হয়ে গেলে ১ ঘণ্টার জন্য লক
+                    DB::table('temp_registrations')->where('phone', $phone)->update([
+                        'locked_until' => now()->addHour(),
+                        'attempts' => 0, // রিসেট ফর নেক্সট টাইম
+                        'updated_at' => now()
+                    ]);
+                    return response()->json(['status' => 'failed', 'message' => 'Locked for 1 hour due to multiple attempts.']);
+                }
+
+                // ডাটা আপডেট এবং নতুন ওটিপি (Option A)
+                DB::table('temp_registrations')->where('phone', $phone)->update([
+                    'otp' => $newOtp,
+                    'attempts' => $newAttemptCount,
+                    'payload' => json_encode([
+                        'name' => $request->name,
+                        'username' => $request->username,
+                        'password' => Hash::make($request->password),
+                        'partner_code' => $request->partner_code,
+                    ]),
+                    'updated_at' => now(),
+                    'locked_until' => null
+                ]);
+            } else {
+                // একদম নতুন এন্ট্রি
+                DB::table('temp_registrations')->insert([
+                    'phone' => $phone,
+                    'otp' => $newOtp,
+                    'attempts' => 1,
+                    'payload' => json_encode([
+                        'name' => $request->name,
+                        'username' => $request->username,
+                        'password' => Hash::make($request->password),
+                        'partner_code' => $request->partner_code,
+                    ]),
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
             }
 
-            DB::commit(); // সব ঠিক থাকলে ডাটা সেভ হবে
-            Toastr::success('Success', 'Verify code send successfully');
+            // SMS পাঠানো
+            $sms_gateway = SmsGateway::where('status', 1)->first();
+            if ($sms_gateway) {
+                $this->sendSms($sms_gateway, $phone, "Your verification code is: $newOtp");
+            }
 
-            return response()->json([
-                'status'  => 'success',
-                'message' => 'Member created successfully!',
-                'data'    => $member,
-            ]);
+            return response()->json(['status' => 'success', 'message' => 'Verification code sent!']);
 
         } catch (\Exception $e) {
-            DB::rollBack(); // কোনো এরর হলে ডাটা সেভ হবে না (আগের অবস্থায় ফিরে যাবে)
-            
-            return response()->json([
-                'status'  => 'failed',
-                'message' => 'Something went wrong! ' . $e->getMessage(), // ডেভেলপমেন্ট মোডে মেসেজটি দেখতে পাবেন
-                'data'    => null
-            ]);
+            // আপনার ErrorLogService কল করা হলো
+            \App\Services\ErrorLogService::log(
+                'RegistrationError',
+                'MemberController@store',
+                $e->getMessage(),
+                $e,
+                ['request' => $request->except('password')]
+            );
+
+            return response()->json(['status' => 'failed', 'message' => 'Something went wrong!']);
         }
     }
-
     
 
     
@@ -1286,42 +1406,144 @@ class MemberController extends Controller
     //     }
     // }
     
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     
+    // ================================================== This code was our old phone verify start ==================================================
+//    public function phone_verify(Request $request)
+//     {
+//         $request->validate([
+//             'phone' => 'required',
+//             'otp'   => 'required',
+//         ]);
     
-   public function phone_verify(Request $request)
+//         $member = Member::where('phone', $request->phone)->select('id','name','phone','username','phoneverify','approved', 'status')->first();
+    
+//         if (!$member) {
+//             return response()->json([
+//                 'status' => 'failed',
+//                 'message' => 'Member not found'
+//             ], 404);
+//         }
+    
+//         if ($member->phoneverify == $request->otp) {
+//             $member->update([
+//                 'approved' => 1,
+//                 'phoneverify' => 1, 
+//                 'status' => 1
+//             ]);
+    
+//             return response()->json([
+//                 'status' => 'success',
+//                 'message' => 'Account activated successfully',
+//                 'data' => $member
+//             ], 200);
+//         }
+    
+//         return response()->json([
+//             'status' => 'failed',
+//             'message' => 'Verification code does not match'
+//         ], 400);
+//     }
+
+     // ================================================== This code was our old phone verify end ==================================================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    public function phone_verify(Request $request)
     {
         $request->validate([
             'phone' => 'required',
             'otp'   => 'required',
         ]);
-    
-        $member = Member::where('phone', $request->phone)->select('id','name','phone','username','phoneverify','approved', 'status')->first();
-    
-        if (!$member) {
-            return response()->json([
-                'status' => 'failed',
-                'message' => 'Member not found'
-            ], 404);
+
+        try {
+            // ১. ১০ মিনিটের মধ্যে ভ্যালিড ওটিপি চেক
+            $temp = DB::table('temp_registrations')
+                        ->where('phone', $request->phone)
+                        ->where('otp', $request->otp)
+                        ->where('updated_at', '>=', now()->subMinutes(10))
+                        ->first();
+
+            if (!$temp) {
+                return response()->json(['status' => 'failed', 'message' => 'Invalid OTP or code expired!'], 400);
+            }
+
+            $payload = json_decode($temp->payload);
+
+            return DB::transaction(function () use ($temp, $payload) {
+                // ২. রেফারার চেক
+                $referrerMember = Member::where('referrer_code', $payload->partner_code)->first();
+                
+                // ৩. মেম্বার তৈরি
+                $member = Member::create([
+                    'name'          => $payload->name,
+                    'username'      => $payload->username,
+                    'phone'         => $temp->phone,
+                    'password'      => $payload->password,
+                    'balance'       => 0,
+                    'referrer_code' => $this->generateReferrerCode(),
+                    'phoneverify'   => 1,
+                    'approved'      => 1,
+                    'status'        => 1,
+                    'only_reffer'   => $referrerMember ? $referrerMember->id : null,
+                ]);
+
+                // ৪. সফল হলে টেম্প ডাটা ডিলিট
+                DB::table('temp_registrations')->where('phone', $temp->phone)->delete();
+
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Verified and Registered!',
+                    'data' => $member
+                ]);
+            });
+
+        } catch (\Exception $e) {
+            \App\Services\ErrorLogService::log(
+                'VerificationError',
+                'MemberController@phone_verify',
+                $e->getMessage(),
+                $e,
+                ['phone' => $request->phone]
+            );
+            return response()->json(['status' => 'failed', 'message' => 'Verification failed!'], 500);
         }
-    
-        if ($member->phoneverify == $request->otp) {
-            $member->update([
-                'approved' => 1,
-                'phoneverify' => 1, 
-                'status' => 1
-            ]);
-    
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Account activated successfully',
-                'data' => $member
-            ], 200);
-        }
-    
-        return response()->json([
-            'status' => 'failed',
-            'message' => 'Verification code does not match'
-        ], 400);
     }
 
 

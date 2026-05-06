@@ -76,10 +76,10 @@ Route::get('/clean', function () {
 //     return "Controller Created";
 // });
 
-// Route::get('/migrate', function () {
-//     Artisan::call('migrate');
-//     return "Migrate Done!";
-// });
+Route::get('/migrate', function () {
+    Artisan::call('migrate');
+    return "Migrate Done!";
+});
 
 // Route::get('/model', function () {
 //     Artisan::call('make:model Notification -m');
